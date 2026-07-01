@@ -42,7 +42,7 @@ class SyncHandler(BaseHandler):
     async def post(self):
         if not MyReaderSyncService.is_enabled():
             return {"err": "sync.disabled", "msg": _("数据同步功能未启用")}
-        logging.debug("[sync] push request from user %s: %s", self.current_user.id, self.request.body)
+        logging.debug("[sync] push request from user %s: %s", self.current_user.id, self.request.body[:100])
         try:
             payload = tornado.escape.json_decode(self.request.body or b"{}")
         except ValueError:
