@@ -521,6 +521,31 @@ class UserInfo(BaseHandler):
         return rsp
 
 
+class WhoAmI(BaseHandler):
+    """Identity bridge for the embedded MyReader entry point (see
+    document/MyReader_Embedded_WebApp.md in the myreader repo): MyReader's
+    server forwards the browser's MyBooks session cookie here and uses the
+    result to decide whether it's safe to open the reader. Mirrors the same
+    can_read()/is_active() checks BookRead.get uses, so a book that would be
+    blocked in the classic reader is blocked here too. Must not be reachable
+    from outside the deployment (see nginx config) since it turns a cookie
+    into identity + permission info.
+    """
+
+    @js
+    def get(self):
+        user = self.current_user
+        if not user:
+            return {"err": "user.need_login", "msg": _("请先登录")}
+        return {
+            "err": "ok",
+            "userId": user.id,
+            "username": user.username,
+            "canRead": user.can_read(),
+            "isActive": user.is_active(),
+        }
+
+
 class UserVipInfo(BaseHandler):
     @js
     @auth
@@ -1156,6 +1181,7 @@ def routes():
     return [
         (r"/api/welcome", Welcome),
         (r"/api/user/info", UserInfo),
+        (r"/api/user/whoami", WhoAmI),
         (r"/api/user/vip", UserVipInfo),
         (r"/api/user/messages", UserMessages),
         (r"/api/user/messages/clear", UserMessagesClear),

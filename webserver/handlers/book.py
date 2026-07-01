@@ -2528,6 +2528,24 @@ class BookRead(BaseHandler):
         # 若指定了格式且书籍存在该格式，优先按指定格式处理
         fmt_arg = self.get_argument("format", "").lower()
         fpath_arg = book.get("fmt_%s" % fmt_arg, None) if fmt_arg else None
+
+        # 用户在设置中选择了 MyReader 作为阅读器时，epub/pdf 直接跳转到 MyReader
+        # 的内嵌阅读入口；其余格式（mobi/azw3/txt 等）沿用下面既有的转换+内置阅读器逻辑，
+        # 因为 MyReader 侧目前只支持 epub/pdf（见 document/MyReader_Embedded_WebApp.md）。
+        if self.current_user and self.current_user.extra.get("reader_engine") == "myreader":
+            myreader_format = None
+            if fmt_arg:
+                if fmt_arg in ("epub", "pdf") and fpath_arg:
+                    myreader_format = fmt_arg
+            elif book.get("fmt_epub"):
+                myreader_format = "epub"
+            elif "fmt_pdf" in book:
+                myreader_format = "pdf"
+            if myreader_format:
+                return self.redirect(
+                    "/reader-embed/open?bookId=%s&format=%s" % (book_id, myreader_format)
+                )
+
         if fpath_arg:
             if fmt_arg == "txt":
                 return self.redirect(f'/read/txt/{book_id}')

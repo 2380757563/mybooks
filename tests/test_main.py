@@ -223,6 +223,11 @@ class TestAppWithoutLogin(TestApp):
         self.assertEqual(d["user"]["is_login"], False)
         self.assertEqual(d["sys"], {})
 
+    def test_whoami_not_logged_in(self):
+        d = self.json("/api/user/whoami")
+        self.assertEqual(d["err"], "user.need_login")
+        self.assertNotIn("userId", d)
+
     def test_book(self):
         d = self.json("/api/book/1")
         self.assertEqual(d["err"], "ok")
@@ -305,6 +310,23 @@ class TestUser(TestWithUserLogin):
         self.assertEqual(d["err"], "ok")
         self.assertEqual(d["user"]["is_login"], True)
         self.assertEqual(d["sys"], {})
+
+    def test_whoami(self):
+        with mock_permission() as user:
+            user.set_permission("r")
+            d = self.json("/api/user/whoami")
+            self.assertEqual(d["err"], "ok")
+            self.assertEqual(d["userId"], user.id)
+            self.assertEqual(d["username"], user.username)
+            self.assertEqual(d["canRead"], True)
+            self.assertEqual(d["isActive"], True)
+
+    def test_whoami_no_read_permission(self):
+        with mock_permission() as user:
+            user.set_permission("R")
+            d = self.json("/api/user/whoami")
+            self.assertEqual(d["err"], "ok")
+            self.assertEqual(d["canRead"], False)
 
     def add_user(self):
         self.mail.reset_mock()
@@ -447,6 +469,41 @@ class TestBook(TestWithUserLogin):
             for bid in BIDS:
                 rsp = self.fetch("/read/%s" % bid, follow_redirects=False)
                 self.assertEqual(rsp.code, 302 if bid == BID_PDF or bid == BID_TXT else 200)
+
+    def test_read_myreader_engine_epub(self):
+        with mock_permission() as user:
+            user.extra["reader_engine"] = "myreader"
+            rsp = self.fetch("/read/%s" % BID_EPUB, follow_redirects=False)
+            self.assertEqual(rsp.code, 302)
+            self.assertEqual(
+                rsp.headers["Location"],
+                "/reader-embed/open?bookId=%s&format=epub" % BID_EPUB,
+            )
+
+    def test_read_myreader_engine_pdf(self):
+        with mock_permission() as user:
+            user.extra["reader_engine"] = "myreader"
+            rsp = self.fetch("/read/%s" % BID_PDF, follow_redirects=False)
+            self.assertEqual(rsp.code, 302)
+            self.assertEqual(
+                rsp.headers["Location"],
+                "/reader-embed/open?bookId=%s&format=pdf" % BID_PDF,
+            )
+
+    def test_read_myreader_engine_unsupported_format_falls_back(self):
+        # mobi/azw3/txt aren't served by the embedded MyReader entry point yet,
+        # so users with reader_engine=myreader still go through the existing
+        # conversion + built-in reader path for those formats.
+        with mock.patch("webserver.services.converter.ConverterService.convert_and_save", return_value="Yo"):
+            with mock_permission() as user:
+                user.extra["reader_engine"] = "myreader"
+                rsp = self.fetch("/read/%s" % BID_MOBI, follow_redirects=False)
+                self.assertEqual(rsp.code, 200)
+
+    def test_read_default_engine_ignores_myreader_redirect(self):
+        with mock.patch("webserver.services.converter.ConverterService.convert_and_save", return_value="Yo"):
+            rsp = self.fetch("/read/%s" % BID_EPUB, follow_redirects=False)
+            self.assertEqual(rsp.code, 200)
 
     def test_edit(self):
         body = {
