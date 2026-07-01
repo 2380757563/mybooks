@@ -676,6 +676,7 @@
     "epub_viewer": "EPUB阅读器",
     "epubjs": "EPUB Reader（纯本地, 简洁清爽）",
     "creader": "Candle Reader（功能丰富，会联网，支持章评）",
+    "myreader": "MyReader (直接在MyBooks中同步数据，推荐使用)",
     "avatar_service": "可使用www.gravatar.com或cravatar.cn头像服务",
     "max_upload_size": "文件上传字节数限制(例如100MB或100KB）",
     "chunk_upload_size": "分片上传阈值（默认0表示不启用分片上传，大于0的值表示超出该大小的文件将分片上传，每个分片最小20MB，例如50MB）",

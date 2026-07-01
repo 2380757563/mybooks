@@ -2529,10 +2529,12 @@ class BookRead(BaseHandler):
         fmt_arg = self.get_argument("format", "").lower()
         fpath_arg = book.get("fmt_%s" % fmt_arg, None) if fmt_arg else None
 
+        book_reader = CONF.get("EPUB_VIEWER", "MyReader")
+
         # 用户在设置中选择了 MyReader 作为阅读器时，epub/pdf 直接跳转到 MyReader
         # 的内嵌阅读入口；其余格式（mobi/azw3/txt 等）沿用下面既有的转换+内置阅读器逻辑，
         # 因为 MyReader 侧目前只支持 epub/pdf（见 document/MyReader_Embedded_WebApp.md）。
-        if self.current_user and self.current_user.extra.get("reader_engine") == "myreader":
+        if book_reader == "MyReader":
             myreader_format = None
             if fmt_arg:
                 if fmt_arg in ("epub", "pdf") and fpath_arg:
@@ -2545,6 +2547,8 @@ class BookRead(BaseHandler):
                 return self.redirect(
                     "/reader-embed/open?bookId=%s&format=%s" % (book_id, myreader_format)
                 )
+            # Fallback to the original reading logic if MyReader is not used or the format is not supported
+            book_reader = "epubjs.html"
 
         if fpath_arg:
             if fmt_arg == "txt":
@@ -2568,7 +2572,7 @@ class BookRead(BaseHandler):
                         service.convert_and_save(self.user_id(), book, fpath_arg, "epub")
 
                 epub_dir = "/get/extract/%s" % book["id"]
-                return self.html_page("book/" + CONF["EPUB_VIEWER"], {
+                return self.html_page("book/" + book_reader, {
                     "book": book,
                     "epub_dir": epub_dir,
                     "is_ready": (fmt_arg == 'epub'),
@@ -2589,7 +2593,7 @@ class BookRead(BaseHandler):
 
             # epub_dir is for javascript
             epub_dir = "/get/extract/%s" % book["id"]
-            return self.html_page("book/" + CONF["EPUB_VIEWER"], {
+            return self.html_page("book/" + book_reader, {
                 "book": book,
                 "epub_dir": epub_dir,
                 "is_ready": (fmt == 'epub'),

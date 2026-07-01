@@ -1,3 +1,8 @@
+# MyReader embedded-reader build output (see document/MyReader_Embedded_WebApp.md,
+# myreader repo). Built out-of-tree with `pnpm build-web-standalone` and manually
+# copied here before `docker build` — not committed.
+myreader-dist/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

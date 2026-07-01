@@ -675,6 +675,7 @@
     "epub_viewer": "EPUB 閱讀器",
     "epubjs": "EPUB Reader（純本地，簡潔清爽）",
     "creader": "Candle Reader（功能豐富，會聯網，支援章評）",
+    "myreader": "MyReader (功能豐富，支援章評，推荐)",
     "avatar_service": "可使用 www.gravatar.com 或 cravatar.cn 大頭貼服務",
     "max_upload_size": "檔案上傳位元組數限制 (例如 100MB 或 100KB）",
     "chunk_upload_size": "分片上傳閾值（預設 0 表示不啟用分片上傳，大於 0 的值表示超出該大小的檔案將分片上傳，每個分片最小 20MB，例如 50MB）",

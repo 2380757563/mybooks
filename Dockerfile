@@ -67,6 +67,7 @@ RUN mkdir -p /data/log/nginx/ && \
     mkdir -p /data/books/audios && \
     mkdir -p /data/books/ssl && \
     mkdir -p /var/www/talebook/ && \
+    mkdir -p /var/www/myreader/ && \
     chmod a+w -R /data/log /data/books /var/www
 
 COPY server.py /var/www/talebook/
@@ -78,6 +79,29 @@ COPY conf/supervisor/talebook.conf /etc/supervisor/conf.d/
 COPY --from=builder /app-static/ /var/www/talebook/app/
 COPY --from=builder /app-static/dist/logo/ /data/books/logo/
 COPY --from=builder /app-static/dist/avatar/ /data/books/avatar/
+
+# MyReader（内嵌阅读器）— see document/MyReader_Embedded_WebApp.md in the
+# myreader repo. myreader is a separate git repo/pnpm monorepo, so its build
+# isn't part of this multi-stage build; instead, before running `docker
+# build` here, produce a standalone Next.js server bundle and stage it at
+# myreader-dist/ (gitignored) in this repo root:
+#
+#   cd ../myreader/app && pnpm install && pnpm build-docker-dist
+#   rsync -a --delete myreader-dist/ ../../mybooks/myreader-dist/
+#
+# (`pnpm build-docker-dist` wraps `pnpm build-web-standalone` and the
+# assembly steps — see myreader/app/scripts/build-docker-dist.sh.)
+#
+# `output: 'standalone'` traces the actually-used dependency graph into
+# node_modules (see next.config.mjs), so this works even though app/ has no
+# lockfile of its own (it's a pnpm workspace member) — no need to reinstall
+# or resolve the monorepo inside this Dockerfile. myreader-dist/ keeps the
+# nested layout Next's tracer produces (node_modules/ at this level, the
+# actual app under app/) rather than flattening it — app/node_modules
+# contains *relative* symlinks (e.g. `next -> ../../node_modules/.pnpm/...`)
+# that assume this exact two-level nesting and break if flattened. Run as
+# `node app/server.js`, not `node server.js` (see conf/supervisor/talebook.conf).
+COPY myreader-dist/ /var/www/myreader/
 COPY release_notes.txt /var/www/talebook/app/dist/static/
 
 

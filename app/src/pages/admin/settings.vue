@@ -1165,13 +1165,14 @@ export default {
             ],
           },
           {
-            icon: "info",
+            icon: "mdi-book-open",
             key: "EPUB_VIEWER",
             label: "settings.epub_viewer",
             type: "select",
             items: [
               { text: this.$t("settings.epubjs"), value: "epubjs.html" },
               { text: this.$t("settings.creader"), value: "creader.html" },
+              { text: this.$t("settings.myreader"), value: "MyReader" },
             ],
           },
           {
