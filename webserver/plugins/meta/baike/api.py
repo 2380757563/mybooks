@@ -7,7 +7,7 @@ from webserver.i18n import _
 
 from webserver.plugins.meta.douban import str2date
 from webserver.constants import CHROME_MOBILE_HEADERS
-from .baidubaike.baidubaike import Page
+from webserver.plugins.meta.baike.baidubaike.baidubaike import Page
 
 BAIKE_ISBN = "0000000000001"
 KEY = "BaiduBaike"
@@ -23,17 +23,15 @@ class BaiduBaikeApi:
         if re.match(r"^\d*+[_-]", title):
             title = re.sub(r"^\d*+[_-]", "", title)
             logging.debug(f"Stripped title prefix, new title: {repr(title)}")
-        baike = self._baike(title)
-        if not baike:
-            return None
-        return self._metadata(baike)
 
-    def _baike(self, title):
+        baike_page = None
         try:
-            return Page(title)
+            baike_page = Page(title)
         except Exception as err:
             logging.error(_(f"百科接口异常: {err}"))
+        if not baike_page:
             return None
+        return self._metadata(baike_page)
 
     def _metadata(self, baike):
         from calibre.ebooks.metadata.book.base import Metadata
@@ -49,6 +47,8 @@ class BaiduBaikeApi:
             return None
         mi = Metadata(title)
         mi.publisher = info.get(u"出版社", "")
+        if not mi.publisher:
+            mi.publisher = info.get(u"连载平台", "")
         mi.authors = [info.get(u"作者", u"佚名")]
         mi.author_sort = mi.authors[0]
         mi.isbn = info.get("ISBN", BAIKE_ISBN)
