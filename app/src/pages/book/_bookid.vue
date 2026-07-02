@@ -244,6 +244,9 @@
                     <v-btn icon small fab @click="dialog_download = true" :disabled="!hasCompatibleFormats">
                         <v-icon>get_app</v-icon>
                     </v-btn>
+                    <v-btn icon small fab :to="'/book/' + book.id + '/edit'">
+                        <v-icon>mdi-pencil-circle-outline</v-icon>
+                    </v-btn>
                     <v-spacer></v-spacer>
                     <v-btn
                         :small="tiny"
