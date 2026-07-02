@@ -3644,12 +3644,14 @@ h1.book-detail-title {
     background: #f1f1f1;
 }
 
-.read-btn-grouped {
+/* Specificity must beat appearance.css's ".v-application .v-btn:not(...):not(...)" (0,4,0)
+   rule, which also uses !important and otherwise wins the border-radius tug-of-war. */
+.v-application .v-btn.read-btn-grouped.read-btn-grouped {
     border-top-right-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
 }
 
-.read-format-btn {
+.v-application .v-btn.read-format-btn.read-format-btn {
     border-top-left-radius: 0 !important;
     border-bottom-left-radius: 0 !important;
     border-left: 1px solid rgba(255, 255, 255, 0.3);
