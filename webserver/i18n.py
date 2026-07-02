@@ -14,7 +14,7 @@ SUPPORTED_LANGUAGES = ("zh", "zh-TW", "en")
 DEFAULT_LANGUAGE = "zh"
 TEXT_DOMAIN = "messages"
 
-_current_language = contextvars.ContextVar("talebook_i18n_language", default=None)
+_current_language = contextvars.ContextVar("mybooks_i18n_language", default=None)
 _catalog_cache: Dict[str, Dict[str, str]] = {}
 
 _DEFAULT_SETTINGS_ZH = {

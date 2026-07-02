@@ -30,9 +30,9 @@ RUN mkdir -p /app-ssr/ /app-static/ && \
 # 测试阶段 (--break-system-packages)
 FROM docker.1ms.run/poxenstudio/mybooks_base:latest AS test
 RUN pip install flake8 pytest --break-system-packages
-COPY webserver/ /var/www/talebook/webserver/
-COPY tests/ /var/www/talebook/tests/
-CMD ["pytest", "/var/www/talebook/tests"]
+COPY webserver/ /var/www/mybooks/webserver/
+COPY tests/ /var/www/mybooks/tests/
+CMD ["pytest", "/var/www/mybooks/tests"]
 
 # ----------------------------------------
 # 生产环境
@@ -66,17 +66,17 @@ RUN mkdir -p /data/log/nginx/ && \
     mkdir -p /data/books/avatar && \
     mkdir -p /data/books/audios && \
     mkdir -p /data/books/ssl && \
-    mkdir -p /var/www/talebook/ && \
+    mkdir -p /var/www/mybooks/ && \
     mkdir -p /var/www/myreader/ && \
     chmod a+w -R /data/log /data/books /var/www
 
-COPY server.py /var/www/talebook/
-COPY docker/ /var/www/talebook/docker/
-COPY webserver/ /var/www/talebook/webserver/
+COPY server.py /var/www/mybooks/
+COPY docker/ /var/www/mybooks/docker/
+COPY webserver/ /var/www/mybooks/webserver/
 COPY conf/nginx/ssl.* /data/books/ssl/
-COPY conf/nginx/talebook.conf /etc/nginx/conf.d/
-COPY conf/supervisor/talebook.conf /etc/supervisor/conf.d/
-COPY --from=builder /app-static/ /var/www/talebook/app/
+COPY conf/nginx/mybooks.conf /etc/nginx/conf.d/
+COPY conf/supervisor/mybooks.conf /etc/supervisor/conf.d/
+COPY --from=builder /app-static/ /var/www/mybooks/app/
 COPY --from=builder /app-static/dist/logo/ /data/books/logo/
 COPY --from=builder /app-static/dist/avatar/ /data/books/avatar/
 
@@ -100,13 +100,13 @@ COPY --from=builder /app-static/dist/avatar/ /data/books/avatar/
 # actual app under app/) rather than flattening it — app/node_modules
 # contains *relative* symlinks (e.g. `next -> ../../node_modules/.pnpm/...`)
 # that assume this exact two-level nesting and break if flattened. Run as
-# `node app/server.js`, not `node server.js` (see conf/supervisor/talebook.conf).
+# `node app/server.js`, not `node server.js` (see conf/supervisor/mybooks.conf).
 COPY myreader-dist/ /var/www/myreader/
-COPY release_notes.txt /var/www/talebook/app/dist/static/
+COPY release_notes.txt /var/www/mybooks/app/dist/static/
 
 
 RUN rm -f /etc/nginx/conf.d/default.conf /var/www/html -rf && \
-    cd /var/www/talebook/ && \
+    cd /var/www/mybooks/ && \
     ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
     echo ${TZ} > /etc/timezone && \
     echo "VERSION = \"$GIT_VERSION\"" > webserver/version.py && \
@@ -124,17 +124,17 @@ RUN rm -f /etc/nginx/conf.d/default.conf /var/www/html -rf && \
     ln -s /data/books/audios app/dist/audios && \
     mkdir -p /prebuilt/ && \
     mv /data/* /prebuilt/ && \
-    chmod +x /var/www/talebook/docker/start.sh
+    chmod +x /var/www/mybooks/docker/start.sh
 
 EXPOSE 80 443
 
 VOLUME ["/data"]
 
-CMD ["/var/www/talebook/docker/start.sh"]
+CMD ["/var/www/mybooks/docker/start.sh"]
 
 # ----------------------------------------
 # 生产环境（server side render版)
 FROM production AS production-ssr
-COPY conf/nginx/server-side-render.conf /etc/nginx/conf.d/talebook.conf
-COPY conf/supervisor/server-side-render.conf /etc/supervisor/conf.d/talebook.conf
-COPY --from=builder /app-ssr/ /var/www/talebook/app/
+COPY conf/nginx/server-side-render.conf /etc/nginx/conf.d/mybooks.conf
+COPY conf/supervisor/server-side-render.conf /etc/supervisor/conf.d/mybooks.conf
+COPY --from=builder /app-ssr/ /var/www/mybooks/app/

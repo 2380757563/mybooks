@@ -43,9 +43,9 @@ def safe_xml(text):
     return ''.join(c for c in str(text) if ord(c) >= 32)
 
 
-class TalebookResource(DAVNonCollection):
+class WebDavResource(DAVNonCollection):
     def __init__(self, path, environ, book, cache):
-        super(TalebookResource, self).__init__(path, environ)
+        super(WebDavResource, self).__init__(path, environ)
         self.book = book
         self.cache = cache
         self.formats = SUPPORTED_FORMATS
@@ -275,7 +275,7 @@ class BooksCollection(VirtualCollection):
                                 if fmt_path:
                                     item[f'fmt_{fmt_lower}'] = fmt_path
                     # Choose selected_fmt using SUPPORTED_FORMATS priority so
-                    # display name extension and TalebookResource selection match.
+                    # display name extension and WebDavResource selection match.
                     selected_fmt = None
                     for f in SUPPORTED_FORMATS:
                         if item.get(f'fmt_{f}'):
@@ -292,7 +292,7 @@ class BooksCollection(VirtualCollection):
                     book_name = f"{item['id']}.{safe_filename(item['title'])}.{ext}"
                     # Ensure book name is XML safe
                     book_name = safe_xml(book_name)
-                    books.append(TalebookResource(
+                    books.append(WebDavResource(
                         base + book_name,
                         self.environ,
                         item,
@@ -568,7 +568,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[2]}: {e}")
                 return None
@@ -617,7 +617,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[2]}: {e}")
                 return None
@@ -654,7 +654,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[2]}: {e}")
                 return None
@@ -758,7 +758,7 @@ class MyBooksDavProvider(DAVProvider):
                 if not mi:
                     return None
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[1]}: {e}")
                 return None
@@ -786,7 +786,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[1]}: {e}")
                 return None
@@ -812,7 +812,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[1]}: {e}")
                 return None
@@ -839,7 +839,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[1]}: {e}")
                 return None
@@ -865,7 +865,7 @@ class MyBooksDavProvider(DAVProvider):
                     return None
 
                 item = self._build_book_item(book_id, mi)
-                return TalebookResource(path, environ, item, self.cache)
+                return WebDavResource(path, environ, item, self.cache)
             except Exception as e:
                 logging.error(f"Error getting book {parts[1]}: {e}")
                 return None

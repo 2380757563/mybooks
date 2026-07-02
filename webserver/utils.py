@@ -127,7 +127,6 @@ def compare_books_by_series_index_or_name(x, y):
 
 def super_strip(s):
     # 删除掉所有不可见的字符
-    # issue: https://github.com/talebook/talebook/issues/304
     return ''.join(c for c in s.strip() if c.isprintable())
 
 

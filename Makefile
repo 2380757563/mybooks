@@ -66,14 +66,6 @@ lint:
 pytest: lint
 	pytest tests
 
-testv:
-	coverage run -m unittest
-	coverage report --include "*talebook*"
-
-testvv: testv
-	coverage html -d ".htmlcov" --include "*talebook*"
-	cd ".htmlcov" && python3 -m http.server 7777
-
 up:
 	docker compose up
 

@@ -3,7 +3,7 @@ import logging
 # from wsgidav.dc.base_dc import BaseDomainController # This import is no longer needed
 
 
-class TalebookDomainController:
+class MyBooksDomainController:
     """
     Custom authentication controller for WebDAV service.
     Uses the same authentication mechanism as user.SignIn.
@@ -20,7 +20,7 @@ class TalebookDomainController:
             config: Configuration dictionary
         """
         # Get the sqlite_session from config
-        self.sqlite_session = config.get('talebook_session', None)
+        self.sqlite_session = config.get('mybooks_session', None)
         if not self.sqlite_session:
             logging.error("DomainController: sqlite_session not found in config")
 
@@ -66,7 +66,7 @@ class TalebookDomainController:
 
             logging.info(f"WebDAV auth success: user '{username}'")
             # Store user info in environ for later use
-            environ["talebook.user"] = user
+            environ["mybooks.user"] = user
             return True
 
         except Exception as e:

@@ -38,7 +38,7 @@ def create_webdav_app(calibre_cache, sqlite_session):
         },
         "http_authenticator": {
             # Pass the module path as string so WsgiDAV can import it
-            "domain_controller": "webserver.webdav.auth.TalebookDomainController",
+            "domain_controller": "webserver.webdav.auth.MyBooksDomainController",
             "accept_basic": True,
             "accept_digest": False,
             "default_to_digest": False,
@@ -60,7 +60,7 @@ def create_webdav_app(calibre_cache, sqlite_session):
             "htdocs_path": CONF["resource_path"] + "/webdav/",
         },
         # Store sqlite_session in config for domain controller to access
-        "talebook_session": sqlite_session,
+        "mybooks_session": sqlite_session,
     }
 
     # 猴子补丁：覆盖 WsgiDavDirBrowser._get_context 恢复原始顺序

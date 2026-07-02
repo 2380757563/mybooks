@@ -6,8 +6,8 @@ PGID=${PGID:-0}
 # 显式补全基础路径，避免有些环境下 gosu/supervisord 下找不到命令
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-groupmod -o -g "${PGID}" talebook
-usermod -o -u "${PUID}" talebook
+groupmod -o -g "${PGID}" mybooks
+usermod -o -u "${PUID}" mybooks
 
 echo "[MyBooks]Starting...."
 
@@ -18,17 +18,17 @@ fi
 
 if [ ! -d "/data/sync" ]; then
   mkdir -p /data/sync
-  chown -R talebook:talebook /data/sync
+  chown -R mybooks:mybooks /data/sync
 fi
 
 if [ ! -d "/data/reader" ]; then
   mkdir -p /data/reader
-  chown -R talebook:talebook /data/reader
+  chown -R mybooks:mybooks /data/reader
 fi
 
 if [ ! -d "/data/books/imports/audiobooks" ]; then
   mkdir -p /data/books/imports/audiobooks
-  chown -R talebook:talebook /data/books/imports/audiobooks
+  chown -R mybooks:mybooks /data/books/imports/audiobooks
 fi
 
 if [ ! -s "/data/books/calibre-webserver.db" ]; then
@@ -41,7 +41,7 @@ fi
 
 if [ ! -d "/data/log/nginx" ]; then
   mkdir -p /data/log/nginx
-  chown -R talebook:talebook /data/log/nginx
+  chown -R mybooks:mybooks /data/log/nginx
 fi
 
 echo "[MyBooks] Checked and parepared the default folders."
@@ -72,20 +72,20 @@ touch $permission_file
 permission=`cat $permission_file`
 if [ "x$permission" != "x$PUID:$PGID" ]; then
     echo "updating '/data/' permission to $PUID:$PGID"
-    chown -R talebook:talebook /data
+    chown -R mybooks:mybooks /data
     echo "$PUID:$PGID" > $permission_file
     echo "[MyBooks] permission updated!"
 fi
 
 # 设置系统文件的权限
-chown -R talebook:talebook \
+chown -R mybooks:mybooks \
   /data/log/ \
   /root/.config/calibre \
   /root/.npm \
-  /var/www/talebook/app/.env \
-  /var/www/talebook/app/dist \
-  /var/www/talebook/webserver \
-  /var/www/talebook/server.py
+  /var/www/mybooks/app/.env \
+  /var/www/mybooks/app/dist \
+  /var/www/mybooks/webserver \
+  /var/www/mybooks/server.py
 
 echo "[MyBooks] Checked the permission"
 
@@ -121,7 +121,7 @@ fi
 
 USE_GOSU=0
 if command -v gosu >/dev/null 2>&1; then
-  if gosu talebook:talebook /bin/true >/dev/null 2>&1; then
+  if gosu mybooks:mybooks /bin/true >/dev/null 2>&1; then
     USE_GOSU=1
   else
     echo "warning: gosu probe failed, fallback to current user"
@@ -130,9 +130,9 @@ else
   echo "warning: gosu not found, fallback to current user"
 fi
 
-run_as_talebook() {
+run_as_mybooks() {
   if [ "$USE_GOSU" = "1" ]; then
-    gosu talebook:talebook "$@"
+    gosu mybooks:mybooks "$@"
   else
     "$@"
   fi
@@ -144,11 +144,11 @@ nginx -t || exit 1
 
 echo
 echo "[MyBooks] Syncing db as needed..."
-run_as_talebook "$PYTHON_BIN" /var/www/talebook/server.py --syncdb
+run_as_mybooks "$PYTHON_BIN" /var/www/mybooks/server.py --syncdb
 
 echo
-echo "[MyBooks] Updating talebook config..."
-run_as_talebook "$PYTHON_BIN" /var/www/talebook/server.py --update-config
+echo "[MyBooks] Updating mybooks config..."
+run_as_mybooks "$PYTHON_BIN" /var/www/mybooks/server.py --update-config
 
 echo
 echo "[MyBooks] All done, launch the service..."

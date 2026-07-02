@@ -263,7 +263,7 @@ class BaseHandler(web.RequestHandler):
 
     def process_auth_token(self):
         token = self.get_argument("token", None) or self.request.headers.get(
-            "X-TALEBOOK-TOKEN", None
+            "X-MYBOOKS-TOKEN", None
         )
         if not token:
             return False

@@ -2545,7 +2545,7 @@ class BookRead(BaseHandler):
                 myreader_format = "pdf"
             if myreader_format:
                 return self.redirect(
-                    "/reader-embed/open?bookId=%s&format=%s" % (book_id, myreader_format)
+                    "/myreader/open?bookId=%s&format=%s" % (book_id, myreader_format)
                 )
             # Fallback to the original reading logic if MyReader is not used or the format is not supported
             book_reader = "epubjs.html"

@@ -477,7 +477,7 @@ class TestBook(TestWithUserLogin):
             self.assertEqual(rsp.code, 302)
             self.assertEqual(
                 rsp.headers["Location"],
-                "/reader-embed/open?bookId=%s&format=epub" % BID_EPUB,
+                "/myreader/open?bookId=%s&format=epub" % BID_EPUB,
             )
 
     def test_read_myreader_engine_pdf(self):
@@ -487,7 +487,7 @@ class TestBook(TestWithUserLogin):
             self.assertEqual(rsp.code, 302)
             self.assertEqual(
                 rsp.headers["Location"],
-                "/reader-embed/open?bookId=%s&format=pdf" % BID_PDF,
+                "/myreader/open?bookId=%s&format=pdf" % BID_PDF,
             )
 
     def test_read_myreader_engine_unsupported_format_falls_back(self):

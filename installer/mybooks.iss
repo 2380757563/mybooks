@@ -116,7 +116,7 @@ begin
   // 启动前先将本机的 data 目录绑定挂载到容器内的 /data，实现书库数据持久化到本机
   BatchContent := '@echo off' + #13#10 +
                   'echo 正在启动 MyBooks...' + #13#10 +
-                  'start "MyBooks Server" wsl.exe -d MyBooksService -u root -- bash -c "export PGID=1000 && export PUID=1000 && mkdir -p /data && (grep -qs \" /data \" /proc/mounts || mount --bind \"' + DataPath + '\" /data); /var/www/talebook/docker/start.sh"' + #13#10 +
+                  'start "MyBooks Server" wsl.exe -d MyBooksService -u root -- bash -c "export PGID=1000 && export PUID=1000 && mkdir -p /data && (grep -qs \" /data \" /proc/mounts || mount --bind \"' + DataPath + '\" /data); /var/www/mybooks/docker/start.sh"' + #13#10 +
                   'echo 正在等待服务就绪...' + #13#10 +
                   'timeout /t 5 /nobreak >nul' + #13#10 +
                   'start "" "http://localhost"' + #13#10 +
@@ -163,7 +163,7 @@ begin
                   'echo 正在重启 MyBooks...' + #13#10 +
                   'wsl.exe --terminate MyBooksService >nul 2>&1' + #13#10 +
                   'timeout /t 2 /nobreak >nul' + #13#10 +
-                  'wsl.exe -d MyBooksService -u root -- bash -c "export PGID=1000 && export PUID=1000 && mkdir -p /data && (grep -qs \" /data \" /proc/mounts || mount --bind \"' + DataPath + '\" /data); /var/www/talebook/docker/start.sh"' + #13#10 +
+                  'wsl.exe -d MyBooksService -u root -- bash -c "export PGID=1000 && export PUID=1000 && mkdir -p /data && (grep -qs \" /data \" /proc/mounts || mount --bind \"' + DataPath + '\" /data); /var/www/mybooks/docker/start.sh"' + #13#10 +
                   'echo.' + #13#10 +
                   'echo MyBooks 已启动，按任意键关闭此窗口...' + #13#10 +
                   'pause >nul';

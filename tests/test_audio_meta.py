@@ -18,7 +18,7 @@ def _extract_audio_metadata(audio_path, fallback_title):
                 title = str(title_tag[0]).strip() if isinstance(title_tag, list) else str(title_tag).strip()
             if author_tag:
                 author = str(author_tag[0]).strip() if isinstance(author_tag, list) else str(author_tag).strip()
-        
+
         # Fallback for some m4b files (e.g. lavf) where easy=True doesn't map the tags
         if not title or not author:
             raw_audio = mutagen.File(audio_path, easy=False)
@@ -43,7 +43,7 @@ def _extract_audio_metadata(audio_path, fallback_title):
 
 
 if __name__ == "__main__":
-    audio_path = "/Volumes/data/workspace/talebook/data/books/imports/audiobooks/Atlas Shrugged/650-AtlasShrugged.m4b"
+    audio_path = "/Volumes/data/workspace/mybooks/data/books/imports/audiobooks/Atlas Shrugged/650-AtlasShrugged.m4b"
     if len(sys.argv) > 1:
         audio_path = sys.argv[1]
     title, author = _extract_audio_metadata(audio_path, "Atlas Shrugged")
