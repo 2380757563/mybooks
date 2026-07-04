@@ -241,54 +241,61 @@
             <v-card v-if="!dialog_refer">
                 <v-toolbar flat dense>
                     <!-- download -->
-                    <v-btn icon small fab @click="dialog_download = true" :disabled="!hasCompatibleFormats">
-                        <v-icon>get_app</v-icon>
-                    </v-btn>
-                    <v-btn icon small fab :to="'/book/' + book.id + '/edit'">
-                        <v-icon>mdi-pencil-circle-outline</v-icon>
-                    </v-btn>
+                    <div class="book-action-btns">
+                        <v-btn icon small fab @click="dialog_download = true" :disabled="!hasCompatibleFormats">
+                            <v-icon>get_app</v-icon>
+                        </v-btn>
+                        <v-btn icon small fab :to="'/book/' + book.id + '/edit'">
+                            <v-icon>mdi-pencil-circle-outline</v-icon>
+                        </v-btn>
+                    </div>
                     <v-spacer></v-spacer>
                     <v-btn
                         :small="tiny"
                         dark
                         color="primary"
                         class="mx-2 d-flex d-sm-flex"
-                        :style="tiny ? { padding: '0px 2px', margin: '0px 3px !important' } : {}"
+                        :style="tiny ? { padding: '0px', margin: '0px 1px !important' } : {}"
                         @click="handleReadingStateChange"
                         :loading="readingStateLoading"
                     >
-                        {{ readingStateButtonText }}
+                        <v-icon v-if="tiny">mdi-rotate-orbit</v-icon>
+                        <span v-else>{{ readingStateButtonText }}</span>
                     </v-btn>
                     <v-btn
                         :small="tiny"
                         dark
                         color="primary"
                         class="mx-2 d-flex d-sm-flex"
-                        :style="tiny ? { padding: '0px 2px', margin: '0px 3px !important' } : {}"
+                        :style="tiny ? { padding: '0px', margin: '0px 1px !important' } : {}"
                         @click="switchToAudioPlayer"
                         v-if="book.book_type != this.BOOK_TYPE.PHYSICAL"
                     >
-                        <v-icon dark v-if="!tiny">{{ audios.status === AUDIO_STATUS.FAILED ? 'error' : 'audiotrack' }}</v-icon>
-                        {{ $t('book.convertToAudio') }}
-                        <span v-if="audios.status === AUDIO_STATUS.PROCESSING && audios.progress && audios.progress.converted_chapters !== undefined"
-                              class="ml-1">
-                            ({{ audios.progress.converted_chapters }}/{{ audios.progress.total_chapters }})
-                        </span>
-                        <span v-if="audios.status === AUDIO_STATUS.CONVERTED && audios.count > 0"
-                              class="ml-1">
-                            ({{ audios.count }})
-                        </span>
+                        <v-icon v-if="tiny">mdi-music-note</v-icon>
+                        <template v-else>
+                            <v-icon dark>{{ audios.status === AUDIO_STATUS.FAILED ? 'error' : 'audiotrack' }}</v-icon>
+                            {{ $t('book.convertToAudio') }}
+                            <span v-if="audios.status === AUDIO_STATUS.PROCESSING && audios.progress && audios.progress.converted_chapters !== undefined"
+                                  class="ml-1">
+                                ({{ audios.progress.converted_chapters }}/{{ audios.progress.total_chapters }})
+                            </span>
+                            <span v-if="audios.status === AUDIO_STATUS.CONVERTED && audios.count > 0"
+                                  class="ml-1">
+                                ({{ audios.count }})
+                            </span>
+                        </template>
                     </v-btn>
                     <div class="d-inline-flex" :class="tiny ? 'mx-1' : 'mx-2'">
                         <v-btn :small="tiny" dark color="primary" class="d-flex d-sm-flex" :class="{ 'read-btn-grouped': needsReadFormatChoice }"
-                               :style="tiny ? { padding: '0px 2px', margin: '0px !important' } : { margin: '0px' }"
+                               :style="tiny ? { padding: '0px', margin: '0px !important' } : { margin: '0px' }"
                                :href="readHref" target="_blank" @click="onReadClick($event, defaultReadFormat)">
-                            {{ $t('book.read') }}
+                            <v-icon v-if="tiny">mdi-book-open-blank-variant</v-icon>
+                            <span v-else>{{ $t('book.read') }}</span>
                         </v-btn>
                         <v-menu v-if="needsReadFormatChoice" offset-y left>
                             <template v-slot:activator="{ on, attrs }">
                                 <v-btn :small="tiny" dark color="primary" min-width="0" class="read-format-btn"
-                                       :style="tiny ? { padding: '0px 2px', margin: '0px !important' } : { padding: '0 6px', margin: '0px' }"
+                                       :style="tiny ? { padding: '0px', margin: '0px !important' } : { padding: '0 6px', margin: '0px' }"
                                        v-bind="attrs" v-on="on">
                                     <v-icon small>more_vert</v-icon>
                                 </v-btn>
@@ -303,7 +310,7 @@
                     <template v-if="book.is_owner">
                         <v-menu offset-y>
                             <template v-slot:activator="{ on }">
-                                <v-btn v-on="on" dark color="primary" class="mx-2 ml-2" :small="tiny" :style="tiny ? { padding: '0px 2px',  margin: '0px 3px !important' } : {}">
+                                <v-btn v-on="on" dark color="primary" class="mx-2 ml-2" :small="tiny" :style="tiny ? { padding: '0px',  margin: '0px 1px !important' } : {}">
                                     {{ $t('book.process') }}
                                     <v-icon small>more_vert</v-icon>
                                 </v-btn>
@@ -359,7 +366,7 @@
                     <template v-if="book.is_owner">
                         <v-menu offset-y>
                             <template v-slot:activator="{ on }">
-                                <v-btn v-on="on" dark color="primary" class="mx-2 ml-2" :small="tiny" :style="tiny ? { padding: '0px 2px', margin: '0px 3px !important' } : {}">
+                                <v-btn v-on="on" dark color="primary" class="mx-2 ml-2" :small="tiny" :style="tiny ? { padding: '0px', margin: '0px 1px !important' } : {}">
                                     {{ $t('book.manage') }}
                                     <v-icon small>more_vert</v-icon>
                                 </v-btn>
@@ -3554,6 +3561,22 @@ export default {
 </script>
 
 <style>
+.book-action-btns {
+    display: flex;
+    gap: 8px;
+}
+@media (max-width: 600px) {
+    .book-action-btns {
+        gap: 0;
+    }
+    .book-action-btns .v-btn {
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        min-height: 30px !important;
+    }
+}
+
 /* Flat style scrollbar for audio list */
 .audio-scroll-container {
     scrollbar-width: thin;
