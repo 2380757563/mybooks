@@ -14,6 +14,7 @@ from webserver.constants import CHROME_HEADERS
 # Favicon 存储根目录
 RESOURCES_DIR = "/data/books/resources"
 FRIENDS_FAVICON_DIR = os.path.join(RESOURCES_DIR, "friends")
+AUTHOR_AVATAR_DIR = os.path.join(RESOURCES_DIR, "author_avatar")
 
 
 class ResourceService(AsyncService):
@@ -23,6 +24,7 @@ class ResourceService(AsyncService):
     def __init__(self):
         super().__init__()
         os.makedirs(FRIENDS_FAVICON_DIR, exist_ok=True)
+        os.makedirs(AUTHOR_AVATAR_DIR, exist_ok=True)
 
     @staticmethod
     def get_favicon_path(domain, ext=".ico"):

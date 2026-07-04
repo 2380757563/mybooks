@@ -493,14 +493,31 @@
                                         </template>
                                         <span>{{ $t('readingState.wantsHint') }}</span>
                                     </v-tooltip>
+                                    <v-tooltip bottom>
+                                        <template v-slot:activator="{ on, attrs }">
+                                            <v-btn icon small class="ml-1">
+                                                <v-icon :color="book.sole ? 'red' : 'green'" class="mr-2">
+                                                    {{ book.sole ? 'public_off' : 'public' }}
+                                                </v-icon>
+                                            </v-btn>
+                                        </template>
+                                    </v-tooltip>
                                 </p>
-                                <span color="grey--text">
-                                    <v-icon :color="book.sole ? 'red' : 'green'" class="mr-2">
-                                        {{ book.sole ? 'public_off' : 'public' }}
-                                    </v-icon>
-                                    {{ book.author }}{{ $t('book.author') }}，{{ pub_year }}{{ $t('book.year') }}
-                                </span>
                                 <br />
+                                <div class="authors-container">
+                                    <template v-for="(author, index) in book.authors.slice(0, 5)" :key="'author-' + index">
+                                        <div class="author-item">
+                                            <nuxt-link :to="{ path: '/author', query: { name: author } }" style="text-decoration: none;">
+                                                <v-img :src="'/get/author/avatar/' + author" alt="author-avatar"
+                                                        class="author-avatar"></v-img>
+                                            </nuxt-link>
+                                            <v-chip rounded small dark color="indigo" :to="{ path: '/author', query: { name: author } }">
+                                                {{ author }}
+                                            </v-chip>
+                                        </div>
+                                    </template>
+                                </div>
+                                <br/>
                                 <span v-if="book.book_type==this.BOOK_TYPE.PHYSICAL">
                                     <v-chip rounded small dark color="indigo">
                                         <v-icon>mdi-bookshelf</v-icon>{{ $t('book.bookPhysical') }}
@@ -595,22 +612,10 @@
                                     <v-icon left>mdi-link-variant</v-icon>
                                     {{ $t('book.ext_link')}}
                                 </v-chip>
-                                <template v-for="(author, index) in book.authors" :key="'author-' + index">
-                                    <v-chip
-                                        rounded
-                                        smallF
-                                        dark
-                                        color="indigo"
-                                        :to="{ path: '/author', query: { name: author } }"
-                                    >
-                                        <v-icon>face</v-icon>
-                                        {{ author }}
-                                    </v-chip>
-                                </template>
                                 <v-chip rounded dark color="indigo"
                                         :to="'/publisher/' + encodeURIComponent(book.publisher)">
                                     <v-icon>group</v-icon>
-                                    {{ $t('book.publisher') }}：{{ book.publisher }}
+                                    {{ $t('book.publisher') }}：{{ book.publisher }}({{ pub_year }})
                                 </v-chip>
                                 <v-chip
                                     rounded
@@ -3707,6 +3712,36 @@ h1.book-detail-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.avatar {
+    max-width: 80px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+}
+.avatar .v-image__image {
+    background-size: cover !important;
+}
+.authors-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.author-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.author-avatar {
+    max-width: 48px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+.author-avatar .v-image__image {
+    background-size: cover !important;
 }
 
 @media (min-width: 960px) {

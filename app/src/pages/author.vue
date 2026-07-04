@@ -6,6 +6,9 @@
         <v-col cols="12">
           <h2>{{ $t('listBook.authorBooks', { name: currentAuthor }) }}</h2>
         </v-col>
+        <v-col cols="2">
+          <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="avatar"></v-img>
+        </v-col>
 
         <!-- Batch Set Category Card -->
         <v-col cols="12">
@@ -397,3 +400,15 @@ export default {
   }
 }
 </script>
+
+<style>
+.avatar {
+    max-width: 160px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+}
+.avatar .v-image__image {
+    background-size: cover !important;
+}
+</style>

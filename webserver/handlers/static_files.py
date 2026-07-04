@@ -14,7 +14,7 @@ from tornado import web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 from webserver import constants, loader
 from webserver.services.converter import ConverterService
-from webserver.handlers.base import BaseHandler
+from webserver.handlers.base import BaseHandler, js
 from webserver.base.cover_generator import CoverGenerator
 
 
@@ -287,6 +287,25 @@ class FaviconHandler(BaseHandler):
             self.write(f.read())
 
 
+class AuthorAvatarHandler(BaseHandler):
+    @js
+    def get(self, author):
+        from webserver.services.resource_service import AUTHOR_AVATAR_DIR
+
+        filename = f"{hash(author)}"
+        filepath = os.path.join(AUTHOR_AVATAR_DIR, f"{hash(author)}.jpg")
+        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+            filepath = os.path.join(AUTHOR_AVATAR_DIR, f"{hash(author)}.webp")
+            if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                filepath = os.path.join(AUTHOR_AVATAR_DIR, "default.png")
+
+        content_type = mimetypes.guess_type(filename)[0] or "image/jpeg"
+        self.set_header("Content-Type", content_type)
+        self.set_header("Cache-Control", "public, max-age=86400")
+        with open(filepath, "rb") as f:
+            self.write(f.read())
+
+
 def routes():
     static_config = {"path": CONF["html_path"], "default_filename": "index.html"}
     return [
@@ -294,6 +313,7 @@ def routes():
         (r"/get/progress/([0-9]+)", ProgressHandler),
         (r"/get/extract/([0-9]+)/(.*)", EpubReader),
         (r"/get/pcover", ProxyImageHandler),
+        (r"/get/author/avatar/(.*)", AuthorAvatarHandler),
         (r"/get/(.*)/(.*)", ImageHandler),
         (r"/api/favicon/(.*)", FaviconHandler),
         (r"/(.*)", web.StaticFileHandler, static_config),
