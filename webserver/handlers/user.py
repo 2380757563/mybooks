@@ -522,16 +522,6 @@ class UserInfo(BaseHandler):
 
 
 class WhoAmI(BaseHandler):
-    """Identity bridge for the embedded MyReader entry point (see
-    document/MyReader_Embedded_WebApp.md in the myreader repo): MyReader's
-    server forwards the browser's MyBooks session cookie here and uses the
-    result to decide whether it's safe to open the reader. Mirrors the same
-    can_read()/is_active() checks BookRead.get uses, so a book that would be
-    blocked in the classic reader is blocked here too. Must not be reachable
-    from outside the deployment (see nginx config) since it turns a cookie
-    into identity + permission info.
-    """
-
     @js
     def get(self):
         user = self.current_user
@@ -566,7 +556,7 @@ class UserVipInfo(BaseHandler):
         }
 
 
-class Welcome(BaseHandler):
+class AccessCode(BaseHandler):
     def should_be_invited(self):
         pass
 
@@ -580,8 +570,9 @@ class Welcome(BaseHandler):
 
     @js
     def post(self):
-        code = self.get_argument("invite_code", None)
-        if not code or code != CONF["INVITE_CODE"]:
+        data = tornado.escape.json_decode(self.request.body)
+        code = data.get("invite_code", "").strip()
+        if not code or code != CONF.get("INVITE_CODE", ""):
             return {"err": "params.invalid", "msg": _("访问码无效")}
         self.mark_invited()
         return {"err": "ok", "msg": ""}
@@ -1179,7 +1170,7 @@ class UserMemo(BaseHandler):
 
 def routes():
     return [
-        (r"/api/welcome", Welcome),
+        (r"/api/access", AccessCode),
         (r"/api/user/info", UserInfo),
         (r"/api/user/whoami", WhoAmI),
         (r"/api/user/vip", UserVipInfo),

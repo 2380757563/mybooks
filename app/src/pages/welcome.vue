@@ -7,7 +7,7 @@
             </v-toolbar>
             <v-card-text>
                 <p class="py-6 body-3 text-center" >{{ $t('welcome.description') }}</p>
-                <v-form @submit.prevent="welcome_login" >
+                <v-form @submit.prevent="access_login" >
                     <v-text-field prepend-icon="lock" v-model="invite_code" required
                         :label="$t('welcome.passwordLabel')" type="password" :error="is_err" :error-messages="msg" :loading="loading"></v-text-field>
                 </v-form>
@@ -15,7 +15,7 @@
 
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn @click="welcome_login" color="blue">{{ $t('welcome.loginButton') }}</v-btn>
+                <v-btn @click="access_login" color="blue">{{ $t('welcome.loginButton') }}</v-btn>
                 <v-spacer></v-spacer>
             </v-card-actions>
 
@@ -40,7 +40,7 @@ export default {
         if ( res !== undefined ) {
             res.setHeader('Cache-Control', 'no-cache');
         }
-        return app.$backend("/welcome");
+        return app.$backend("/access");
     },
     head() {
         return {
@@ -64,13 +64,16 @@ export default {
         }
     },
     methods: {
-        welcome_login: function() {
+        access_login: function() {
             this.loading = true;
-            var data = new URLSearchParams();
-            data.append('invite_code', this.invite_code);
-            this.$backend("/welcome", {
+            this.$backend("/access", {
                 method: 'POST',
-                body: data,
+                body: JSON.stringify({
+                    invite_code: this.invite_code
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             })
             .then( rsp => {
                 this.loading = false;

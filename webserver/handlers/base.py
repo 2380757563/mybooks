@@ -230,7 +230,11 @@ class BaseHandler(web.RequestHandler):
         self.set_secure_cookie("invited", str(int(time.time())))
 
     def need_invited(self):
-        return CONF["INVITE_MODE"] is True
+        if not CONF.get("INVITE_MODE", False):
+            return False
+        if CONF.get("INVITE_CODE", ""):
+            return True
+        return False
 
     def invited_code_is_ok(self):
         t = self.get_secure_cookie("invited")
@@ -1138,6 +1142,7 @@ class BaseHandler(web.RequestHandler):
             "aiEnabled": CONF.get("AI_ENABLED", False),
             "standalone": CONF.get("STANDALONE", False),
             "hide_project_links": CONF.get("HIDE_PROJECT_LINKS", False),
+            "invited_enabled": self.need_invited(),
         }
 
 
