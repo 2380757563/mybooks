@@ -86,7 +86,13 @@
     "setCategoryForAuthorBooks": "为作者 {author} 的所有书籍设置分类 \"{category}\"",
     "searchingTitle": "正在搜索标题...",
     "searchingSegmentation": "正在分词搜索...",
-    "searchingExtended": "正在扩展搜索..."
+    "searchingExtended": "正在扩展搜索...",
+    "setAvatar": "设置头像",
+    "selectAvatar": "选择头像图片",
+    "noAvatarSelected": "未选择头像",
+    "avatarTooLarge": "头像大小不能超过 3MB",
+    "avatarTypeInvalid": "仅允许 JPEG 或 PNG 格式的图片",
+    "avatarUploadFailed": "头像上传失败"
   },
   "listMeta": {
     "ratingSuffix": "星",

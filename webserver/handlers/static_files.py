@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 
+import hashlib
 import logging
 import mimetypes
 import os
@@ -14,7 +15,7 @@ from tornado import web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 from webserver import constants, loader
 from webserver.services.converter import ConverterService
-from webserver.handlers.base import BaseHandler, js
+from webserver.handlers.base import BaseHandler, js, is_admin
 from webserver.base.cover_generator import CoverGenerator
 
 
@@ -22,6 +23,10 @@ CONF = loader.get_settings()
 
 # 创建线程池用于执行阻塞操作
 _executor = ThreadPoolExecutor(max_workers=20)
+
+
+def get_author_hash(author):
+    return hashlib.md5(author.encode('utf-8')).hexdigest()
 
 
 class ImageHandler(BaseHandler):
@@ -292,18 +297,72 @@ class AuthorAvatarHandler(BaseHandler):
     def get(self, author):
         from webserver.services.resource_service import AUTHOR_AVATAR_DIR
 
-        filename = f"{hash(author)}"
-        filepath = os.path.join(AUTHOR_AVATAR_DIR, f"{hash(author)}.jpg")
-        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-            filepath = os.path.join(AUTHOR_AVATAR_DIR, f"{hash(author)}.webp")
-            if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-                filepath = os.path.join(AUTHOR_AVATAR_DIR, "default.png")
+        author = urllib.parse.unquote(author)
+        author_hash = get_author_hash(author)
+        existing_files = [
+            os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.jpg"),
+            os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.png"),
+            os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.webp"),
+        ]
+        for existing_file in existing_files:
+            logging.info(f"Checking existing avatar file: {existing_file} for {author}({len(author)})")
+            if os.path.exists(existing_file) and os.path.getsize(existing_file) > 0:
+                filepath = existing_file
+                break
+            filepath = None
 
-        content_type = mimetypes.guess_type(filename)[0] or "image/jpeg"
+        if filepath is None:
+            filepath = os.path.join(AUTHOR_AVATAR_DIR, "default.png")
+
+        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+            raise web.HTTPError(404, "Author avatar not found")
+
+        content_type = mimetypes.guess_type(filepath)[0] or "image/jpeg"
         self.set_header("Content-Type", content_type)
         self.set_header("Cache-Control", "public, max-age=86400")
         with open(filepath, "rb") as f:
             self.write(f.read())
+
+
+class AuthorAvatarUploadHandler(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        from webserver.services.resource_service import AUTHOR_AVATAR_DIR
+
+        author = self.get_argument('author', None)
+        if not author:
+            return {'err': 'failed', 'msg': 'Author name is required'}
+
+        author = urllib.parse.unquote(author)
+
+        if 'avatar_data' not in self.request.files:
+            return {'err': 'failed', 'msg': 'No avatar file uploaded'}
+
+        file_info = self.request.files['avatar_data'][0]
+        content_type = file_info['content_type']
+
+        if content_type not in ['image/jpeg', 'image/png', 'image/webp']:
+            return {'err': 'failed', 'msg': _('只支持上传JPEG、PNG和WEBP格式的图片文件')}
+
+        ext = '.jpg' if content_type == 'image/jpeg' else '.png' if content_type == 'image/png' else '.webp'
+        author_hash = get_author_hash(author)
+        logging.info(f"Uploading avatar for author {author} to {author_hash}{ext}")
+        new_filepath = os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}{ext}")
+
+        existing_files = [
+            os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.jpg"),
+            os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.png"),
+            os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.webp"),
+        ]
+        for existing_file in existing_files:
+            if os.path.exists(existing_file):
+                os.remove(existing_file)
+
+        with open(new_filepath, 'wb') as f:
+            f.write(file_info['body'])
+
+        return {'err': 'ok', 'msg': 'Avatar uploaded successfully'}
 
 
 def routes():
@@ -314,6 +373,7 @@ def routes():
         (r"/get/extract/([0-9]+)/(.*)", EpubReader),
         (r"/get/pcover", ProxyImageHandler),
         (r"/get/author/avatar/(.*)", AuthorAvatarHandler),
+        (r"/api/author_avatar", AuthorAvatarUploadHandler),
         (r"/get/(.*)/(.*)", ImageHandler),
         (r"/api/favicon/(.*)", FaviconHandler),
         (r"/(.*)", web.StaticFileHandler, static_config),

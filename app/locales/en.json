@@ -86,7 +86,13 @@
     "setCategoryForAuthorBooks": "Set category \"{category}\" for all books by {author}",
     "searchingTitle": "Searching by title...",
     "searchingSegmentation": "Searching with word segmentation...",
-    "searchingExtended": "Extended search..."
+    "searchingExtended": "Extended search...",
+    "setAvatar": "Set Avatar",
+    "selectAvatar": "Select avatar image",
+    "noAvatarSelected": "No avatar selected",
+    "avatarTooLarge": "Avatar image must be smaller than 3MB",
+    "avatarTypeInvalid": "Only JPEG or PNG images are allowed",
+    "avatarUploadFailed": "Avatar upload failed"
   },
   "listMeta": {
     "ratingSuffix": " stars",

@@ -86,7 +86,13 @@
     "setCategoryForAuthorBooks": "為作者 {author} 的所有書籍設定分類  \"{category} \"",
     "searchingTitle": "正在搜尋標題...",
     "searchingSegmentation": "正在分詞搜尋...",
-    "searchingExtended": "正在延伸搜尋..."
+    "searchingExtended": "正在延伸搜尋...",
+    "setAvatar": "設定頭像",
+    "selectAvatar": "選擇頭像圖片",
+    "noAvatarSelected": "未選擇頭像",
+    "avatarTooLarge": "頭像大小不能超過 3MB",
+    "avatarTypeInvalid": "僅允許 JPEG 或 PNG 格式的圖片",
+    "avatarUploadFailed": "頭像上傳失敗"
   },
   "listMeta": {
     "ratingSuffix": "星",

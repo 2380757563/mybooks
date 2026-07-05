@@ -7,7 +7,12 @@
           <h2>{{ $t('listBook.authorBooks', { name: currentAuthor }) }}</h2>
         </v-col>
         <v-col cols="2">
-          <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="avatar"></v-img>
+          <div class="avatar-container" @click="dialog_set_avatar = true">
+            <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="avatar"></v-img>
+            <div class="avatar-overlay">
+              <v-icon color="white">mdi-pencil</v-icon>
+            </div>
+          </div>
         </v-col>
 
         <!-- Batch Set Category Card -->
@@ -136,6 +141,28 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Set Avatar Dialog -->
+    <v-dialog v-model="dialog_set_avatar" persistent max-width="400">
+      <v-card>
+        <v-card-title>{{ $t('listBook.setAvatar') }}</v-card-title>
+        <v-card-text>
+          <v-file-input
+            accept="image/png,image/jpeg"
+            :label="$t('listBook.selectAvatar')"
+            v-model="avatar_file"
+            show-size
+            :error-messages="avatar_error"
+            filled
+          ></v-file-input>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn text @click="dialog_set_avatar = false">{{ $t('common.cancel') }}</v-btn>
+          <v-spacer></v-spacer>
+          <v-btn text color="primary" @click="uploadAuthorAvatar">{{ $t('common.ok') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -167,6 +194,11 @@ export default {
     targetCategory: "",
     batchLoading: false,
     dialog: false,
+
+    // Avatar Upload
+    dialog_set_avatar: false,
+    avatar_file: null,
+    avatar_error: '',
   }),
   computed: {
     visibleMetaItems() {
@@ -396,6 +428,39 @@ export default {
             console.error('Unpin author failed:', e);
             this.$alert("error", this.$t('common.operationFailed') || 'Operation failed');
         }
+    },
+    uploadAuthorAvatar() {
+        this.avatar_error = '';
+        if (!this.avatar_file) {
+            this.avatar_error = this.$t('listBook.noAvatarSelected') || 'Please select an avatar';
+            return;
+        }
+        const file = this.avatar_file;
+        if (file.size > 3 * 1024 * 1024) {
+            this.avatar_error = this.$t('listBook.avatarTooLarge') || 'Avatar file size exceeds 3MB';
+            return;
+        }
+        const type = file.type;
+        if (type !== 'image/jpeg' && type !== 'image/png') {
+            this.avatar_error = this.$t('listBook.avatarTypeInvalid') || 'Only JPG and PNG formats are supported';
+            return;
+        }
+        const form = new FormData();
+        form.append('avatar_data', file);
+        form.append('author', this.currentAuthor);
+        this.$backend('/author_avatar', {
+            method: 'POST',
+            body: form,
+        }).then(resp => {
+            if (resp.err === 'ok') {
+                this.dialog_set_avatar = false;
+                location.reload();
+            } else {
+                this.avatar_error = resp.msg || this.$t('listBook.avatarUploadFailed') || 'Failed to upload avatar';
+            }
+        }).catch(err => {
+            this.avatar_error = this.$t('listBook.avatarUploadFailed') || 'Failed to upload avatar';
+        });
     }
   }
 }
@@ -410,5 +475,27 @@ export default {
 }
 .avatar .v-image__image {
     background-size: cover !important;
+}
+.avatar-container {
+    position: relative;
+    cursor: pointer;
+    display: inline-block;
+}
+.avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.avatar-container:hover .avatar-overlay {
+    opacity: 1;
 }
 </style>
