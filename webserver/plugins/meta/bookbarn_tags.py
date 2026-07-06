@@ -8,7 +8,7 @@ from webserver.version import VERSION
 
 class BookBarnTags:
     # Used to get the tags of books
-    HOST_BASE = "http://43.138.200.142:8088/"
+    HOST_BASE = "https://mybooks.top:8088/"
     TAGS_API = f"{HOST_BASE}bookbarn/tags"
 
     def __init__(self, token=None):

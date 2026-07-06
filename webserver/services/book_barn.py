@@ -51,7 +51,7 @@ CONF = loader.get_settings()
 
 
 class BookBarnClient:
-    HOST_BASE = "http://43.138.200.142:8088/"
+    HOST_BASE = "https://mybooks.top:8088/"
     # HOST_BASE = "http://127.0.0.1:8088/"
     CHECK_TOKEN_API = "bookbarn/check"
     APPLY_TOKEN_API = "bookbarn/token"
