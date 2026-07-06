@@ -1,4 +1,4 @@
-# TaleBook: Personal Calibre WebServer
+# MyBooks: Personal Calibre WebServer
 [![GitHub License](https://img.shields.io/github/license/poxenstudio/mybooks)](https://github.com/poxenstudio/mybooks/blob/master/LICENSE)
 [![Docker Pulls(MyBooks)](https://img.shields.io/docker/pulls/poxenstudio/mybooks.svg)](https://hub.docker.com/r/poxenstudio/mybooks)
 ![GitHub stars](https://img.shields.io/github/stars/PoxenStudio/mybooks.svg?logo=github)
