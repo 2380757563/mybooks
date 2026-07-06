@@ -37,7 +37,7 @@ from sqlalchemy.exc import IntegrityError
 
 from webserver.i18n import _
 from webserver.base.image_helper import ImageHelper
-from webserver.base.cover_generator import CoverGenerator
+from webserver.base.image_generator import ImageGenerator
 from webserver.services import AsyncService
 from webserver.models import Item, ScanFile, Reader
 from webserver import utils, constants
@@ -442,7 +442,7 @@ class ScanService(AsyncService):
                     fmt, data = mi.cover_data
                     if fmt is None or data is None:
                         author = mi.authors[0] if mi.authors else _("佚名")
-                        data = CoverGenerator.generate_cover(mi.title, author)
+                        data = ImageGenerator.generate_cover(mi.title, author)
                         if data:
                             mi.cover_data = ("jpeg", data)
                             dynamic_cover = True

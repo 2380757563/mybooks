@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 DEFAULT_FONT_PATH = "/var/www/mybooks/app/dist/static/epubreader/assets/font/HuiwenZhengKai.ttf"
 
 
-class CoverGenerator:
+class ImageGenerator:
     COLORS = [
         "#003e19", "#028c6a", "#283b42", "#1d6a96", "#a46843",
         "#370d00", "#072a24", "#280e3b", "#002c2f", "#023459",
@@ -64,8 +64,12 @@ class CoverGenerator:
                 img = Image.new("RGB", (width, height), random.choice(cls.COLORS))
             draw = ImageDraw.Draw(img)
 
-            title_size = height // 12 if height > 400 else height // 9 - 3
-            author_size = title_size // 2 if height > 400 else title_size // 1.5
+            if width < 120 and height < 120:
+                title_size = width // 2
+                author_size = title_size
+            else:
+                title_size = height // 12 if height > 400 else height // 9 - 3
+                author_size = title_size // 2 if height > 400 else title_size // 1.5
 
             if title_size in cls._title_font_map and author_size in cls._author_font_map:
                 t_font, a_font = cls._title_font_map[title_size], cls._author_font_map[author_size]
@@ -133,9 +137,14 @@ class CoverGenerator:
 
 
 if __name__ == "__main__":
-    cover_bytes = CoverGenerator.generate_cover(
-        title="简体中文测试书籍封面生成",
-        author="测试作者过长的名字显示效果",
-        font_path="/Volumes/data/workspace/fonts/HuiwenFangSong.ttf",
-        debug=False
-    )
+    # cover_bytes = ImageGenerator.generate_cover(
+    #     title="简体中文测试书籍封面生成",
+    #     author="测试作者过长的名字显示效果",
+    #     font_path="/Volumes/data/workspace/fonts/HuiwenFangSong.ttf",
+    #     debug=False
+    # )
+    avatar_bytes = ImageGenerator.generate_cover(title="测", author="", width=64, height=64, font_path="/tmp/HuiwenZhengKai.ttf", debug=True)
+    # write to file for testing
+    with open("/tmp/cover_test.jpg", "wb") as f:
+        f.write(avatar_bytes)
+    print("Cover image generated and saved to /tmp/cover_test.jpg")

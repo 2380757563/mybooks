@@ -30,7 +30,7 @@ from tornado import web
 
 from webserver import loader, utils
 from webserver.base.formatter import BookFormatter, ReadingStateFormatter
-from webserver.base.cover_generator import CoverGenerator
+from webserver.base.image_generator import ImageGenerator
 from webserver.base.image_helper import ImageHelper
 from webserver.base.epub_helper import EpubHelper
 from webserver.services.autofill import AutoFillService
@@ -781,7 +781,7 @@ class BookRefer(BaseHandler):
             (data, mime) = org_mi.cover_data
             if data is None and mime is None:
                 author = org_mi.authors[0] if org_mi.authors else _("佚名")
-                data = CoverGenerator.generate_cover(org_mi.title, author)
+                data = ImageGenerator.generate_cover(org_mi.title, author)
                 if data:
                     org_mi.cover_data = ("jpeg", data)
                     dynamic_cover = True
@@ -945,7 +945,7 @@ class BookCover(BaseHandler):
         from calibre.utils.date import now as nowf
         title = mi.title if mi.title else _("未知书籍")
         author = mi.authors[0] if mi.authors else _("佚名")
-        cover_data = CoverGenerator.generate_cover(title, author)
+        cover_data = ImageGenerator.generate_cover(title, author)
         if cover_data:
             mi.cover_data = ("jpeg", cover_data)
             mi.timestamp = nowf()
@@ -1575,7 +1575,7 @@ class BookEdit(BaseHandler):
         # If the existing cover is dynamic generated, and the new title or author may cause the cover to be no longer suitable, we need to regenerate it
         if CONF.get("USE_DYNAMIC_COVER", False) and need_update_cover:
             author = mi.authors[0] if mi.authors else _("佚名")
-            cover_data = CoverGenerator.generate_cover(mi.title, author)
+            cover_data = ImageGenerator.generate_cover(mi.title, author)
             if cover_data:
                 mi.cover_data = ("jpeg", cover_data)
         self.calibre_db.set_metadata(bid, mi, force_changes=True)
@@ -2026,7 +2026,7 @@ class BookUpload(BaseHandler):
             fmt, cover_data = mi.cover_data
             if fmt is None or cover_data is None:
                 author = mi.authors[0] if mi.authors else _("佚名")
-                data = CoverGenerator.generate_cover(mi.title, author)
+                data = ImageGenerator.generate_cover(mi.title, author)
                 if data:
                     mi.cover_data = ("jpeg", data)
                     dynamic_cover = True
@@ -2279,7 +2279,7 @@ class BookUploadChunk(BaseHandler):
             fmt, cover_data = mi.cover_data
             if fmt is None and cover_data is not None:
                 author = mi.authors[0] if mi.authors else _("佚名")
-                data = CoverGenerator.generate_cover(mi.title, author)
+                data = ImageGenerator.generate_cover(mi.title, author)
                 if data:
                     mi.cover_data = ("jpeg", data)
                     dynamic_cover = True

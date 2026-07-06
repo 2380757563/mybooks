@@ -16,7 +16,7 @@ from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 from webserver import constants, loader
 from webserver.services.converter import ConverterService
 from webserver.handlers.base import BaseHandler, js, is_admin
-from webserver.base.cover_generator import CoverGenerator
+from webserver.base.image_generator import ImageGenerator
 
 
 CONF = loader.get_settings()
@@ -81,7 +81,7 @@ class ImageHandler(BaseHandler):
                     if CONF.get("USE_DYNAMIC_COVER", False):
                         mi = self.calibre_db.get_metadata(id, index_is_id=True)
                         author = mi.authors[0] if mi.authors else _("佚名")
-                        data = CoverGenerator.generate_cover(mi.title, author, thumb_width, thumb_height)
+                        data = ImageGenerator.generate_cover(mi.title, author, thumb_width, thumb_height)
                         if data:
                             cover_data = data
                             dynamic_cover_flag = True

@@ -11,7 +11,7 @@ import time
 from webserver.i18n import _
 
 from webserver import loader
-from webserver.base.cover_generator import CoverGenerator
+from webserver.base.image_generator import ImageGenerator
 from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.constants import COLUMN_DYNAMIC_COVER
@@ -62,9 +62,9 @@ class DynamicCoverUpdateService(AsyncService):
             logging.error("[DynamicCover] Failed to update task progress: %s", e)
 
     def _generate_dynamic_cover(self, book_id, mi):
-        """使用 CoverGenerator 为书籍生成动态封面"""
+        """使用 ImageGenerator 为书籍生成动态封面"""
         author = mi.author_sort[0] if mi.author_sort else _("佚名")
-        data = CoverGenerator.generate_cover(mi.title, author)
+        data = ImageGenerator.generate_cover(mi.title, author)
         if data:
             mi.cover_data = ("jpeg", data)
             self.db.set_metadata(book_id, mi, commit=True)
