@@ -3,7 +3,7 @@
 ![GitHub stars](https://img.shields.io/github/stars/PoxenStudio/mybooks.svg?logo=github)
 
 
-# TaleBook: Personal Calibre WebServer
+# MyBooks: Personal Calibre WebServer
 An enhanced personal books management web server built on Calibre + Vue, beautiful and easy to use. ([Chinese](../README.md))
 
 ## A Simple and Practical Personal Library System
