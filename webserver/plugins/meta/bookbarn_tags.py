@@ -8,7 +8,7 @@ from webserver.version import VERSION
 
 class BookBarnTags:
     # Used to get the tags of books
-    HOST_BASE = "https://mybooks.top:8088/"
+    HOST_BASE = "https://mybooks.top/api/"
     TAGS_API = f"{HOST_BASE}bookbarn/tags"
 
     def __init__(self, token=None):
@@ -64,11 +64,11 @@ class BookBarnTags:
             "title": title,
             "author": author
         }
-        return self.send_request(self.TAGS_API, params)
+        return self.send_request(self.TAGS_API, params, headers={"MyBooks-Client": f"MyBooks/{VERSION}"})
 
-    def send_request(self, url, params=None):
+    def send_request(self, url, params=None, headers=None):
         try:
-            r = requests.get(url, params=params, timeout=10)
+            r = requests.get(url, params=params, headers=headers, timeout=10)
             r.raise_for_status()
             data = r.json()
         except Exception as e:

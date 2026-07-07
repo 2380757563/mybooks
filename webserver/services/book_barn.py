@@ -51,7 +51,7 @@ CONF = loader.get_settings()
 
 
 class BookBarnClient:
-    HOST_BASE = "https://mybooks.top:8088/"
+    HOST_BASE = "https://mybooks.top/api/"
     # HOST_BASE = "http://127.0.0.1:8088/"
     CHECK_TOKEN_API = "bookbarn/check"
     APPLY_TOKEN_API = "bookbarn/token"
@@ -72,7 +72,7 @@ class BookBarnClient:
         self.headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0",
             "Referer": "https://mybooks.top/",
-            "MyBooks-Client": f"BookBarnClient/{VERSION}"
+            "MyBooks-Client": f"MyBooks/{VERSION}"
         }
 
     def checkToken(self, token):
