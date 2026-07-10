@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+from email import header
 import requests
 import logging
 import json
@@ -61,6 +62,8 @@ class BookBarnClient:
     GET_BOOKS_API = "bookbarn/pubbooks"
     DOWNLOAD_API = "getfile"
     FILE_SAVE_PATH = "/tmp/bookbarn/"
+    AUTHOR_API = "bookbarn/author"
+    IMAGE_API = "getimage"
 
     ACTION_NONE = 0
     ACTION_CHECKING = 1
@@ -80,7 +83,10 @@ class BookBarnClient:
             "version": VERSION,
             "token": token
         }
-        response = requests.get(self.HOST_BASE + self.CHECK_TOKEN_API, params=params, verify=False)
+        response = requests.get(self.HOST_BASE + self.CHECK_TOKEN_API,
+                                headers=self.headers,
+                                timeout=30,
+                                params=params, verify=False)
         if response.status_code == 200:
             data = response.json().get("data")
             if data is not None:
@@ -102,7 +108,10 @@ class BookBarnClient:
             "version": VERSION,
             "os": os
         }
-        response = requests.post(self.HOST_BASE + self.APPLY_TOKEN_API, json=data, verify=False)
+        response = requests.post(self.HOST_BASE + self.APPLY_TOKEN_API,
+                                 headers=self.headers,
+                                 timeout=30,
+                                 json=data, verify=False)
 
         if response.status_code == 200:
             data = response.json().get("data")
@@ -124,7 +133,11 @@ class BookBarnClient:
         }
         result = None
         try:
-            response = requests.get(self.HOST_BASE + self.CHECK_LATEST_RELEASE_API, params=params, verify=False)
+            response = requests.get(self.HOST_BASE + self.CHECK_LATEST_RELEASE_API,
+                                    headers=self.headers,
+                                    params=params,
+                                    timeout=30,
+                                    verify=False)
             if response.status_code == 200:
                 data = response.json().get("data")
                 if data is not None:
@@ -152,7 +165,10 @@ class BookBarnClient:
             "token": token,
             "action": action
         }
-        response = requests.post(self.HOST_BASE + self.UPDATE_ACTION_API, json=data, verify=False)
+        response = requests.post(self.HOST_BASE + self.UPDATE_ACTION_API,
+                                 headers=self.headers,
+                                 timeout=30,
+                                 json=data, verify=False)
 
         if response.status_code == 200:
             return True
@@ -175,7 +191,11 @@ class BookBarnClient:
             "token": token,
             "version": VERSION
         }
-        response = requests.get(self.HOST_BASE + self.GET_BOOKS_API, params=params, verify=False)
+        response = requests.get(self.HOST_BASE + self.GET_BOOKS_API,
+                                headers=self.headers,
+                                params=params,
+                                timeout=30,
+                                verify=False)
 
         if response.status_code == 200:
             data = response.json().get("data")
@@ -195,7 +215,11 @@ class BookBarnClient:
             "configKey": "resources"
         }
         try:
-            response = requests.get(self.HOST_BASE + self.GET_CONFIG_API, params=params, verify=False)
+            response = requests.get(self.HOST_BASE + self.GET_CONFIG_API,
+                                    headers=self.headers,
+                                    params=params,
+                                    timeout=30,
+                                    verify=False)
         except Exception as e:
             logging.error(f"Exception occurred while getting resource list: {str(e)}")
             return None
@@ -266,6 +290,76 @@ class BookBarnClient:
             logging.error(f"[BARN] Failed to download file, {str(e)}")
             return None
 
+    def download_image(self, token, image_url, target_file_path):
+        if image_url is None or len(image_url) == 0:
+            return None
+
+        try:
+            save_path = self.FILE_SAVE_PATH
+            params = {
+                "token": token,
+                "version": VERSION
+            }
+
+            if not image_url.startswith("http"):
+                params["filename"] = image_url
+                image_url = f"{self.HOST_BASE}{self.IMAGE_API}"
+
+            filename = self._get_filename_from_url(image_url)
+            if filename is None:
+                filename = f"download_{int(time.time())}"
+
+            os.makedirs(self.FILE_SAVE_PATH, exist_ok=True)
+            save_path = os.path.join(save_path, filename)
+            if os.path.exists(save_path):
+                os.remove(save_path)
+
+            logging.info(f"[BARN]Start to download: {filename} from {image_url}")
+            with self.session.get(image_url, headers=self.headers, params=params, stream=True, verify=False) as r:
+                r.raise_for_status()
+                downloaded = 0
+
+                with open(save_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+
+            if target_file_path is not None:
+                # move the file to target path
+                shutil.move(save_path, target_file_path)
+            return target_file_path
+        except Exception as e:
+            logging.error(f"[BARN] Failed to download image file, {str(e)}")
+            return None
+
+    def get_author(self, token, author_name):
+        params = {
+            "token": token,
+            "version": VERSION,
+            "name": author_name
+        }
+        response = requests.get(self.HOST_BASE + self.AUTHOR_API,
+                                headers=self.headers,
+                                params=params,
+                                timeout=30,
+                                verify=False)
+
+        if response.status_code == 200:
+            data = response.json().get("data")
+            if data is not None:
+                if len(data) > 0:
+                    return data[0]
+                else:
+                    logging.warning(f"[BARN]No author found with name {author_name}")
+                    return None
+            else:
+                logging.warning("No data found in the response.")
+                return None
+        else:
+            logging.error(f"Failed to get author: {response.status_code} - {response.text}")
+            return None
+
     def _get_filename_from_url(self, url):
         """从URL中提取文件名"""
         # 尝试从URL路径获取文件名
@@ -278,7 +372,7 @@ class BookBarnClient:
                 # 如果解码后包含扩展名，使用解码后的名称
                 if '.' in decoded and decoded.split('.')[-1].isalnum():
                     return decoded
-            except:
+            except Exception:
                 pass
 
         return filename

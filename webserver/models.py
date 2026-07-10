@@ -596,6 +596,30 @@ class Device(Base, SQLAlchemyMixin):
         return result
 
 
+class Authors(Base, SQLAlchemyMixin):
+    """作者信息"""
+
+    __tablename__ = "authors"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(128), nullable=False, unique=True)
+    author_id = Column(Integer, nullable=True, default=0)
+    sort = Column(String(128), nullable=True, default="")
+    bio = Column(String(4096), nullable=True, default="")
+    region = Column(String(128), nullable=True, default="")
+    avatar = Column(String(512), nullable=True, default="")
+    create_time = Column(DateTime, default=datetime.datetime.now)
+
+    def __init__(self, name, sort, bio="", region="", avatar=""):
+        super(Authors, self).__init__()
+        self.name = name
+        self.sort = sort
+        self.bio = bio
+        self.region = region
+        self.avatar = avatar
+        self.create_time = datetime.datetime.now()
+
+
 class StickyItem(Base, SQLAlchemyMixin):
     """置顶项目 - 用于置顶作者或标签"""
 
