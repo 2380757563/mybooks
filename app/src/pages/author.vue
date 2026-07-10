@@ -6,12 +6,27 @@
         <v-col cols="12">
           <h2>{{ $t('listBook.authorBooks', { name: currentAuthor }) }}</h2>
         </v-col>
-        <v-col cols="2">
-          <div class="avatar-container" @click="dialog_set_avatar = true">
-            <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="avatar"></v-img>
+        <v-col cols="12" class="d-flex">
+          <div class="avatar-container flex-shrink-0" @click="dialog_set_avatar = true">
+            <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="author_avatar" contain></v-img>
             <div class="avatar-overlay">
               <v-icon color="white">mdi-pencil</v-icon>
             </div>
+          </div>
+
+          <!-- Author Bio -->
+          <div class="author-bio-container">
+            <div class="author-bio">{{ authorInfo && authorInfo.bio ? authorInfo.bio : $t('listBook.noAuthorBio') }}</div>
+            <v-btn
+              v-if="isAdmin && (!authorInfo || !authorInfo.author_id)"
+              class="mt-2"
+              small
+              color="primary"
+              :loading="updatingAuthorInfo"
+              @click="updateAuthorInfo"
+            >
+              {{ $t('listBook.updateAuthorInfo') }}
+            </v-btn>
           </div>
         </v-col>
 
@@ -181,6 +196,8 @@ export default {
 
     // Detail State
     currentAuthor: null,
+    authorInfo: null,
+    updatingAuthorInfo: false,
     books: [],
     page: 1,
     page_size: 60,
@@ -207,6 +224,9 @@ export default {
     },
     isLoggedIn() {
       return this.$store.state.user?.is_login === true;
+    },
+    isAdmin() {
+      return this.$store.state.user?.is_admin === true;
     }
   },
   head() {
@@ -296,9 +316,39 @@ export default {
             this.$router.push({ query: { ...this.$route.query, name: name } });
         }
         this.fetchBooks();
+        this.fetchAuthorInfo();
+    },
+    async fetchAuthorInfo() {
+        if (!this.currentAuthor) return;
+        try {
+            const rsp = await this.$backend(`/author/info?name=${encodeURIComponent(this.currentAuthor)}`);
+            this.authorInfo = rsp.err === 'ok' ? rsp.author : null;
+        } catch (e) {
+            console.error('[author.vue] fetchAuthorInfo - error:', e);
+            this.authorInfo = null;
+        }
+    },
+    async updateAuthorInfo() {
+        this.updatingAuthorInfo = true;
+        try {
+            const rsp = await this.$backend('/admin/update_author', {
+                method: 'POST',
+                body: JSON.stringify({ name: this.currentAuthor }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            this.$alert(rsp.err === 'ok' ? 'success' : 'error', rsp.msg);
+        } catch (e) {
+            console.error('[author.vue] updateAuthorInfo - error:', e);
+            this.$alert('error', this.$t('common.operationFailed') || 'Operation failed');
+        } finally {
+            this.updatingAuthorInfo = false;
+        }
     },
     clearAuthor() {
         this.currentAuthor = null;
+        this.authorInfo = null;
         this.books = [];
         this.$router.push({ query: { ...this.$route.query, name: undefined } });
         // Ensure list is loaded
@@ -467,19 +517,20 @@ export default {
 </script>
 
 <style>
-.avatar {
-    max-width: 160px;
-    aspect-ratio: 1;
-    border-radius: 50%;
+.author_avatar {
+    max-width: 107px;
+    aspect-ratio: 3 / 4;
+    border-radius: 4px;
     overflow: hidden;
 }
-.avatar .v-image__image {
-    background-size: cover !important;
+.author_avatar .v-image__image {
+    background-size: contain !important;
 }
 .avatar-container {
     position: relative;
     cursor: pointer;
     display: inline-block;
+    border-radius: 4px;
 }
 .avatar-overlay {
     position: absolute;
@@ -488,7 +539,7 @@ export default {
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 50%;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -497,5 +548,19 @@ export default {
 }
 .avatar-container:hover .avatar-overlay {
     opacity: 1;
+}
+.author-bio-container {
+    flex: 1;
+    min-width: 0;
+    margin-left: 12px;
+}
+.author-bio {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow-y: auto;
+    max-height: 8em;
+    line-height: 1.6em;
+    white-space: pre-wrap;
 }
 </style>

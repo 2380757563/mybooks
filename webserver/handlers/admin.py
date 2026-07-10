@@ -27,11 +27,11 @@ from webserver.services.batch_generate_cover import DynamicCoverUpdateService
 from webserver.services.resource_service import ResourceService
 from webserver.services.save_meta_to_files import SaveMetaToFilesService
 from webserver.services.mail import MailService
-from webserver.services.book_barn import BookBarnClient
+from webserver.services.book_barn import BookBarnClient, BookBarnService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.services.book_search import BookSearch
 from webserver.handlers.base import BaseHandler, auth, js, is_admin
-from webserver.models import Reader, Item
+from webserver.models import Reader, Item, Authors
 from webserver.base.formatter import SimpleBookFormatter
 from webserver.base.setting_saver import SettingsSaver
 from webserver.base.trash_manager import TrashManager
@@ -1426,6 +1426,38 @@ class AdminAITestConnection(BaseHandler):
             return {"err": "error", "msg": _("AI服务连接测试异常: %s") % str(e)}
 
 
+class AuthorInfo(BaseHandler):
+    @js
+    def get(self):
+        name = self.get_argument("name", "")
+        if not name:
+            return {"err": "params.error", "msg": _("参数错误")}
+
+        author = self.sqlite_session.query(Authors).filter(Authors.name == name).first()
+        if author is None:
+            return {"err": "ok", "author": None}
+        data = author.to_dict()
+        if data.get("create_time"):
+            data["create_time"] = data["create_time"].isoformat()
+        return {"err": "ok", "author": data}
+
+
+class AdminUpdateAuthor(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        if not CONF.get("ENABLE_BOOKBARN", False) or not CONF.get("BOOKBARN_TOKEN", ""):
+            return {"err": "params.error", "msg": _("请先启用并配置书栈服务")}
+
+        req = tornado.escape.json_decode(self.request.body)
+        name = req.get("name", "")
+        if not name:
+            return {"err": "params.error", "msg": _("参数错误")}
+
+        BookBarnService().update_author_async(name, admin_uid=self.user_id())
+        return {"err": "ok", "msg": _("已提交更新，请稍后刷新查看")}
+
+
 class AdminSysInfo(BaseHandler):
     @js
     def get(self):
@@ -1470,4 +1502,6 @@ def routes():
         (r"/api/admin/resources", AdminResources),
         (r"/api/admin/ai/test", AdminAITestConnection),
         (r"/api/sysinfo", AdminSysInfo),
+        (r"/api/author/info", AuthorInfo),
+        (r"/api/admin/update_author", AdminUpdateAuthor),
     ]

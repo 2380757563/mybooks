@@ -312,7 +312,7 @@ class AuthorAvatarHandler(BaseHandler):
             filepath = None
 
         if filepath is None:
-            filepath = os.path.join(AUTHOR_AVATAR_DIR, "default.png")
+            filepath = os.path.join(CONF.get("resource_path", ""), "authors", "default.jpg")
 
         if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
             raise web.HTTPError(404, "Author avatar not found")

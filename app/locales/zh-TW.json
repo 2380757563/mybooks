@@ -92,7 +92,9 @@
     "noAvatarSelected": "未選擇頭像",
     "avatarTooLarge": "頭像大小不能超過 3MB",
     "avatarTypeInvalid": "僅允許 JPEG 或 PNG 格式的圖片",
-    "avatarUploadFailed": "頭像上傳失敗"
+    "avatarUploadFailed": "頭像上傳失敗",
+    "noAuthorBio": "暫無簡介",
+    "updateAuthorInfo": "更新資訊"
   },
   "listMeta": {
     "ratingSuffix": "星",

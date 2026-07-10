@@ -491,5 +491,9 @@
   "EPUB修复任务已启动,不要重复执行,注意查看消息通知中的处理结果": "EPUB fix task has started, do not execute repeatedly, check the message notifications for results",
   "保存上传文件失败, 请检查文件名是否过长或者书库所在路径空间不足!": "Failed to save uploaded file, please check if the filename is too long or if there is insufficient space in the library path!",
   "%s删除了书籍《%s》": "%s deleted the book《%s》",
-  "只支持上传JPEG、PNG和WEBP格式的图片文件": "Only JPEG, PNG, and WEBP formats are supported for image files"
+  "只支持上传JPEG、PNG和WEBP格式的图片文件": "Only JPEG, PNG, and WEBP formats are supported for image files",
+  "请先启用并配置书栈服务": "Please enable and configure BookBarn first",
+  "已提交更新，请稍后刷新查看": "Update submitted, please refresh later",
+  "作者《%(name)s》信息更新成功": "Author 《%(name)s》 info updated successfully",
+  "作者《%(name)s》信息更新失败": "Failed to update author 《%(name)s》 info"
 }

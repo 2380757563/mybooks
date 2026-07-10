@@ -92,7 +92,9 @@
     "noAvatarSelected": "No avatar selected",
     "avatarTooLarge": "Avatar image must be smaller than 3MB",
     "avatarTypeInvalid": "Only JPEG or PNG images are allowed",
-    "avatarUploadFailed": "Avatar upload failed"
+    "avatarUploadFailed": "Avatar upload failed",
+    "noAuthorBio": "No bio available",
+    "updateAuthorInfo": "Update Info"
   },
   "listMeta": {
     "ratingSuffix": " stars",

@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import sys
+import threading
 from webserver.handlers import static_files
 from webserver.i18n import _
 from logging.handlers import RotatingFileHandler
@@ -370,7 +371,6 @@ def make_app():
         default_cover = cover_file.read()
 
     # Initialize database lock for thread-safe calibre database access
-    import threading
     from webserver.handlers.base import BaseHandler
 
     BaseHandler.db_lock = threading.RLock()
@@ -440,6 +440,10 @@ def make_app():
 
     # Start background service
     BookBarnService().get_daily_books()
+
+    # Sync author metadata from book_barn once, delayed to avoid contending for
+    # resources during startup
+    threading.Timer(20, BookBarnService().sync_author_list).start()
 
     # Automatically start AI Assistant if configured
     if CONF.get("AI_DEEPSEEK_API_KEY"):

@@ -597,7 +597,7 @@ class Device(Base, SQLAlchemyMixin):
 
 
 class Authors(Base, SQLAlchemyMixin):
-    """作者信息"""
+    """作者信息, author_id为后台返回的id"""
 
     __tablename__ = "authors"
 

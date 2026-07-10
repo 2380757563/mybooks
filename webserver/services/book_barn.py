@@ -14,12 +14,14 @@ from urllib.parse import urlparse, unquote
 
 from webserver.services import AsyncService
 from webserver.services.autofill import AutoFillService
+from webserver.services.resource_service import AUTHOR_AVATAR_DIR
 from webserver import loader, utils
 from webserver.version import VERSION
-from webserver.models import Reader, Item
+from webserver.models import Reader, Item, Authors
 from webserver.constants import AUTO_FILL_META
 from webserver.i18n import _
 from webserver.constants import UPGRABLE_REVISION
+from webserver.handlers.static_files import get_author_hash
 
 # 设置 requests 库的日志级别为 ERROR，减少冗余日志
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -566,3 +568,90 @@ class BookBarnService(AsyncService):
 
         self.admin_uids = admin_uids
         return admin_uids
+
+    def _download_author_avatar(self, author_name, avatar):
+        if not avatar:
+            return
+        try:
+            author_hash = get_author_hash(author_name)
+            ext = os.path.splitext(avatar)[1]
+            if not ext:
+                ext = ".jpg"
+            for existing_ext in (".jpg", ".png", ".webp"):
+                existing_file = os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}{existing_ext}")
+                if os.path.exists(existing_file):
+                    os.remove(existing_file)
+            target_path = os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}{ext}")
+            self.client.download_image(self.token, avatar, target_path)
+        except Exception as e:
+            logging.error(f"[BARN] Failed to download avatar for author {author_name}: {str(e)}")
+
+    def sync_author(self, author_name, force=False):
+        """从书栈拉取单个作者信息并写入本地 Authors 表，返回写入的 Authors 记录"""
+        if not CONF.get("ENABLE_BOOKBARN", False):
+            logging.info("[BARN] sync_author skipped, bookbarn is not enabled")
+            return None
+
+        current_token = CONF.get("BOOKBARN_TOKEN", "")
+        if not current_token:
+            logging.info("[BARN] sync_author skipped, bookbarn token is not set")
+            return None
+        self.token = current_token
+
+        author = self.session.query(Authors).filter(Authors.name == author_name).first()
+        if author is not None and not force:
+            logging.info(f"[BARN] author {author_name} already exists, skip")
+            return author
+
+        try:
+            data = self.client.get_author(self.token, author_name)
+            if data is None:
+                logging.info(f"[BARN] no author info found for {author_name}")
+                return None
+
+            if author is None:
+                author = Authors(name=author_name, sort=data.get("sort", ""))
+                self.session.add(author)
+            author.author_id = data.get("id", 0) or 0
+            author.sort = data.get("sort", "")
+            author.bio = data.get("bio", "")
+            author.region = data.get("region", "")
+            author.avatar = data.get("avatar", "")
+            self.session.commit()
+
+            self._download_author_avatar(author_name, data.get("avatar", ""))
+            return author
+        except Exception as e:
+            logging.error(f"[BARN] Failed to sync author {author_name}: {str(e)}")
+            self.session.rollback()
+            return None
+
+    @AsyncService.register_service
+    def sync_author_list(self):
+        """遍历 author_list.txt，为本地缺失的作者从书栈拉取信息（启动后延迟触发一次）"""
+        if not CONF.get("ENABLE_BOOKBARN", False) or not CONF.get("BOOKBARN_TOKEN", ""):
+            logging.info("[BARN] author list sync skipped, bookbarn not enabled/configured")
+            return
+
+        path = os.path.join(CONF.get("resource_path", ""), "authors", "author_list.txt")
+        if not os.path.exists(path):
+            logging.info(f"[BARN] author list file not found: {path}")
+            return
+
+        with open(path, "r", encoding="utf-8") as f:
+            names = [line.strip() for line in f if line.strip()]
+
+        logging.info(f"[BARN] start syncing {len(names)} authors from author_list.txt")
+        for name in names:
+            self.sync_author(name, force=False)
+            time.sleep(1)
+        logging.info("[BARN] author list sync done")
+
+    @AsyncService.register_service
+    def update_author_async(self, author_name, admin_uid=None):
+        """管理员手动触发的单作者强制更新，后台线程执行避免阻塞请求"""
+        author = self.sync_author(author_name, force=True)
+        if admin_uid:
+            status = "success" if author else "error"
+            template = _("作者《%(name)s》信息更新成功") if author else _("作者《%(name)s》信息更新失败")
+            self.add_msg(admin_uid, status, template % {"name": author_name})
