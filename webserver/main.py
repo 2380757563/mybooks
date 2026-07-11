@@ -445,6 +445,10 @@ def make_app():
     # Init the resources
     resources_service = ResourceService()
 
+    # Sync authors as needed
+    if CONF.get("ENABLE_AUTHOR_INFO", False) and CONF.get("ENABLE_BOOKBARN", False):
+        BookBarnService().sync_author_list()
+
     # Automatically start AI Assistant if configured
     if CONF.get("AI_DEEPSEEK_API_KEY"):
         from webserver.handlers.assistant import AssistantWebSocketHandler

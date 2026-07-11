@@ -641,10 +641,15 @@ class BookBarnService(AsyncService):
             logging.info(f"[BARN] author list file not found: {path}")
             return
 
-        with open(path, "r", encoding="utf-8") as f:
-            names = [line.strip() for line in f if line.strip()]
+        time.sleep(10.0)
 
-        logging.info(f"[BARN] start syncing {len(names)} authors from author_list.txt")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                names = [line.strip() for line in f if line.strip()]
+        except Exception:
+            names = []
+
+        logging.info(f"[BARN] start syncing {len(names)} authors from BookBarn")
         for name in names:
             self.sync_author(name, force=False)
             time.sleep(1)
