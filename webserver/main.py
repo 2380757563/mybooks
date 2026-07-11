@@ -26,6 +26,7 @@ from webserver.base.setting_saver import SettingsSaver
 from webserver.services import AsyncService
 from webserver.services.book_barn import BookBarnService
 from webserver.services.item_sync import ItemSyncService
+from webserver.services.resource_service import ResourceService
 from webserver.constants import COLUMN_CATEGORY, COLUMN_PHY_COUNT, COLUMN_BOOK_TYPE
 from webserver.constants import COLUMN_EXT_LINK, CUSTOM_COVER_IMAGE, COLUMN_DYNAMIC_COVER
 from webserver.constants import COLUMN_LOCATION
@@ -440,6 +441,9 @@ def make_app():
 
     # Start background service
     BookBarnService().get_daily_books()
+
+    # Init the resources
+    resources_service = ResourceService()
 
     # Automatically start AI Assistant if configured
     if CONF.get("AI_DEEPSEEK_API_KEY"):

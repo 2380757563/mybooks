@@ -8,7 +8,7 @@
         </v-col>
         <v-col v-if="showUserInfo" cols="12" class="d-flex">
           <div class="avatar-container flex-shrink-0" @click="dialog_set_avatar = true">
-            <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="author_avatar" contain></v-img>
+            <v-img :src="avatarUrl" alt="author-avatar" class="author_avatar" contain></v-img>
             <div class="avatar-overlay">
               <v-icon color="white">mdi-pencil</v-icon>
             </div>
@@ -18,7 +18,7 @@
           <div class="author-bio-container">
             <div class="author-bio">{{ authorInfo && authorInfo.bio ? authorInfo.bio : $t('listBook.noAuthorBio') }}</div>
             <v-btn
-              v-if="isAdmin && (!authorInfo || !authorInfo.author_id)"
+              v-if="isAdmin"
               class="mt-2"
               small
               color="primary"
@@ -230,6 +230,10 @@ export default {
     },
     showUserInfo() {
       return this.$store.state.showUserInfo === true;
+    },
+    avatarUrl() {
+      const ts = Math.floor(Date.now() / 10000) * 10000;
+      return `/get/author/avatar/${this.currentAuthor}?t=${ts}`;
     }
   },
   head() {

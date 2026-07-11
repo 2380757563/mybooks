@@ -294,7 +294,6 @@ class FaviconHandler(BaseHandler):
 
 
 class AuthorAvatarHandler(BaseHandler):
-    @js
     def get(self, author):
         from webserver.services.resource_service import AUTHOR_AVATAR_DIR
 
@@ -306,7 +305,6 @@ class AuthorAvatarHandler(BaseHandler):
             os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}.webp"),
         ]
         for existing_file in existing_files:
-            logging.info(f"Checking existing avatar file: {existing_file} for {author}({len(author)})")
             if os.path.exists(existing_file) and os.path.getsize(existing_file) > 0:
                 filepath = existing_file
                 break

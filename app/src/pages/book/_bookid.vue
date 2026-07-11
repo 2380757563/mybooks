@@ -508,7 +508,7 @@
                                     <template v-for="(author, index) in book.authors.slice(0, 5)" :key="'author-' + index">
                                         <div class="author-item">
                                             <nuxt-link v-if="showUserInfo" :to="{ path: '/author', query: { name: author } }" style="text-decoration: none;">
-                                                <v-img :src="'/get/author/avatar/' + author" alt="author-avatar"
+                                                <v-img :src="authorAvatarUrl(author)" alt="author-avatar"
                                                         class="author-avatar"></v-img>
                                             </nuxt-link>
                                             <v-chip rounded small dark color="indigo" :to="{ path: '/author', query: { name: author } }">
@@ -1911,6 +1911,10 @@ export default {
         this.stopConvertingPolling();
     },
     methods: {
+        authorAvatarUrl(author) {
+            const ts = Math.floor(Date.now() / 10000) * 10000;
+            return `/get/author/avatar/${author}?t=${ts}`;
+        },
         async toggleFavorite() {
             if (this.favoriteLoading) return;
             this.favoriteLoading = true;

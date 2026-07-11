@@ -578,6 +578,7 @@ class BookBarnService(AsyncService):
                 ext = ".jpg"
             for existing_ext in (".jpg", ".png", ".webp"):
                 existing_file = os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}{existing_ext}")
+                os.makedirs(AUTHOR_AVATAR_DIR, exist_ok=True)
                 if os.path.exists(existing_file):
                     os.remove(existing_file)
             target_path = os.path.join(AUTHOR_AVATAR_DIR, f"{author_hash}{ext}")
