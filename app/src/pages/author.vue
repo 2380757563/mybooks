@@ -534,6 +534,7 @@ export default {
     cursor: pointer;
     display: inline-block;
     border-radius: 4px;
+    background-color: #424242;
 }
 .avatar-overlay {
     position: absolute;

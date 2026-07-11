@@ -6,6 +6,7 @@ import hashlib
 import logging
 import mimetypes
 import os
+import random
 import re
 import urllib
 import zipfile
@@ -312,7 +313,8 @@ class AuthorAvatarHandler(BaseHandler):
             filepath = None
 
         if filepath is None:
-            filepath = os.path.join(CONF.get("resource_path", ""), "authors", "default.jpg")
+            default_name = random.choice(["default_1.jpg", "default_2.jpg", "default_3.jpg"])
+            filepath = os.path.join(CONF.get("resource_path", ""), "authors", default_name)
 
         if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
             raise web.HTTPError(404, "Author avatar not found")
