@@ -1,13 +1,16 @@
 <template>
     <v-row>
         <template v-for="nav in navs">
-        <v-col cols=12>
-            <h2>{{nav.legend}}</h2>
-            <v-btn rounded class="ma-1" v-for="item in nav.tags" :to="{ path: '/tag', query: { name: encodeURIComponent(item.name) } }" :key="item.name" :color="item.count != 0 ? 'primary': 'grey'" >
-                {{item.name}}
-                <span v-if="item.count">&nbsp;({{item.count}})</span>
-            </v-btn>
-        </v-col>
+            <v-col cols=12>
+                <h2>{{nav.legend}}</h2>
+                <v-btn class="ma-1 nav-tag-btn" v-for="item in nav.tags"
+                    :to="{ path: '/tag', query: { name: encodeURIComponent(item.name) } }"
+                    :key="item.name" :color="item.count != 0 ? 'primary': 'grey'"
+                    style="border-radius: 24px !important;">
+                    {{item.name}}
+                    <span v-if="item.count">&nbsp;({{item.count}})</span>
+                </v-btn>
+            </v-col>
         </template>
     </v-row>
 </template>

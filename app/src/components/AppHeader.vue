@@ -166,8 +166,7 @@
                                             class="category-selector"
                                             :class="isMobileFocused ? 'black--text' : 'white--text'"
                                             color="transparent"
-                                            style="padding: 3px 8px; margin-right: 8px;"
-                                            rounded
+                                            style="border-radius: 14px !important; padding: 3px 8px; margin-right: 8px;"
                                         >
                                             {{ $t(searchCategories.find(c => c.value === searchCategory)?.label || 'appHeader.searchAll') }}
                                         </v-btn>
@@ -240,7 +239,7 @@
                                     color="transparent"
                                     class="category-selector"
                                     :class="isFocused ? 'black--text' : 'white--text'"
-                                    style="padding: 3px 8px; margin-right: 8px;"
+                                    style="border-radius: 14px !important; padding: 3px 8px; margin-right: 8px;"
                                 >
                                     {{ $t(searchCategories.find(c => c.value === searchCategory)?.label || 'appHeader.searchAll') }}
                                 </v-btn>
