@@ -1254,6 +1254,12 @@ export default {
             key: "USE_DYNAMIC_COVER",
             label: "settings.use_dynamic_cover",
             type: "checkbox",
+          },
+          {
+            icon: "mdi-face-man-outline",
+            key: "ENABLE_AUTHOR_INFO",
+            label: "settings.enable_author_info",
+            type: "checkbox"
           }
         ],
       },

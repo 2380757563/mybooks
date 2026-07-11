@@ -6,7 +6,7 @@
         <v-col cols="12">
           <h2>{{ $t('listBook.authorBooks', { name: currentAuthor }) }}</h2>
         </v-col>
-        <v-col cols="12" class="d-flex">
+        <v-col v-if="showUserInfo" cols="12" class="d-flex">
           <div class="avatar-container flex-shrink-0" @click="dialog_set_avatar = true">
             <v-img :src="'/get/author/avatar/' + currentAuthor" alt="author-avatar" class="author_avatar" contain></v-img>
             <div class="avatar-overlay">
@@ -227,6 +227,9 @@ export default {
     },
     isAdmin() {
       return this.$store.state.user?.is_admin === true;
+    },
+    showUserInfo() {
+      return this.$store.state.showUserInfo === true;
     }
   },
   head() {

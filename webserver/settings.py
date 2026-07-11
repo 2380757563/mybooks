@@ -87,6 +87,8 @@ settings = {
 
     "META_SELECTED_SOURCES": ["douban", "baidu", "xinhua"],
 
+    "ENABLE_AUTHOR_INFO": True,
+
     "ENABLE_STAMP_FEATURE": False,
     "STAMP_POSITION": "bottom-right",
 

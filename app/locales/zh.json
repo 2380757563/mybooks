@@ -783,7 +783,8 @@
     "api_key_rule_error": "API密钥只能包含字母、数字、连字符或点",
     "api_key_length_error": "长度必须在16到128个字符之间",
     "test_ai_settings": "测试AI设置",
-    "testing": "测试中"
+    "testing": "测试中",
+    "enable_author_info": "显示作者详情信息 (头像及简介)"
   },
   "user": {
     "avatar": "头像",

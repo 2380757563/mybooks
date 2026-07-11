@@ -507,11 +507,12 @@
                                 <div class="authors-container">
                                     <template v-for="(author, index) in book.authors.slice(0, 5)" :key="'author-' + index">
                                         <div class="author-item">
-                                            <nuxt-link :to="{ path: '/author', query: { name: author } }" style="text-decoration: none;">
+                                            <nuxt-link v-if="showUserInfo" :to="{ path: '/author', query: { name: author } }" style="text-decoration: none;">
                                                 <v-img :src="'/get/author/avatar/' + author" alt="author-avatar"
                                                         class="author-avatar"></v-img>
                                             </nuxt-link>
                                             <v-chip rounded small dark color="indigo" :to="{ path: '/author', query: { name: author } }">
+                                                <v-icon v-if="!showUserInfo">mdi-face-man-outline</v-icon>
                                                 {{ author }}
                                             </v-chip>
                                         </div>
@@ -1308,6 +1309,9 @@ export default {
         BookCards,
     },
     computed: {
+        showUserInfo() {
+            return this.$store.state.showUserInfo === true;
+        },
         is_txt(){
           if(!this.book)return false
           let formats=this.book.files.map(x=>x.format.toLowerCase())

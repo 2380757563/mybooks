@@ -591,6 +591,9 @@ class BookBarnService(AsyncService):
         if not CONF.get("ENABLE_BOOKBARN", False):
             logging.info("[BARN] sync_author skipped, bookbarn is not enabled")
             return None
+        if not CONF.get("ENABLE_AUTHOR_INFO", False):
+            logging.info("[BARN] not enable the author info feature")
+            return None
 
         current_token = CONF.get("BOOKBARN_TOKEN", "")
         if not current_token:

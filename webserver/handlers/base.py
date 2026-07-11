@@ -1143,6 +1143,7 @@ class BaseHandler(web.RequestHandler):
             "standalone": CONF.get("STANDALONE", False),
             "hide_project_links": CONF.get("HIDE_PROJECT_LINKS", False),
             "invited_enabled": self.need_invited(),
+            "showUserInfo": CONF.get("ENABLE_AUTHOR_INFO", False)
         }
 
 

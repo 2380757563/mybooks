@@ -409,7 +409,8 @@ class AdminSettings(BaseHandler):
             "USE_DYNAMIC_COVER",
             "BATCH_ADD_IN_FORCE",
             "DEFAULT_LANGUAGE",
-            "ENABLE_DATA_SYNC"
+            "ENABLE_DATA_SYNC",
+            "ENABLE_AUTHOR_INFO"
         ]
 
         current_icon = CONF.get(
@@ -464,8 +465,11 @@ class AdminSettings(BaseHandler):
                         "豆瓣API密钥无效, 只能包含数字、字母、下划线或短横线，且长度不能超过48个字符"
                     ),
                 }
-
-        return SettingsSaver().save_extra_settings(args)
+        need_sync_authors = args.get("ENABLE_AUTHOR_INFO", False) and not CONF.get("ENABLE_AUTHOR_INFO", False)
+        result = SettingsSaver().save_extra_settings(args)
+        if need_sync_authors:
+            BookBarnService().sync_author_list()
+        return result
 
 
 class AdminInstall(BaseHandler):

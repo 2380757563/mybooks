@@ -584,7 +584,8 @@
     "api_key_rule_error": "API key can only contain letters, numbers, hyphens, or dots",
     "api_key_length_error": "Length must be between 16 and 128 characters",
     "test_ai_settings": "Test AI Settings",
-    "testing": "Testing"
+    "testing": "Testing",
+    "enable_author_info": "Show detail about the author (avatar and bio)"
   },
   "book": {
     "edit": {

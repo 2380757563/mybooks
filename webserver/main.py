@@ -441,10 +441,6 @@ def make_app():
     # Start background service
     BookBarnService().get_daily_books()
 
-    # Sync author metadata from book_barn once, delayed to avoid contending for
-    # resources during startup
-    threading.Timer(20, BookBarnService().sync_author_list).start()
-
     # Automatically start AI Assistant if configured
     if CONF.get("AI_DEEPSEEK_API_KEY"):
         from webserver.handlers.assistant import AssistantWebSocketHandler

@@ -782,7 +782,8 @@
     "api_key_rule_error": "API 金鑰只能包含字母、數字、連字符或點",
     "api_key_length_error": "長度必須在 16 到 128 個字元之間",
     "test_ai_settings": "測試 AI 設定",
-    "testing": "測試中"
+    "testing": "測試中",
+    "enable_author_info": "顯示作者詳情信息 (頭像與簡介)"
   },
   "user": {
     "avatar": "大頭貼",
