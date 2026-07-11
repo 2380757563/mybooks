@@ -784,7 +784,8 @@
     "api_key_length_error": "长度必须在16到128个字符之间",
     "test_ai_settings": "测试AI设置",
     "testing": "测试中",
-    "enable_author_info": "显示作者详情信息 (头像及简介)"
+    "enable_author_info": "显示作者详情信息 (头像及简介)",
+    "reader": "浏览与阅读"
   },
   "user": {
     "avatar": "头像",

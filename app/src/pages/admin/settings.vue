@@ -857,6 +857,47 @@ export default {
       },
       {
         show: false,
+        title: "settings.reader",
+        fields: [
+          {
+            icon: "mdi-book-open",
+            key: "EPUB_VIEWER",
+            label: "settings.epub_viewer",
+            type: "select",
+            items: [
+              { text: this.$t("settings.epubjs"), value: "epubjs.html", icon: "mdi-alpha-e-circle-outline" },
+              { text: this.$t("settings.myreader"), value: "MyReader", icon: "mdi-water-outline" },
+              { text: this.$t("settings.creader"), value: "creader.html", icon: "mdi-candle" },
+            ],
+          },
+          {
+            icon: "mdi-bookshelf",
+            key: "ENABLE_PHYSICAL_BOOKS",
+            label: "settings.enable_physical_books",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-sync",
+            key: "ENABLE_DATA_SYNC",
+            label: "settings.enable_data_sync",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-image-sync-outline",
+            key: "USE_DYNAMIC_COVER",
+            label: "settings.use_dynamic_cover",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-face-man-outline",
+            key: "ENABLE_AUTHOR_INFO",
+            label: "settings.enable_author_info",
+            type: "checkbox"
+          }
+        ]
+      },
+      {
+        show: false,
         title: "settings.user_settings",
         fields: [
           {
@@ -1165,17 +1206,6 @@ export default {
             ],
           },
           {
-            icon: "mdi-book-open",
-            key: "EPUB_VIEWER",
-            label: "settings.epub_viewer",
-            type: "select",
-            items: [
-              { text: this.$t("settings.epubjs"), value: "epubjs.html" },
-              { text: this.$t("settings.creader"), value: "creader.html" },
-              { text: this.$t("settings.myreader"), value: "MyReader" },
-            ],
-          },
-          {
             icon: "lock",
             color: "red",
             key: "cookie_secret",
@@ -1187,18 +1217,6 @@ export default {
             icon: "info",
             key: "convert_timeout",
             label: "settings.convert_timeout",
-          },
-          {
-            icon: "mdi-bookshelf",
-            key: "ENABLE_PHYSICAL_BOOKS",
-            label: "settings.enable_physical_books",
-            type: "checkbox",
-          },
-          {
-            icon: "mdi-sync",
-            key: "ENABLE_DATA_SYNC",
-            label: "settings.enable_data_sync",
-            type: "checkbox",
           },
           {
             icon: "mdi-cloud-check-outline",
@@ -1249,18 +1267,6 @@ export default {
             label: "settings.enable_audio_conversion_log",
             type: "checkbox",
           },
-          {
-            icon: "mdi-image-sync-outline",
-            key: "USE_DYNAMIC_COVER",
-            label: "settings.use_dynamic_cover",
-            type: "checkbox",
-          },
-          {
-            icon: "mdi-face-man-outline",
-            key: "ENABLE_AUTHOR_INFO",
-            label: "settings.enable_author_info",
-            type: "checkbox"
-          }
         ],
       },
 
