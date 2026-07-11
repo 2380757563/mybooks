@@ -58,6 +58,20 @@
                 <template v-if="f.icon" v-slot:prepend>
                   <v-icon :color="f.color">{{ f.icon }}</v-icon>
                 </template>
+                <template v-slot:item="{ item, attrs, on }">
+                  <v-list-item v-on="on" v-bind="attrs">
+                    <v-list-item-icon v-if="item.icon">
+                      <v-icon>{{ item.icon }}</v-icon>
+                    </v-list-item-icon>
+                    <v-list-item-content>
+                      <v-list-item-title>{{ item.text }}</v-list-item-title>
+                    </v-list-item-content>
+                  </v-list-item>
+                </template>
+                <template v-slot:selection="{ item }">
+                  <v-icon v-if="item.icon" left>{{ item.icon }}</v-icon>
+                  {{ item.text }}
+                </template>
               </v-select>
               <v-select
                 small
