@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import datetime
-from email import header
 import requests
 import logging
 import json
