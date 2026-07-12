@@ -603,7 +603,6 @@ class BookBarnService(AsyncService):
 
         author = self.session.query(Authors).filter(Authors.name == author_name).first()
         if author is not None and not force:
-            logging.info(f"[BARN] author {author_name} already exists, skip")
             return author
 
         try:

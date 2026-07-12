@@ -495,5 +495,6 @@
   "请先启用并配置书栈服务": "Please enable and configure BookBarn first",
   "已提交更新，请稍后刷新查看": "Update submitted, please refresh later",
   "作者《%(name)s》信息更新成功": "Author 《%(name)s》 info updated successfully",
-  "作者《%(name)s》信息更新失败": "Failed to update author 《%(name)s》 info"
+  "作者《%(name)s》信息更新失败": "Failed to update author 《%(name)s》 info",
+  "访客": "Guest"
 }

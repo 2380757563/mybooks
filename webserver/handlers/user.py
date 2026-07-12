@@ -431,6 +431,7 @@ class UserMessagesClear(BaseHandler):
 
 
 class UserInfo(BaseHandler):
+
     def get_user_info(self, detail):
         enable_vip_quota = CONF.get(ENABLE_VIP_QUOTA_KEY, False)
         if enable_vip_quota:
@@ -448,33 +449,41 @@ class UserInfo(BaseHandler):
         }
 
         if not user:
+            if CONF.get("ALLOW_GUEST_READ", False):
+                return {
+                    "is_login": False,
+                    "is_admin": False,
+                    "is_active": True,
+                    "is_guest": True,
+                    "nickname": _("访客"),
+                    "username": _("访客"),
+                    "email": "",
+                    "extra": {},
+                    "create_time": "",
+                    "podcast_token": "",
+                }
             return d
 
-        d.update(
-            {
-                "is_login": True,
-                "is_admin": user.is_admin(),
-                "is_active": user.is_active(),
-                "nickname": user.name or "",
-                "username": user.username,
-                "email": user.email,
-                "extra": {},
-                "create_time": user.create_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "podcast_token": user.podcast_token or "",
-            }
-        )
+        d.update({
+            "is_login": True,
+            "is_guest": False,
+            "is_admin": user.is_admin(),
+            "is_active": user.is_active(),
+            "nickname": user.name or "",
+            "username": user.username,
+            "email": user.email,
+            "extra": {},
+            "create_time": user.create_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "podcast_token": user.podcast_token or "",
+        })
         if enable_vip_quota:
             d["vipquota"] = user.vipquota or 0
-            d["vip_expire"] = (
-                user.vipexpire.strftime("%Y-%m-%d") if user.vipexpire else ""
-            )
+            d["vip_expire"] = (user.vipexpire.strftime("%Y-%m-%d") if user.vipexpire else "")
 
         if user.avatar:
             if user.avatar.startswith("http"):
                 gravatar_url = "https://www.gravatar.com"
-                d["avatar"] = user.avatar.replace("http://", "https://").replace(
-                    gravatar_url, CONF["avatar_service"]
-                )
+                d["avatar"] = user.avatar.replace("http://", "https://").replace(gravatar_url, CONF["avatar_service"])
             else:
                 d["avatar"] = self.site_url + "/avatar/%s" % user.avatar
         if user.extra:
@@ -489,16 +498,9 @@ class UserInfo(BaseHandler):
                         for b in v:
                             if b["id"] not in show:
                                 continue
-                            b["img"] = (
-                                self.cdn_url
-                                + "/get/cover/%(id)s.jpg?t=%(timestamp)s" % b
-                            )
+                            b["img"] = (self.cdn_url + "/get/cover/%(id)s.jpg?t=%(timestamp)s" % b)
                             b["href"] = "/book/%(id)s" % b
-                            b["thumb"] = (
-                                self.cdn_url
-                                + "/get/thumb_240_320/%(id)s.jpg?t=%(timestamp)s&size=240x320"
-                                % b
-                            )
+                            b["thumb"] = (self.cdn_url + "/get/thumb_240_320/%(id)s.jpg?t=%(timestamp)s&size=240x320" % b)
                             n.append(b)
                         v = n[:12]
 
@@ -526,13 +528,23 @@ class WhoAmI(BaseHandler):
     def get(self):
         user = self.current_user
         if not user:
-            return {"err": "user.need_login", "msg": _("请先登录")}
+            if CONF.get("ALLOW_GUEST_READ", False):
+                return {
+                    "err": "ok",
+                    "userId": 999999,
+                    "canRead": True,
+                    "isActive": True,
+                    "is_guest": True
+                }
+            else:
+                return {"err": "user.need_login", "msg": _("请先登录")}
         return {
             "err": "ok",
             "userId": user.id,
             "username": user.username,
             "canRead": user.can_read(),
             "isActive": user.is_active(),
+            "is_guest": False
         }
 
 

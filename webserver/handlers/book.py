@@ -2555,9 +2555,6 @@ class BookRead(BaseHandler):
                 return self.redirect(f'/read/txt/{book_id}')
 
             if fmt_arg == "pdf":
-                if not CONF["ALLOW_GUEST_DOWNLOAD"] and not self.current_user:
-                    return self.redirect("/login")
-
                 if self.current_user and not self.current_user.can_save():
                     raise web.HTTPError(403, reason=_("无权在线阅读"))
 
@@ -2610,10 +2607,6 @@ class BookRead(BaseHandler):
                 has_converted_pdf = True
 
         if "fmt_pdf" in book or has_converted_pdf:
-            # PDF类书籍需要检查下载权限。
-            if not CONF["ALLOW_GUEST_DOWNLOAD"] and not self.current_user:
-                return self.redirect("/login")
-
             if self.current_user and not self.current_user.can_save():
                 raise web.HTTPError(403, reason=_("无权在线阅读PDF类书籍"))
 
