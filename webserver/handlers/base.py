@@ -322,9 +322,6 @@ class BaseHandler(web.RequestHandler):
             self._request_start_time = time.time()
 
         self.set_hosts()
-        remote_ip = self.request.headers.get("X-Real-IP") or self.request.headers.get("X-Forwarded-For") or self.request.remote_ip
-        logging.info("Request from host=%s, remote_ip=%s, uri=%s", self.request.host, remote_ip, self.request.uri)
-        logging.info("Request headers: %s", dict(self.request.headers))
         self.set_i18n()
         self.process_auth_header()
         self.process_auth_token()

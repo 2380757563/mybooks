@@ -368,8 +368,12 @@ def make_app():
     path = CONF["resource_path"] + "/calibre/default_cover.jpg"
     if os.path.exists(CUSTOM_COVER_IMAGE):
         path = CUSTOM_COVER_IMAGE
-    with open(path, "rb") as cover_file:
-        default_cover = cover_file.read()
+    default_cover = None
+    try:
+        with open(path, "rb") as cover_file:
+            default_cover = cover_file.read()
+    except Exception:
+        pass
 
     # Initialize database lock for thread-safe calibre database access
     from webserver.handlers.base import BaseHandler

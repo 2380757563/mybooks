@@ -90,4 +90,9 @@ if CONF.get("google_analytics_id", "").strip() == DEFAULT_GOOGLE_ANALYTICS_ID:
 
 
 def get_settings():
+    CHECKING_KEYS = ("nuxt_env_path", "html_path", "i18n_path", "static_path", "resource_path")
+    for key in CHECKING_KEYS:
+        key_value = _settings.get(key, "")
+        if key_value and key_value.startswith("/var/www/talebook/"):
+            _settings[key] = key_value.replace("/var/www/talebook/", "/var/www/mybooks/")
     return _settings
