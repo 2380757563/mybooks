@@ -1597,7 +1597,7 @@ export default {
                     voice_name: "zh-CN-YunxiNeural",
                     display_name: this.$t('voice.yunxi'),
                     gender: "male",
-                    sample_file: "male/zh-CN-YunxiNeural.mp3"
+                    sample_file: "chinese/male/zh-CN-YunxiNeural.mp3"
                 },
                 {
                     voice_name: "zh-CN-YunyangNeural",
