@@ -1072,7 +1072,8 @@ class BookFavorite(BaseHandler):
 
         # 设置收藏状态
         reading_state.set_favorite(favorite_status)
-        reading_state.save()
+        self.sqlite_session.add(reading_state)
+        self.sqlite_session.commit()
 
         action = "收藏" if favorite_status else "取消收藏"
         return {"err": "ok", "msg": _("%s成功") % action}
@@ -1137,7 +1138,8 @@ class BookWantToRead(BaseHandler):
 
         # 设置待读状态
         reading_state.set_wants(wants_status)
-        reading_state.save()
+        self.sqlite_session.add(reading_state)
+        self.sqlite_session.commit()
 
         action = "标记为待读" if wants_status else "取消待读"
         return {"err": "ok", "msg": _("%s成功") % action}
@@ -1451,7 +1453,8 @@ class BookReadingState(BaseHandler):
         if data.get("download") is not None:
             reading_state.set_download(data["download"])
 
-        reading_state.save()
+        self.sqlite_session.add(reading_state)
+        self.sqlite_session.commit()
 
         state_names = {0: "未读", 1: "在读", 2: "已读完"}
         return {"err": "ok", "msg": _("阅读状态已设置为：%s") % state_names[read_state]}
