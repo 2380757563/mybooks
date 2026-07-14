@@ -31,7 +31,7 @@
 
         <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="300">
             <v-card>
-                <v-toolbar flat dense dark color="#003153">
+                <v-toolbar flat dense dark color="#003153" class="upload-dialog-toolbar">
                     {{ $t('upload.title') }}
                     <v-spacer></v-spacer>
                     <v-btn color="" text @click="dialog = false">{{ $t('upload.close') }}</v-btn>
@@ -551,4 +551,11 @@ export default {
 
 }
 </script>
+
+<style scoped>
+.upload-dialog-toolbar.upload-dialog-toolbar {
+    border-radius: 16px 16px 0 0 !important;
+    overflow: hidden;
+}
+</style>
 

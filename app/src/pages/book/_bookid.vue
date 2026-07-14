@@ -17,7 +17,11 @@
 
             <v-dialog v-model="dialog_epub2audio" persistent width="380">
                 <v-card class="dialog-border">
-                    <v-card-title class="">{{ $t('book.convertToAudio') }}</v-card-title>
+                    <v-toolbar flat dense dark color="#003153" class="dialog-toolbar">
+                        {{ $t('book.convertToAudio') }}
+                        <v-spacer></v-spacer>
+                        <v-btn color="" text @click="dialog_epub2audio = false">{{ $t('common.cancel') }}</v-btn>
+                    </v-toolbar>
                     <v-card-text v-if="audios.status === AUDIO_STATUS.FAILED">
                         <p style="color: red; font-weight: bold;">{{ $t('book.conversionFailed') }} <br/>
                             {{ audios.progress && audios.progress.error_message ? audios.progress.error_message : $t('book.defaultFailedReason') }}
@@ -55,10 +59,8 @@
                             </template>
                         </v-select>
                     </v-card-text>
-                    <v-card-actions>
-                        <v-btn color="" text @click="dialog_epub2audio = false">{{ $t('common.cancel') }}</v-btn>
-                        <v-spacer></v-spacer>
-                        <v-btn color="primary" text @click="generateAudio()">{{ $t('common.start') }}</v-btn>
+                    <v-card-actions class="justify-center">
+                        <v-btn color="primary" large @click="generateAudio()">{{ $t('common.start') }}</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -3698,13 +3700,18 @@ h1.book-detail-title {
 
 /* Dialog border styles */
 .dialog-border {
-    border: 2px solid #e0e0e0 !important;
+    border: 2px solid;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     border-radius: 8px !important;
 }
 
 .dialog-border .v-card__title {
     border-bottom: 1px solid #e0e0e0;
+}
+
+.dialog-toolbar.dialog-toolbar {
+    border-radius: 6px 6px 0 0 !important;
+    overflow: hidden;
 }
 
 .book-action-col {
