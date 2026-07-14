@@ -28,7 +28,7 @@
                         </p>
                     </v-card-text>
                     <v-card-text>
-                        <p style="margin: 3px 0 10px 0;">{{ $t('book.convertToAudioNote') }}</p>
+                        <p style="margin: 16px 0 10px 0;">{{ $t('book.convertToAudioNote') }}</p>
                         <v-select style="margin-top: 3px;"
                             :items="voice_options"
                             outlined
@@ -67,14 +67,16 @@
 
             <v-dialog v-model="dialog_audiolist" persistent width="480">
                 <v-card class="dialog-border">
-                    <p> </p>
-                    <v-card-title class="">
+                    <v-toolbar flat dense dark color="#003153" class="dialog-toolbar">
                         {{ $t('book.audioList') }}
                         <span v-if="audios.status === AUDIO_STATUS.PROCESSING && audios.progress && audios.progress.converted_chapters !== undefined"
                               class="ml-2 text-caption">
                             ({{ audios.progress.converted_chapters }}/{{ audios.progress.total_chapters }})
                         </span>
-                    </v-card-title>
+                        <v-spacer></v-spacer>
+                        <v-btn color="" text @click="dialog_audiolist = false">{{ $t('common.close') }}</v-btn>
+                    </v-toolbar>
+                    <div style="height: 16px;"></div>
                     <v-card-text v-if="audios.status === AUDIO_STATUS.PROCESSING">
                         <p style="color: orange; font-weight: bold;">{{ $t('book.conversionInProgress') }}</p>
                         <v-progress-linear
@@ -109,11 +111,10 @@
                             </v-row>
                         </div>
                     </v-card-text>
-                    <v-card-actions>
+                    <v-card-actions class="justify-center">
                         <v-btn
                             v-if="audios.status === AUDIO_STATUS.PROCESSING"
                             color="warning"
-                            text
                             @click="clearConversion"
                         >
                             {{ $t('book.cancelConversion') }}
@@ -121,7 +122,6 @@
                         <v-btn
                             v-else-if="audios.status === AUDIO_STATUS.CONVERTED"
                             color="error"
-                            text
                             @click="clearConversion"
                         >
                             {{ $t('common.clear') }}
@@ -129,13 +129,10 @@
                         <v-btn
                             v-if="audios.status === AUDIO_STATUS.CONVERTED"
                             color="primary"
-                            text
                             @click="generateAudio"
                         >
                             {{ $t('common.restore') }}
                         </v-btn>
-                        <v-spacer></v-spacer>
-                        <v-btn color="" text @click="dialog_audiolist = false">{{ $t('common.close') }}</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -3592,10 +3589,14 @@ export default {
     }
 }
 
-/* Flat style scrollbar for audio list */
+/* Scrollbar for audio list, matching the app-navigation-drawer scrollbar in AppHeader.vue */
 .audio-scroll-container {
     scrollbar-width: thin;
-    scrollbar-color: #cccccc #f1f1f1;
+    scrollbar-color: rgba(102, 126, 234, 0.55) #F7FAF7;
+}
+
+.theme--dark .audio-scroll-container {
+    scrollbar-color: rgba(102, 126, 234, 0.55) #363636;
 }
 
 .audio-scroll-container::-webkit-scrollbar {
@@ -3603,22 +3604,23 @@ export default {
 }
 
 .audio-scroll-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 0;
+    background: transparent;
+    border-radius: 6px;
 }
 
 .audio-scroll-container::-webkit-scrollbar-thumb {
-    background: #cccccc;
-    border-radius: 0;
-    border: none;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.55) 0%, rgba(118, 75, 162, 0.55) 100%);
+    border-radius: 6px;
+    transition: all 0.3s ease;
 }
 
 .audio-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: #999999;
+    background: linear-gradient(135deg, rgba(118, 75, 162, 0.55) 0%, rgba(102, 126, 234, 0.55) 100%);
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.425);
 }
 
 .audio-scroll-container::-webkit-scrollbar-corner {
-    background: #f1f1f1;
+    background: transparent;
 }
 
 
@@ -3654,35 +3656,6 @@ export default {
 
 h1.book-detail-title {
     line-height: inherit;
-}
-
-/* Flat style scrollbar for audio list */
-.audio-scroll-container {
-    scrollbar-width: thin;
-    scrollbar-color: #cccccc #f1f1f1;
-}
-
-.audio-scroll-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.audio-scroll-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 0;
-}
-
-.audio-scroll-container::-webkit-scrollbar-thumb {
-    background: #cccccc;
-    border-radius: 0;
-    border: none;
-}
-
-.audio-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: #999999;
-}
-
-.audio-scroll-container::-webkit-scrollbar-corner {
-    background: #f1f1f1;
 }
 
 /* Specificity must beat appearance.css's ".v-application .v-btn:not(...):not(...)" (0,4,0)
