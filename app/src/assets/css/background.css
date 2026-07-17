@@ -1,12 +1,14 @@
 /* 全局背景图样式 - 仅应用于login和install页面 */
-body.login-page,
-body.install-page,
-body.login-page .v-application,
-body.install-page .v-application {
-  background-image: url('/static/images/background.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+html body.login-page,
+html body.install-page,
+html body.login-page .v-application,
+html body.install-page .v-application,
+html[data-bg-pattern] body.login-page .v-application,
+html[data-bg-pattern] body.install-page .v-application {
+  background-image: url('/static/images/background.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
   position: relative;
   min-height: 100vh;
 }
@@ -38,8 +40,3 @@ body.login-page .v-navigation-drawer,
 body.install-page .v-navigation-drawer {
   display: none !important;
 }
-
-
-
-
-

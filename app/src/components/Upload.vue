@@ -553,7 +553,7 @@ export default {
 </script>
 
 <style scoped>
-.upload-dialog-toolbar.upload-dialog-toolbar {
+.upload-dialog-toolbar {
     border-radius: 16px 16px 0 0 !important;
     overflow: hidden;
 }

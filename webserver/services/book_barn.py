@@ -87,7 +87,7 @@ class BookBarnClient:
         response = requests.get(self.HOST_BASE + self.CHECK_TOKEN_API,
                                 headers=self.headers,
                                 timeout=30,
-                                params=params, verify=False)
+                                params=params, verify=True)
         if response.status_code == 200:
             data = response.json().get("data")
             if data is not None:
@@ -112,7 +112,7 @@ class BookBarnClient:
         response = requests.post(self.HOST_BASE + self.APPLY_TOKEN_API,
                                  headers=self.headers,
                                  timeout=30,
-                                 json=data, verify=False)
+                                 json=data, verify=True)
 
         if response.status_code == 200:
             data = response.json().get("data")
@@ -138,7 +138,7 @@ class BookBarnClient:
                                     headers=self.headers,
                                     params=params,
                                     timeout=30,
-                                    verify=False)
+                                    verify=True)
             if response.status_code == 200:
                 data = response.json().get("data")
                 if data is not None:
@@ -169,7 +169,7 @@ class BookBarnClient:
         response = requests.post(self.HOST_BASE + self.UPDATE_ACTION_API,
                                  headers=self.headers,
                                  timeout=30,
-                                 json=data, verify=False)
+                                 json=data, verify=True)
 
         if response.status_code == 200:
             return True
@@ -196,7 +196,7 @@ class BookBarnClient:
                                 headers=self.headers,
                                 params=params,
                                 timeout=30,
-                                verify=False)
+                                verify=True)
 
         if response.status_code == 200:
             data = response.json().get("data")
@@ -220,7 +220,7 @@ class BookBarnClient:
                                     headers=self.headers,
                                     params=params,
                                     timeout=30,
-                                    verify=False)
+                                    verify=True)
         except Exception as e:
             logging.error(f"Exception occurred while getting resource list: {str(e)}")
             return None
@@ -269,7 +269,7 @@ class BookBarnClient:
                 os.remove(save_path)
 
             logging.info(f"[BARN]Start to download: {filename} from {download_url}")
-            with self.session.get(download_url, headers=self.headers, params=params, stream=True, verify=False) as r:
+            with self.session.get(download_url, headers=self.headers, params=params, stream=True, verify=True) as r:
                 r.raise_for_status()
                 downloaded = 0
 
@@ -315,8 +315,7 @@ class BookBarnClient:
             if os.path.exists(save_path):
                 os.remove(save_path)
 
-            logging.info(f"[BARN]Start to download: {filename} from {image_url}")
-            with self.session.get(image_url, headers=self.headers, params=params, stream=True, verify=False) as r:
+            with self.session.get(image_url, headers=self.headers, params=params, stream=True, verify=True) as r:
                 r.raise_for_status()
                 downloaded = 0
 
@@ -344,7 +343,7 @@ class BookBarnClient:
                                 headers=self.headers,
                                 params=params,
                                 timeout=30,
-                                verify=False)
+                                verify=True)
 
         if response.status_code == 200:
             data = response.json().get("data")
@@ -648,11 +647,11 @@ class BookBarnService(AsyncService):
         except Exception:
             names = []
 
-        logging.info(f"[BARN] start syncing {len(names)} authors from BookBarn")
+        logging.info(f"[BARN] start checking {len(names)} authors from BookBarn, if not found in local, will sync it")
         for name in names:
             self.sync_author(name, force=False)
             time.sleep(1)
-        logging.info("[BARN] author list sync done")
+        logging.info("[BARN] author list check done")
 
     @AsyncService.register_service
     def update_author_async(self, author_name, admin_uid=None):

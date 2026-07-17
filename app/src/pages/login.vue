@@ -1,8 +1,8 @@
 <template>
     <v-row justify="center" class="fill-center">
-        <v-col xs="12" sm="8" md="4">
-            <v-card v-if="show_login" class="elevation-12">
-                <v-toolbar dark :color="appBarColor">
+        <v-col xs="12" sm="8">
+            <v-card v-if="show_login" class="elevation-12 login-card">
+                <v-toolbar dark :color="appBarColor" class="login-toolbar">
                     <v-toolbar-title>{{ $t('login.welcome') }}</v-toolbar-title>
                     <v-spacer></v-spacer>
                     <v-btn v-if="$store.state.sys && $store.state.sys.allow && $store.state.sys.allow.register" rounded color="green" to="/signup">{{ $t('login.register') }}</v-btn>
@@ -175,5 +175,28 @@ export default {
 <style>
 .fill-center {
     margin-top: 6%;
+}
+.login-card {
+    max-width: 480px;
+    width: calc(100% - 32px);
+    margin: 0 auto;
+    transition: width 0.3s ease, max-width 0.3s ease;
+}
+@media (max-width: 960px) {
+    .login-card {
+        max-width: 560px;
+    }
+}
+@media (max-width: 600px) {
+    .login-card {
+        max-width: 100%;
+        width: calc(100% - 16px);
+    }
+}
+.v-application .v-toolbar.login-toolbar,
+.v-application .v-toolbar.login-toolbar > .v-toolbar__content {
+    border-bottom-left-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+    overflow: hidden;
 }
 </style>
