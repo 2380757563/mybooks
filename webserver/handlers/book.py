@@ -1903,7 +1903,7 @@ class SearchBook(ListHandler):
         # 查询被别的用户标记为sole的图书ID，并将ids中对应的ID去除
         sole_book_ids = set(item.book_id for item in self.sqlite_session.query(Item).filter(Item.sole == 1, Item.collector_id != self.user_id()).all())
         ids = [book_id for book_id in ids if book_id not in sole_book_ids]
-        logging.info(f"Search result IDs after excluding sole books: {ids}")
+        logging.debug(f"Search result IDs after excluding sole books: {ids}")
         return self.render_book_list([], ids=ids, title=title, sort_fields=order_by)
 
 
