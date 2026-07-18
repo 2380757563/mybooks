@@ -220,7 +220,7 @@
   "搜索完成，找到 %d 本书": "Search completed: found %d books",
   "搜索标签书籍失败": "Failed to search books by tag",
   "搜索结果": "Search results",
-  "搜索：%(name)s": "Search: %(name)s",
+  "搜索": "Search",
   "数据库操作异常，请重试": "Database operation failed. Please try again",
   "数据库错误：%s": "Database error: %s",
   "文件hash不能为空": "File hash cannot be empty",
@@ -496,5 +496,11 @@
   "已提交更新，请稍后刷新查看": "Update submitted, please refresh later",
   "作者《%(name)s》信息更新成功": "Author 《%(name)s》 info updated successfully",
   "作者《%(name)s》信息更新失败": "Failed to update author 《%(name)s》 info",
-  "访客": "Guest"
+  "访客": "Guest",
+  "书名:": "Title:",
+  "作者:": "Author:",
+  "简介:": "Comments:",
+  "出版社:": "Publisher:",
+  "丛书:": "Series:",
+  "标签:": "Tags:"
 }

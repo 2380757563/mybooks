@@ -1758,7 +1758,8 @@ class RecentBook(ListHandler):
 
 
 class SearchBook(ListHandler):
-    CALIBRE_KEYS = ("title:", "authors:", "comments:", "publisher:", "isbn:", "publisher:", "series:", "tags:", "author:", "py:")
+    CALIBRE_KEYS = ("title:", "authors:", "comments:", "publisher:", "isbn:", "series:", "tags:", "author:", "py:", "title_sort:")
+    CALIBRE_KEY_DESCRIPTION = (_("书名:"), _("作者:"), _("简介:"), _("出版社:"), _("ISBN:"), _("丛书:"), _("标签:"), _("作者:"), _("书名:"), _("书名:"))
 
     def _clear(self, text):
         # 去除字串中的括号及其内容，以免影响查询
@@ -1822,14 +1823,16 @@ class SearchBook(ListHandler):
         if title_search:
             name = book_title
         calibre_query = False
-        for key in self.CALIBRE_KEYS:
+        title_name = name
+        for idx, key in enumerate(self.CALIBRE_KEYS):
             if name.startswith(key):
                 calibre_query = True
                 title_search = False
+                title_name = name.replace(key, self.CALIBRE_KEY_DESCRIPTION[idx], 1)
                 name = name.replace("py:", "title_sort:")
                 break
 
-        title = _("搜索：%(name)s") % {"name": name}
+        title = _("搜索") + title_name
         ids = []
         seen = set()
         seg_or_query = None

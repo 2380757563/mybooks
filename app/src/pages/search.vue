@@ -72,11 +72,15 @@ export default {
     searchStatus: "",
     searchName: "", // 搜索关键词
     cachedSearchName: "", // 缓存的搜索关键词，用于判断是否需要重新查询
+    resultTitle: "", // searchByTitle 返回结果中携带的标题，用于覆盖默认标题
   }),
   head() {
     let displayTitle = this.$t('listBook.search');
     if (this.searchName) {
       displayTitle = this.$t('listBook.search') + ': ' + this.searchName;
+    }
+    if (this.resultTitle) {
+      displayTitle = this.resultTitle;
     }
     this.pageDisplayTitle = displayTitle;
     return {
@@ -112,6 +116,7 @@ export default {
         this.total = 0;
         this.page_cnt = 0;
         this.cachedSearchName = "";
+        this.resultTitle = "";
         return;
       }
 
@@ -122,6 +127,7 @@ export default {
         this.total = 0;
         this.page_cnt = 0;
         this.cachedSearchName = this.searchName;
+        this.resultTitle = "";
       }
 
       // 如果URL中有start参数且缓存有效，说明是翻页操作，直接从缓存的allBooks中获取数据
@@ -147,6 +153,7 @@ export default {
       this.allBooks = [];
       this.total = 0;
       this.page_cnt = 0;
+      this.resultTitle = "";
       const seenIds = new Set();
 
       try {
@@ -160,6 +167,9 @@ export default {
               seenIds.add(book.id);
             }
           });
+        }
+        if (titleResults && titleResults.title) {
+          this.resultTitle = titleResults.title;
         }
 
         // 第二步：分词查询
