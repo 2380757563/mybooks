@@ -45,7 +45,7 @@ class Page(object):
 
         # write to file for debug
         if OUTPUT_FOR_DEBUG:
-            with open("/data/baidu_baike_debug.html", "w", encoding="utf-8") as f:
+            with open("./baidu_baike_debug.html", "w", encoding="utf-8") as f:
                 f.write(self.http.text)
 
         self.html = self.http.text
@@ -105,6 +105,10 @@ class Page(object):
         title = self.soup.title.get_text()
         info["title"] = title[: title.rfind("_")]
         info["url"] = self.http.url
+
+        if info["title"] == '验证':
+            logging.warning(f"[百度百科]需要通过验证才可以正常访问，请使用浏览访问并通过验证: {self.http.url}")
+
         return info
 
     def get_image(self):
@@ -135,6 +139,13 @@ class Page(object):
         if not self.valid:
             return ""
         divs = self.soup.find_all(class_=CLASS_SUMMARY)
+
+        # Get the description from meta properties
+        descriptions = self.soup.find_all("meta", property="og:description")
+        for description in descriptions:
+            if description and description.has_attr("content"):
+                return description["content"]
+
         summary_parts = []
         for div in divs:
             # Remove citation markers (sup tags) before extracting text
@@ -180,5 +191,6 @@ class Page(object):
 
 
 if __name__ == "__main__":
-    page = Page("绝命毒尸")
+    page = Page("一品美食")  # 绝命毒尸
     print(page.get_info())
+    print(page.get_summary())
