@@ -90,7 +90,7 @@ class ToolSet:
     def collect_tools():
         from .rare_book_downloader import RareBookDownloader
         from .merge_formats_tool import MergeFormatsTool
-        from .review_cht_books_tool import ReviewTraditionalChineseTool
+        from .review_book_language_tool import ReviewBookLanguageTool
         from .minify_pdf import MinifyPdfTool
         from .text_processor import TextProcessor
         from .formats_pruning import FormatsPruningTool
@@ -98,7 +98,7 @@ class ToolSet:
         from .epub_split import EpubSplitTool
         ToolSet.register(RareBookDownloader.info())
         ToolSet.register(MergeFormatsTool.info())
-        ToolSet.register(ReviewTraditionalChineseTool.info())
+        ToolSet.register(ReviewBookLanguageTool.info())
         ToolSet.register(MinifyPdfTool.info())
         ToolSet.register(TextProcessor.info())
         ToolSet.register(FormatsPruningTool.info())

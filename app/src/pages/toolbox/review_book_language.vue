@@ -3,11 +3,11 @@
     <!-- Page header -->
     <v-row class="mb-3" align="center">
       <v-col class="text-center">
-        <span class="text-h5 font-weight-bold">{{ $t('reviewChtBooks.title') }}</span>
+        <span class="text-h5 font-weight-bold">{{ $t('reviewBookLanguage.title') }}</span>
       </v-col>
       <v-col cols="auto">
         <v-btn small color="error" @click="$router.go(-1)">
-          <v-icon small left>mdi-close</v-icon>{{ $t('reviewChtBooks.close') }}
+          <v-icon small left>mdi-close</v-icon>{{ $t('reviewBookLanguage.close') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -17,7 +17,7 @@
       <v-col cols="12" md="8" lg="6">
         <v-card rounded="xl" outlined class="rcb-card pa-6">
           <!-- Description -->
-          <p class="rcb-desc mb-6">{{ $t('reviewChtBooks.description') }}</p>
+          <p class="rcb-desc mb-6">{{ $t('reviewBookLanguage.description') }}</p>
 
           <!-- Start button -->
           <div class="d-flex justify-center">
@@ -28,7 +28,7 @@
               @click="startReview"
             >
               <span v-if="loading" class="rcb-spinner" />
-              <span v-else>{{ $t('reviewChtBooks.startBtn') }}</span>
+              <span v-else>{{ $t('reviewBookLanguage.startBtn') }}</span>
             </button>
           </div>
 
@@ -64,10 +64,10 @@ export default {
       this.resultMsg = '';
       this.loading = true;
       try {
-        const rsp = await this.$backend('/toolbox/review_cht_books', {
+        const rsp = await this.$backend('/toolbox/review_book_language', {
           method: 'POST',
         });
-        this.resultMsg = rsp.msg || (rsp.err === 'ok' ? this.$t('reviewChtBooks.success') : rsp.err);
+        this.resultMsg = rsp.msg || (rsp.err === 'ok' ? this.$t('reviewBookLanguage.success') : rsp.err);
         this.resultType = rsp.err === 'ok' ? 'success' : 'error';
       } catch (e) {
         this.resultMsg = String(e);

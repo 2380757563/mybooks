@@ -448,8 +448,9 @@ class ScanService(AsyncService):
                             dynamic_cover = True
                 if mi.cover_data and mi.cover_data[1] and mi.cover_data[1][:4] == b"RIFF":
                     mi.cover_data = ("jpeg", ImageHelper.convert_to_jpeg(mi.cover_data[1]))
-                if utils.is_traditional_chinese(mi.title):
-                    mi.languages = constants.TRADITIONAL_CHINESE_CODE
+                detected_language = utils.detect_title_language(mi.title)
+                if detected_language:
+                    mi.languages = detected_language
                 if not mi.languages:
                     mi.languages = CONF.get("DEFAULT_LANGUAGE", constants.DEFAULT_LANGUAGE_CODE)
                 row.book_id = self.db.import_book(mi, [fpath], notify=False, import_hooks=False)

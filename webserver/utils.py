@@ -2,10 +2,16 @@
 import datetime
 import logging
 import re
+from typing import Optional
+
+from webserver import constants
 
 
 # 匹配包含z-library的括号内容，例如 (z-library.sk, 1lib.sk, z-lib.sk)
 ZLIBRARY_PATTERN = re.compile(r'\([^)]*?(?:z-?lib(?:rary)?|1lib)[^)]*?\)', re.IGNORECASE)
+
+# 日文假名 Unicode 区间：平假名 U+3040-309F，片假名 U+30A0-30FF
+_KANA_PATTERN = re.compile(r'[぀-ヿ]')
 
 
 def parse_date(date_str):
@@ -101,6 +107,39 @@ def is_traditional_chinese(text: str) -> bool:
     except Exception as exc:
         logging.debug("[review_cht] OpenCC unavailable (%s), using fallback", exc)
         return _fallback_has_traditional(text)
+
+
+def detect_title_language(text: str) -> Optional[str]:
+    """检测书名文本对应的语言代码（简体中文/繁体中文/日文）。
+
+    判定顺序：繁体中文 > 简体中文 > 日文。中文的判定优先于日文，是因为
+    日文汉字与繁/简体中文汉字大量重叠，若假名检测放在最前，会让本应
+    识别为中文的书名（尤其是含少量假名标点的情况）被误判，因此仅在
+    确认不含中文特征后才回退到假名检测。
+
+    :param text: 书名文本。
+    :return: `constants.TRADITIONAL_CHINESE_CODE` / `constants.DEFAULT_LANGUAGE_CODE`
+             / `constants.JAPANESE_CODE`，无法判定时返回 None。
+    """
+    if not text:
+        return None
+    if all(ord(c) < 128 for c in text):
+        return None
+
+    if is_traditional_chinese(text):
+        return constants.TRADITIONAL_CHINESE_CODE
+
+    try:
+        import opencc
+        if opencc.OpenCC("s2t").convert(text) != text:
+            return constants.DEFAULT_LANGUAGE_CODE
+    except Exception as exc:
+        logging.debug("[detect_title_language] OpenCC unavailable (%s), skip simplified check", exc)
+
+    if _KANA_PATTERN.search(text):
+        return constants.JAPANESE_CODE
+
+    return None
 
 
 def compare_books_by_rating_or_id(x, y):

@@ -1101,12 +1101,12 @@
     "mergeSuccess": "Merge successful",
     "hint": "The source book's format files will be copied to the target book, then the source book will be deleted."
   },
-  "reviewChtBooks": {
-    "title": "Traditional Chinese Review",
+  "reviewBookLanguage": {
+    "title": "Book Title Language Review",
     "close": "Close",
-    "description": "Scans all books and detects whether each book title contains Traditional Chinese characters. Matching books will have their language field set to Traditional Chinese. Detection uses OpenCC t2s conversion: if the converted title differs from the original, it is considered Traditional Chinese.",
+    "description": "Scans all books and detects the language of each title (Simplified Chinese / Traditional Chinese / Japanese), updating the language field whenever it differs from the detection result. Detection order: Simplified/Traditional Chinese is checked first (via OpenCC conversion comparison), then Japanese (title contains kana characters).",
     "startBtn": "Start",
-    "success": "Traditional Chinese review task started. Check progress in the top right corner."
+    "success": "Book title language review task started. Check progress in the top right corner."
   },
   "rareBookDownloader": {
     "title": "Rare Book Downloader",

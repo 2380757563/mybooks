@@ -10,7 +10,7 @@ from webserver.handlers.base import BaseHandler, js, is_admin
 from urllib.parse import urlparse
 from webserver.toolbox.rare_book_downloader import RareBookDownloader
 from webserver.toolbox.merge_formats_tool import MergeFormatsTool
-from webserver.toolbox.review_cht_books_tool import ReviewTraditionalChineseTool
+from webserver.toolbox.review_book_language_tool import ReviewBookLanguageTool
 from webserver.toolbox.minify_pdf import MinifyPdfTool
 from webserver.toolbox.formats_pruning import FormatsPruningTool
 from webserver.toolbox.epub_fixer import EpubFixerTool
@@ -69,12 +69,12 @@ class AdminMergeFormatsMerge(BaseHandler):
         }
 
 
-class AdminReviewChtBooks(BaseHandler):
+class AdminReviewBookLanguage(BaseHandler):
     @js
     @is_admin
     def post(self):
-        ReviewTraditionalChineseTool().review(self.user_id())
-        return {"err": "ok", "msg": _("繁体中文检测任务已启动，右上角可以查看进度")}
+        ReviewBookLanguageTool().review(self.user_id())
+        return {"err": "ok", "msg": _("书名语言检测任务已启动，右上角可以查看进度")}
 
 
 class AdminMinifyPdfUpload(BaseHandler):
@@ -339,7 +339,7 @@ def routes():
         (r"/api/toolbox/list", AdminToolList),
         (r"/api/toolbox/rare_book_downloader", AdminRareBookDownloader),
         (r"/api/toolbox/merge_formats/merge", AdminMergeFormatsMerge),
-        (r"/api/toolbox/review_cht_books", AdminReviewChtBooks),
+        (r"/api/toolbox/review_book_language", AdminReviewBookLanguage),
         (r"/api/toolbox/minify_pdf/upload", AdminMinifyPdfUpload),
         (r"/api/toolbox/minify_pdf/process", AdminMinifyPdfProcess),
         (r"/api/toolbox/minify_pdf/progress", AdminMinifyPdfProgress),

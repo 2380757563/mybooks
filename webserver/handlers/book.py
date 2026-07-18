@@ -1995,8 +1995,9 @@ class BookUpload(BaseHandler):
     def _add_new_book(self, mi, fpaths, fmt):
         dynamic_cover = False
         mi.title_sort = utils.get_title_sort(mi.title)
-        if utils.is_traditional_chinese(mi.title):
-            mi.languages = constants.TRADITIONAL_CHINESE_CODE
+        detected_language = utils.detect_title_language(mi.title)
+        if detected_language:
+            mi.languages = detected_language
         if not mi.languages:
             mi.languages = CONF.get("DEFAULT_LANGUAGE", constants.DEFAULT_LANGUAGE_CODE)
 
@@ -2258,8 +2259,9 @@ class BookUploadChunk(BaseHandler):
     def _add_new_book(self, mi, fpaths):
         dynamic_cover = False
         mi.title_sort = utils.get_title_sort(mi.title)
-        if utils.is_traditional_chinese(mi.title):
-            mi.languages = constants.TRADITIONAL_CHINESE_CODE
+        detected_language = utils.detect_title_language(mi.title)
+        if detected_language:
+            mi.languages = detected_language
         if not mi.languages:
             mi.languages = CONF.get("DEFAULT_LANGUAGE", constants.DEFAULT_LANGUAGE_CODE)
 
