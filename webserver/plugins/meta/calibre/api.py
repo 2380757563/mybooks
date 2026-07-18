@@ -65,15 +65,18 @@ class CalibreMetadataApi:
             return None
         headers = dict(CHROME_HEADERS)
         headers["Referer"] = cover_url
-        response = requests.get(cover_url, headers=headers, verify=False, timeout=20)
-        if response.status_code != 200:
-            logging.error("Get cover fail, status_code[%s] != 200 OK", response.status_code)
-            return None
+        try:
+            response = requests.get(cover_url, headers=headers, verify=False, timeout=60)
+            if response.status_code != 200:
+                logging.error("Get cover fail, status_code[%s] != 200 OK", response.status_code)
+                return None
+        except Exception as e:
+            logging.error(f"[Meta]Met exception while download cover: {e}")
         img = response.content
         return ('jpg', img)
 
     @classmethod
-    def get_book_by_isbn(cls, isbn, sources=None, timeout=30):
+    def get_book_by_isbn(cls, isbn, sources=None, timeout=60):
         """按 ISBN 查询书籍信息，成功时返回含封面的 Metadata 对象，否则返回 None"""
         if not sources or META_SOURCE_GOOGLE not in sources:
             return None
@@ -98,7 +101,7 @@ class CalibreMetadataApi:
             return None
 
     @classmethod
-    def get_book_by_title(cls, title, authors=None, sources=None, timeout=30):
+    def get_book_by_title(cls, title, authors=None, sources=None, timeout=60):
         """按书名（及可选作者）查询书籍信息，成功时返回含封面的 Metadata 对象，否则返回 None"""
         if not sources or META_SOURCE_AMAZON not in sources:
             return None

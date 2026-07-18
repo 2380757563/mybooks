@@ -57,7 +57,7 @@ class BookSearch:
     def _find_plugin_by_provider_key(provider_key):
         for klass in _PROVIDER_PLUGIN_CLASSES:
             plugin = klass()
-            if plugin.PROVIDER_KEY == provider_key:
+            if provider_key in plugin.SOURCE_KEYS:
                 return plugin
         return None
 
@@ -95,10 +95,7 @@ class BookSearch:
 
         # 每个已启用的信息源各自分配一个 worker 并行搜索，未启用的源不创建 worker
         executor = BookSearch._get_search_executor()
-        futures = {
-            executor.submit(plugin.search, title=clean_title, isbn=isbn, publisher=publisher): plugin
-            for plugin in plugins
-        }
+        futures = {executor.submit(plugin.search, title=clean_title, isbn=isbn, publisher=publisher): plugin for plugin in plugins}
 
         results = {}
         for future, plugin in futures.items():
@@ -149,7 +146,10 @@ class BookSearch:
 
     @staticmethod
     def get_cover(provider_key, cover_url):
+        logging.debug(f"[Meta]Try to get cover for {provider_key}, url:{cover_url}")
         plugin = BookSearch._find_plugin_by_provider_key(provider_key)
+        if not plugin:
+            logging.debug("[Meta]Not found the plugin")
         return plugin.get_cover(cover_url) if plugin else None
 
     @staticmethod

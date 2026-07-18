@@ -609,24 +609,7 @@ class BookRefer(BaseHandler):
     _search_state_lock = threading.Lock()
     _search_semaphore = None
 
-    meta_keys = [
-        "cover_url",
-        "source",
-        "website",
-        "title",
-        "authors",
-        "author_sort",
-        "publisher",
-        "comments",
-        "provider_key",
-        "provider_value",
-        "isbn",
-        "isbn13",
-        "language",
-        "identifiers",
-        "tags",
-        "series"
-    ]
+    meta_keys = ["cover_url", "source", "website", "title", "authors", "author_sort", "publisher", "comments", "provider_key", "provider_value", "isbn", "isbn13", "language", "identifiers", "tags", "series"]
 
     @classmethod
     def _get_search_semaphore(cls):
@@ -814,7 +797,7 @@ class BookRefer(BaseHandler):
         key = self._build_search_key(title, isbn, publisher)
         cached_books = self._get_cached_books(key)
         if cached_books is not None:
-            return {"err": "ok", "books": self._format_refer_books(cached_books, ), "cached": True}
+            return {"err": "ok", "books": self._format_refer_books(cached_books,), "cached": True}
 
         semaphore = self._get_search_semaphore()
         loop = asyncio.get_running_loop()
@@ -907,7 +890,9 @@ class BookRefer(BaseHandler):
             if only_meta != "yes":
                 try:
                     cover_url = metadata.get("cover_url") if metadata else None
-                    refer_mi.cover_data = self.plugin_fill_book_cover(provider_key, cover_url)
+                    logging.debug(f"[Metadata] Try to get cover {cover_url}")
+                    if cover_url:
+                        refer_mi.cover_data = self.plugin_fill_book_cover(provider_key, cover_url)
                 except Exception as e:
                     logging.error(f"Error filling book metadata from plugin {provider_key}: {e}")
 
@@ -931,7 +916,7 @@ class BookRefer(BaseHandler):
                         ts.append(tag)
                 if len(ts) > 0:
                     mi.tags += ts[:8]
-                    logging.info("tags are %s" % ','.join(mi.tags))
+                    logging.debug("tags are %s" % ','.join(mi.tags))
                     self.calibre_db.set_tags(book_id, mi.tags)
             mi.smart_update(refer_mi, replace_metadata=True)
 
