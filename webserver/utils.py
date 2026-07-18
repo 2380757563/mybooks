@@ -13,6 +13,9 @@ ZLIBRARY_PATTERN = re.compile(r'\([^)]*?(?:z-?lib(?:rary)?|1lib)[^)]*?\)', re.IG
 # 日文假名 Unicode 区间：平假名 U+3040-309F，片假名 U+30A0-30FF
 _KANA_PATTERN = re.compile(r'[぀-ヿ]')
 
+# CJK 汉字区间：基本区 U+4E00-9FFF，扩展 A 区 U+3400-4DBF
+_HAN_PATTERN = re.compile(r'[一-鿿㐀-䶿]')
+
 
 def parse_date(date_str):
     if not date_str:
@@ -112,10 +115,14 @@ def is_traditional_chinese(text: str) -> bool:
 def detect_title_language(text: str) -> Optional[str]:
     """检测书名文本对应的语言代码（简体中文/繁体中文/日文）。
 
-    判定顺序：繁体中文 > 简体中文 > 日文。中文的判定优先于日文，是因为
-    日文汉字与繁/简体中文汉字大量重叠，若假名检测放在最前，会让本应
-    识别为中文的书名（尤其是含少量假名标点的情况）被误判，因此仅在
-    确认不含中文特征后才回退到假名检测。
+    判定顺序：繁体中文 > 简体中文 > 日文 > 简繁同形兜底。中文的判定优先于
+    日文，是因为日文汉字与繁/简体中文汉字大量重叠，若假名检测放在最前，
+    会让本应识别为中文的书名（尤其是含少量假名标点的情况）被误判，因此
+    仅在确认不含中文特征后才回退到假名检测。
+
+    若标题中的汉字在简繁转换前后完全一致（即该标题不含任何简繁差异字，
+    如"九命"），繁简双向转换都无法区分，此时只要标题含汉字且不含假名，
+    按约定优先判定为简体中文，而非放弃判定。
 
     :param text: 书名文本。
     :return: `constants.TRADITIONAL_CHINESE_CODE` / `constants.DEFAULT_LANGUAGE_CODE`
@@ -138,6 +145,9 @@ def detect_title_language(text: str) -> Optional[str]:
 
     if _KANA_PATTERN.search(text):
         return constants.JAPANESE_CODE
+
+    if _HAN_PATTERN.search(text):
+        return constants.DEFAULT_LANGUAGE_CODE
 
     return None
 
