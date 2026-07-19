@@ -28,7 +28,6 @@
               </v-btn>
               <v-btn
                 small
-                outlined
                 color="primary"
                 class="ml-2"
                 @click="openEditBioDialog"

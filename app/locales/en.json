@@ -94,7 +94,7 @@
     "avatarTypeInvalid": "Only JPEG or PNG images are allowed",
     "avatarUploadFailed": "Avatar upload failed",
     "noAuthorBio": "No bio available",
-    "updateAuthorInfo": "Update Info",
+    "updateAuthorInfo": "Sync Info",
     "editAuthorBio": "Edit Bio",
     "authorBioLabel": "Author bio",
     "authorBioTooLong": "Bio is too long, 4096 characters max"

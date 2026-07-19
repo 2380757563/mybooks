@@ -94,7 +94,7 @@
     "avatarTypeInvalid": "僅允許 JPEG 或 PNG 格式的圖片",
     "avatarUploadFailed": "頭像上傳失敗",
     "noAuthorBio": "暫無簡介",
-    "updateAuthorInfo": "更新資訊",
+    "updateAuthorInfo": "聯網更新",
     "editAuthorBio": "編輯簡介",
     "authorBioLabel": "作者簡介",
     "authorBioTooLong": "簡介內容過長，最多4096字元"

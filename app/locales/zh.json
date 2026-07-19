@@ -94,7 +94,7 @@
     "avatarTypeInvalid": "仅允许 JPEG 或 PNG 格式的图片",
     "avatarUploadFailed": "头像上传失败",
     "noAuthorBio": "暂无简介",
-    "updateAuthorInfo": "更新信息",
+    "updateAuthorInfo": "联网更新",
     "editAuthorBio": "编辑简介",
     "authorBioLabel": "作者简介",
     "authorBioTooLong": "简介内容过长，最多4096字符"
