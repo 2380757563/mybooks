@@ -10,6 +10,7 @@ KoReader 常运行在预装了 FileBrowser 插件的设备上（如刷机 Kindle
 
 若 /api/login 不可用（如 FileBrowser 未启用鉴权），登录会被静默忽略，后续请求
 不带鉴权信息继续尝试。
+@author: PoxenStudio, 2026
 """
 from urllib.parse import quote
 

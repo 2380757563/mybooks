@@ -1,13 +1,26 @@
 <template>
   <div>
     <v-row>
-      <v-col cols=12>
+      <v-col cols=12 class="d-flex align-center">
         <h2>{{ pageDisplayTitle }}</h2>
+        <template v-if="isSelectablePage">
+          <v-btn icon :color="multiSelectMode ? 'primary' : undefined" class="ml-2"
+                 :title="multiSelectMode ? $t('listBook.exitMultiSelect') : $t('listBook.multiSelect')"
+                 @click="toggleMultiSelectMode">
+            <v-icon>mdi-checkbox-multiple-marked-outline</v-icon>
+          </v-btn>
+          <v-btn v-if="multiSelectMode && selectedIds.length > 0" icon dark color="red" class="ml-1"
+                 :title="$t('listBook.deleteSelected', { count: selectedIds.length })"
+                 @click="confirmDialog = true">
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
+        </template>
         <v-divider class="mt-3 mb-0"></v-divider>
       </v-col>
 
       <v-col>
-        <book-cards :books="books" :isAudioPage="isAudioPage"></book-cards>
+        <book-cards :books="books" :isAudioPage="isAudioPage" :selectable="multiSelectMode"
+                    :selectedIds="selectedIds" @toggle-select="toggleSelect"></book-cards>
       </v-col>
 
       <v-col cols=12>
@@ -19,11 +32,30 @@
         </div>
       </v-col>
     </v-row>
+
+    <v-dialog v-model="confirmDialog" max-width="420">
+      <v-card>
+        <v-card-title class="headline">{{ $t('listBook.confirmRemoveTitle') }}</v-card-title>
+        <v-card-text>{{ confirmRemoveContent }}</v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="confirmDialog = false">{{ $t('listBook.cancel') }}</v-btn>
+          <v-btn color="red" dark :loading="removing" @click="removeSelected">{{ $t('listBook.confirm') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
 import BookCards from "../components/BookCards.vue";
+
+const SELECTABLE_ACTIONS = {
+  '/favorites': 'favorite',
+  '/wants': 'wants',
+  '/reading': 'reading',
+  '/read-done': 'read-done',
+};
 
 export default {
   components: {
@@ -41,7 +73,20 @@ export default {
     },
     pageDisplayTitle() {
       return this.getPageTitle();
-    }
+    },
+    isSelectablePage() {
+      return Object.prototype.hasOwnProperty.call(SELECTABLE_ACTIONS, this.$route.path);
+    },
+    confirmRemoveContent() {
+      const action = SELECTABLE_ACTIONS[this.$route.path];
+      const keys = {
+        favorite: 'listBook.confirmRemoveContentFavorites',
+        wants: 'listBook.confirmRemoveContentWants',
+        reading: 'listBook.confirmRemoveContentReading',
+        'read-done': 'listBook.confirmRemoveContentReadDone',
+      };
+      return this.$t(keys[action] || 'listBook.confirmRemoveContentFavorites', { count: this.selectedIds.length });
+    },
   },
   data: () => ({
     title: "",
@@ -51,6 +96,10 @@ export default {
     page_cnt: 0,
     inited: false,
     isAudioPage: false,
+    multiSelectMode: false,
+    selectedIds: [],
+    confirmDialog: false,
+    removing: false,
   }),
   async asyncData({route, app, res}) {
     if (res !== undefined) {
@@ -181,7 +230,49 @@ export default {
       r.start = (this.page - 1) * this.page_size;
       r.size = this.page_size;
       this.$router.push({query: r});
-    }
+    },
+    toggleMultiSelectMode() {
+      this.multiSelectMode = !this.multiSelectMode;
+      if (!this.multiSelectMode) {
+        this.selectedIds = [];
+      }
+    },
+    toggleSelect(bookId) {
+      const idx = this.selectedIds.indexOf(bookId);
+      if (idx === -1) {
+        this.selectedIds = [...this.selectedIds, bookId];
+      } else {
+        this.selectedIds = this.selectedIds.filter((id) => id !== bookId);
+      }
+    },
+    async removeSelected() {
+      if (this.removing || this.selectedIds.length === 0) return;
+      const action = SELECTABLE_ACTIONS[this.$route.path];
+      if (!action) return;
+      this.removing = true;
+      try {
+        const rsp = await this.$backend('/books/batch-remove-state', {
+          method: 'POST',
+          body: JSON.stringify({ book_ids: this.selectedIds, action }),
+        });
+        if (rsp.err === 'ok') {
+          const removedIds = new Set(this.selectedIds);
+          this.books = this.books.filter((b) => !removedIds.has(b.id));
+          this.total = Math.max(0, this.total - removedIds.size);
+          this.page_cnt = Math.max(1, Math.ceil(this.total / this.page_size));
+          this.$alert('success', this.$t('listBook.removeSuccess', { count: removedIds.size }));
+          this.selectedIds = [];
+          this.confirmDialog = false;
+          this.multiSelectMode = false;
+        } else {
+          this.$alert('error', rsp.msg || this.$t('listBook.removeFailed'));
+        }
+      } catch (e) {
+        this.$alert('error', this.$t('listBook.removeFailed'));
+      } finally {
+        this.removing = false;
+      }
+    },
   },
 }
 </script>

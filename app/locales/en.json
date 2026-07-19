@@ -97,7 +97,19 @@
     "updateAuthorInfo": "Sync Info",
     "editAuthorBio": "Edit Bio",
     "authorBioLabel": "Author bio",
-    "authorBioTooLong": "Bio is too long, 4096 characters max"
+    "authorBioTooLong": "Bio is too long, 4096 characters max",
+    "multiSelect": "Select",
+    "exitMultiSelect": "Exit Select",
+    "deleteSelected": "Remove Selected ({count})",
+    "confirmRemoveTitle": "Confirm Removal",
+    "confirmRemoveContentFavorites": "Remove the {count} selected books from your favorites?",
+    "confirmRemoveContentWants": "Remove the {count} selected books from your want-to-read list?",
+    "confirmRemoveContentReading": "Mark the {count} selected books as unread?",
+    "confirmRemoveContentReadDone": "Mark the {count} selected books as unread?",
+    "removeSuccess": "Successfully processed {count} books",
+    "removeFailed": "Operation failed",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
   },
   "listMeta": {
     "ratingSuffix": " stars",

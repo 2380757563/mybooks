@@ -31,7 +31,7 @@ class AuthorCleanTool(BaseTool):
             "name": "作者清理",
             "description": "输入一个现有作者名，清理（从多作者书籍中移除）或替换为新的作者名",
             "revision": "0.1.0",
-            "author": "PoxenStudio",
+            "author": "MyBooks",
             "publish_date": "2026-07-19",
         }
 

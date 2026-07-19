@@ -1459,6 +1459,48 @@ class BookReadingState(BaseHandler):
         return ReadingStateFormatter.format_reading_state_with_api_format(reading_state)
 
 
+class BookStateBatch(BaseHandler):
+    ACTIONS = ("favorite", "wants", "reading", "read-done")
+
+    @js
+    @auth
+    def post(self):
+        """批量清除所选书籍在当前用户下的收藏/待读/阅读状态"""
+        data = tornado.escape.json_decode(self.request.body)
+        book_ids = data.get("book_ids") or []
+        action = data.get("action")
+
+        if action not in self.ACTIONS:
+            return {"err": "params.invalid", "msg": _("操作类型参数错误")}
+        if not isinstance(book_ids, list) or not book_ids:
+            return {"err": "params.invalid", "msg": _("未选择任何书籍")}
+
+        try:
+            book_ids = [int(i) for i in book_ids]
+        except (TypeError, ValueError):
+            return {"err": "params.invalid", "msg": _("书籍编号参数错误")}
+
+        user_id = self.user_id()
+        reading_states = self.sqlite_session.query(ReadingState).filter(
+            ReadingState.book_id.in_(book_ids),
+            ReadingState.reader_id == user_id
+        ).all()
+
+        for reading_state in reading_states:
+            if action == "favorite":
+                reading_state.set_favorite(False)
+            elif action == "wants":
+                reading_state.set_wants(False)
+            else:
+                # "reading" 和 "read-done" 都是把阅读状态重置为未读
+                reading_state.set_read_state(0)
+            self.sqlite_session.add(reading_state)
+
+        self.sqlite_session.commit()
+
+        return {"err": "ok", "msg": _("已处理 %d 本书籍") % len(reading_states), "count": len(reading_states)}
+
+
 class BookEdit(BaseHandler):
     KEYS = [
         "authors",
@@ -3522,6 +3564,7 @@ def routes():
         (r"/api/reading", BookReading),
         (r"/api/read-done", BookReadDone),
         (r"/api/reading/stats", BookReadingStats),
+        (r"/api/books/batch-remove-state", BookStateBatch),
         (r"/api/book/([0-9]+)/tags", BookTags),
         (r"/api/book/([0-9]+)/aifill", BookAIFill),
         (r"/api/book/update_tags", BookUpdateTags),

@@ -531,6 +531,29 @@ class TestBook(TestWithUserLogin):
             r = self.json("/api/book/1/edit", method="POST", raise_error=True, body=json.dumps(body))
             self.assertEqual(r["err"], "ok")
 
+    def test_batch_remove_favorite(self):
+        for bid in (1, 2):
+            r = self.json("/api/book/%d/favorite" % bid, method="POST", body=json.dumps({"favorite": True}))
+            self.assertEqual(r["err"], "ok")
+
+        r = self.json("/api/favorites")
+        self.assertEqual(r["err"], "ok")
+        self.assertEqual(sorted(b["id"] for b in r["books"]), [1, 2])
+
+        r = self.json("/api/books/batch-remove-state", method="POST", body=json.dumps({"book_ids": [1, 2], "action": "favorite"}))
+        self.assertEqual(r["err"], "ok")
+        self.assertEqual(r["count"], 2)
+
+        r = self.json("/api/favorites")
+        self.assertEqual(r["books"], [])
+
+    def test_batch_remove_state_invalid_params(self):
+        r = self.json("/api/books/batch-remove-state", method="POST", body=json.dumps({"book_ids": [1], "action": "bogus"}))
+        self.assertEqual(r["err"], "params.invalid")
+
+        r = self.json("/api/books/batch-remove-state", method="POST", body=json.dumps({"book_ids": [], "action": "favorite"}))
+        self.assertEqual(r["err"], "params.invalid")
+
 
 class TestReferDouban(TestWithUserLogin):
     def setUp(self):

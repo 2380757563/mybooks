@@ -97,7 +97,19 @@
     "updateAuthorInfo": "联网更新",
     "editAuthorBio": "编辑简介",
     "authorBioLabel": "作者简介",
-    "authorBioTooLong": "简介内容过长，最多4096字符"
+    "authorBioTooLong": "简介内容过长，最多4096字符",
+    "multiSelect": "多选",
+    "exitMultiSelect": "退出多选",
+    "deleteSelected": "移除所选 ({count})",
+    "confirmRemoveTitle": "确认移除",
+    "confirmRemoveContentFavorites": "确定要取消收藏所选的 {count} 本书籍吗？",
+    "confirmRemoveContentWants": "确定要将所选的 {count} 本书籍从待读列表移除吗？",
+    "confirmRemoveContentReading": "确定要将所选的 {count} 本书籍标记为未读吗？",
+    "confirmRemoveContentReadDone": "确定要将所选的 {count} 本书籍标记为未读吗？",
+    "removeSuccess": "已成功处理 {count} 本书籍",
+    "removeFailed": "操作失败",
+    "cancel": "取消",
+    "confirm": "确定"
   },
   "listMeta": {
     "ratingSuffix": "星",

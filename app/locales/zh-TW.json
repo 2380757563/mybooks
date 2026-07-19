@@ -97,7 +97,19 @@
     "updateAuthorInfo": "聯網更新",
     "editAuthorBio": "編輯簡介",
     "authorBioLabel": "作者簡介",
-    "authorBioTooLong": "簡介內容過長，最多4096字元"
+    "authorBioTooLong": "簡介內容過長，最多4096字元",
+    "multiSelect": "多選",
+    "exitMultiSelect": "退出多選",
+    "deleteSelected": "移除所選 ({count})",
+    "confirmRemoveTitle": "確認移除",
+    "confirmRemoveContentFavorites": "確定要取消收藏所選的 {count} 本書籍嗎？",
+    "confirmRemoveContentWants": "確定要將所選的 {count} 本書籍從待讀清單移除嗎？",
+    "confirmRemoveContentReading": "確定要將所選的 {count} 本書籍標記為未讀嗎？",
+    "confirmRemoveContentReadDone": "確定要將所選的 {count} 本書籍標記為未讀嗎？",
+    "removeSuccess": "已成功處理 {count} 本書籍",
+    "removeFailed": "操作失敗",
+    "cancel": "取消",
+    "confirm": "確定"
   },
   "listMeta": {
     "ratingSuffix": "星",

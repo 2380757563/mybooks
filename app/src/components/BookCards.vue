@@ -1,7 +1,13 @@
 <template>
     <v-row>
         <v-col cols=12 xs=12 sm=6 md=4 lg=3 xl=2 v-for="(book,idx) in render_books" :key="idx+'-books-'+book.id" class="book-list-card d-flex">
-            <v-card :to="book.href" class="flex-grow-1" >
+            <v-card :to="selectable ? undefined : book.href" class="flex-grow-1"
+                    @click="selectable ? $emit('toggle-select', book.id) : undefined">
+                <div v-if="selectable" class="book-select-badge" @click.stop.prevent="$emit('toggle-select', book.id)">
+                    <v-icon :color="isSelected(book.id) ? 'primary' : 'grey lighten-1'">
+                        {{ isSelected(book.id) ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank' }}
+                    </v-icon>
+                </div>
                 <v-row>
                     <v-col cols=4 xs=4 sm=4 md=4 lg=4 class='col-book-img'>
                         <div class="book-img-container">
@@ -61,6 +67,14 @@ export default {
         isAudioPage: {
             type: Boolean,
             default: false
+        },
+        selectable: {
+            type: Boolean,
+            default: false
+        },
+        selectedIds: {
+            type: Array,
+            default: () => []
         }
     },
     components: {
@@ -83,6 +97,9 @@ export default {
         },
     },
     methods: {
+        isSelected(bookId) {
+            return (this.selectedIds || []).includes(bookId);
+        },
         shouldShowCommentTooltip(html) {
             return this.isLongComment(html) && !this.isSmallScreen();
         },
@@ -201,6 +218,7 @@ export default {
     font-weight: bold;
 }
 .book-list-card .v-card {
+    position: relative;
     min-height: 6em;
     display: flex;
     flex-direction: column;
@@ -208,6 +226,21 @@ export default {
     height: 100%;
     overflow: hidden;
     border-radius: 12px;
+}
+.book-select-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
 }
 .book-list-card .v-card:hover {
     transform: translateY(-1px);
