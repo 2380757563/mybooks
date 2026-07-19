@@ -137,6 +137,12 @@ class AsyncService(metaclass=SingletonType):
                 ALTER TABLE readers ADD COLUMN allow_statistic BOOLEAN DEFAULT 1
             """))
             changed = True
+
+        if "push_count" not in columns:
+            self.session.execute(text("""
+                ALTER TABLE readers ADD COLUMN push_count INTEGER DEFAULT 0
+            """))
+            changed = True
         return changed
 
     def adjust_readings_table(self):
@@ -158,6 +164,11 @@ class AsyncService(metaclass=SingletonType):
         self.session.execute(text("""
             CREATE INDEX IF NOT EXISTS ix_readings_reader_book_action
             ON readings (reader_id, book_id, action)
+        """))
+        # 支撑首页阅读统计 Banner 的按 reader_id+date 区间回补查询（见 document/Reading_Dashboard_Design.md）
+        self.session.execute(text("""
+            CREATE INDEX IF NOT EXISTS ix_readings_reader_date
+            ON readings (reader_id, date)
         """))
 
     def adjust_scanfile_table(self):

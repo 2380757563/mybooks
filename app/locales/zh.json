@@ -45,7 +45,21 @@
     "physicalCount": "实体书",
     "monthNewBooks": "本月新增",
     "monthEbookCount": "本月新增电子书",
-    "monthPhysicalCount": "本月新增实体书"
+    "monthPhysicalCount": "本月新增实体书",
+    "readingStats": {
+      "title": "阅读统计",
+      "totalReadingHours": "总阅读时长",
+      "hoursUnit": "小时",
+      "downloadAndPush": "下载 / 推送",
+      "downloads": "下载",
+      "pushes": "推送",
+      "weeklyReadingTime": "近8周阅读时长",
+      "weeklyDownloadAndPush": "近8周下载与推送",
+      "bookStatus": "书籍状态",
+      "reading": "在读",
+      "toRead": "待读",
+      "finished": "已读"
+    }
   },
   "listBook": {
     "title": "书籍列表",
@@ -786,6 +800,7 @@
     "enable_webdav_service": "启用WebDAV服务（用于阅读器通过WebDAV协议访问书库）",
     "enable_podcast_service": "启用Podcast订阅服务（用于播放器通过Podcast协议访问有声书）",
     "allow_user_disable_statistic": "允许用户自行关闭阅读及下载数据采集（关闭后默认采集所有用户的数据）",
+    "enable_homepage_reading_stats": "在首页显示阅读统计 Banner（默认开启）",
     "extended_features": "扩展功能",
     "enable_stamp_feature": "启用封面加盖图章功能",
     "stamp_image_hint": "支持PNG格式，图片尺寸不超过480x480像素，文件大小不超过128KB。建议使用带透明背景的PNG图片以获得更好的效果。",

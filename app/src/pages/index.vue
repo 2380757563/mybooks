@@ -33,6 +33,8 @@
         </v-col>
     </v-row>
 
+    <reading-stats-banner></reading-stats-banner>
+
     <v-row v-if="random_books.length > 0">
         <v-col cols=12>
             <div class="d-flex align-center">
@@ -92,10 +94,12 @@
 
 <script>
 import BookCards from "~/components/BookCards.vue";
+import ReadingStatsBanner from "~/components/ReadingStatsBanner.vue";
 export default {
     name: 'IndexPage',
     components: {
         BookCards,
+        ReadingStatsBanner,
     },
     computed: {
         get_random_books: function() {

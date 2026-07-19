@@ -427,6 +427,7 @@ class AdminSettings(BaseHandler):
             "ENABLE_DATA_SYNC",
             "ENABLE_AUTHOR_INFO",
             "ALLOW_USER_DISABLE_STATISTIC",
+            "ENABLE_HOMEPAGE_READING_STATS",
         ]
 
         current_icon = CONF.get(

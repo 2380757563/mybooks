@@ -117,6 +117,7 @@ class Reader(Base, SQLAlchemyMixin):
     podcast_token = Column(String(128), default="")
     total_reading_seconds = Column(Integer, default=0, nullable=False)  # 累计阅读时长（秒），来自 Reading(action=read) 心跳累加
     download_count = Column(Integer, default=0, nullable=False)  # 累计下载次数，仅 action=download 事件
+    push_count = Column(Integer, default=0, nullable=False)  # 累计推送次数，仅 action=push 事件；不回填历史数据，从功能上线时刻起累计
     allow_statistic = Column(Boolean, default=True, nullable=False)  # 是否采集该用户的阅读/下载统计，默认采集（opt-out）
 
     def __str__(self):

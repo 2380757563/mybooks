@@ -82,6 +82,7 @@ class ReadingWriteBuffer:
         self._events: List[_PendingEvent] = []
         self._reader_seconds_delta: Dict[int, int] = {}
         self._reader_download_delta: Dict[int, int] = {}
+        self._reader_push_delta: Dict[int, int] = {}
         self._lock = threading.Lock()
 
     def on_heartbeat(self, reader_id: int, book_id: int, protocol: str, now_utc: datetime.datetime) -> None:
@@ -110,6 +111,8 @@ class ReadingWriteBuffer:
             self._events.append(_PendingEvent(reader_id, book_id, action, protocol, now_utc))
             if action == Reading.ACTION_DOWNLOAD:
                 self._reader_download_delta[reader_id] = self._reader_download_delta.get(reader_id, 0) + 1
+            elif action == Reading.ACTION_PUSH:
+                self._reader_push_delta[reader_id] = self._reader_push_delta.get(reader_id, 0) + 1
 
     def flush(self) -> None:
         with self._lock:
@@ -126,8 +129,9 @@ class ReadingWriteBuffer:
             events_snapshot, self._events = self._events, []
             seconds_delta, self._reader_seconds_delta = self._reader_seconds_delta, {}
             download_delta, self._reader_download_delta = self._reader_download_delta, {}
+            push_delta, self._reader_push_delta = self._reader_push_delta, {}
 
-        if not (pending or events_snapshot or seconds_delta or download_delta):
+        if not (pending or events_snapshot or seconds_delta or download_delta or push_delta):
             return
 
         db = Reading._session()
@@ -188,6 +192,8 @@ class ReadingWriteBuffer:
                 )
             for reader_id, delta in download_delta.items():
                 db.execute(update(Reader).where(Reader.id == reader_id).values(download_count=Reader.download_count + delta))
+            for reader_id, delta in push_delta.items():
+                db.execute(update(Reader).where(Reader.id == reader_id).values(push_count=Reader.push_count + delta))
 
             for book_id in set(book_visit_delta) | set(book_download_delta):
                 item = db.query(Item).filter(Item.book_id == book_id).one_or_none()
@@ -223,6 +229,8 @@ class ReadingWriteBuffer:
                     self._reader_seconds_delta[reader_id] = self._reader_seconds_delta.get(reader_id, 0) + delta
                 for reader_id, delta in download_delta.items():
                     self._reader_download_delta[reader_id] = self._reader_download_delta.get(reader_id, 0) + delta
+                for reader_id, delta in push_delta.items():
+                    self._reader_push_delta[reader_id] = self._reader_push_delta.get(reader_id, 0) + delta
 
 
 class ReadingStatsService:

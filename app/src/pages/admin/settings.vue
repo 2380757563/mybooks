@@ -1270,6 +1270,12 @@ export default {
             type: "checkbox",
           },
           {
+            icon: "mdi-view-dashboard-outline",
+            key: "ENABLE_HOMEPAGE_READING_STATS",
+            label: "settings.enable_homepage_reading_stats",
+            type: "checkbox",
+          },
+          {
             icon: "mdi-restart",
             key: "autoreload",
             label: "settings.autoreload",

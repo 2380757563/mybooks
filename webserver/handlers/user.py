@@ -857,6 +857,21 @@ class UserReadingHistory(BaseHandler):
         return {"err": "ok", "books": result}
 
 
+class UserReadingDashboard(BaseHandler):
+    """首页阅读统计 Banner 数据源（见 document/Reading_Dashboard_Design.md）"""
+
+    @js
+    @auth
+    def get(self):
+        from webserver.services import reading_dashboard_service
+
+        user = self.current_user
+        stats = reading_dashboard_service.get_stats(self.sqlite_session, user)
+        if stats is None:
+            return {"err": "ok", "enabled": False}
+        return dict({"err": "ok", "enabled": True}, **stats)
+
+
 class UserExpectedItems(BaseHandler):
 
     @js
@@ -1231,6 +1246,7 @@ def routes():
         (r"/api/user/messages", UserMessages),
         (r"/api/user/messages/clear", UserMessagesClear),
         (r"/api/user/history", UserReadingHistory),
+        (r"/api/user/reading_stats", UserReadingDashboard),
         (r"/api/user/sign_in", SignIn),
         (r"/api/user/sign_up", SignUp),
         (r"/api/user/new", UserNew),

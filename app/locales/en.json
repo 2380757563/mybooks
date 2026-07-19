@@ -45,7 +45,21 @@
     "physicalCount": "Hardcopy Books",
     "monthNewBooks": "This Month",
     "monthEbookCount": "New E-books This Month",
-    "monthPhysicalCount": "New Hardcopy Books This Month"
+    "monthPhysicalCount": "New Hardcopy Books This Month",
+    "readingStats": {
+      "title": "Reading Stats",
+      "totalReadingHours": "Total Reading Time",
+      "hoursUnit": "hrs",
+      "downloadAndPush": "Downloads / Pushes",
+      "downloads": "Downloads",
+      "pushes": "Pushes",
+      "weeklyReadingTime": "Reading Time (8 weeks)",
+      "weeklyDownloadAndPush": "Downloads & Pushes (8 weeks)",
+      "bookStatus": "Book Status",
+      "reading": "Reading",
+      "toRead": "To Read",
+      "finished": "Finished"
+    }
   },
   "listBook": {
     "title": "Book List",
@@ -587,6 +601,7 @@
     "enable_webdav_service": "Enable WebDAV service (allows readers to access the library via the WebDAV protocol)",
     "enable_podcast_service": "Enable Podcast catalog service (allows readers to access the library via the Podcast protocol)",
     "allow_user_disable_statistic": "Allow users to opt out of reading/download statistics (when off, all users are tracked by default)",
+    "enable_homepage_reading_stats": "Show reading stats banner on the homepage (enabled by default)",
     "extended_features": "Extended Features",
     "enable_stamp_feature": "Enable cover stamp feature",
     "stamp_image_label": "Stamp Image",

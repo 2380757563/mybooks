@@ -45,7 +45,21 @@
     "physicalCount": "實體書",
     "monthNewBooks": "本月新增",
     "monthEbookCount": "本月新增電子書",
-    "monthPhysicalCount": "本月新增實體書"
+    "monthPhysicalCount": "本月新增實體書",
+    "readingStats": {
+      "title": "閱讀統計",
+      "totalReadingHours": "總閱讀時長",
+      "hoursUnit": "小時",
+      "downloadAndPush": "下載 / 推送",
+      "downloads": "下載",
+      "pushes": "推送",
+      "weeklyReadingTime": "近8週閱讀時長",
+      "weeklyDownloadAndPush": "近8週下載與推送",
+      "bookStatus": "書籍狀態",
+      "reading": "在讀",
+      "toRead": "待讀",
+      "finished": "已讀"
+    }
   },
   "listBook": {
     "title": "書籍列表",
@@ -785,6 +799,7 @@
     "enable_webdav_service": "啟用 WebDAV 服務（用於閱讀器透過 WebDAV 協定存取書庫）",
     "enable_podcast_service": "啟用 Podcast 訂閱服務（用於播放器透過 Podcast 協定存取有聲書）",
     "allow_user_disable_statistic": "允許使用者自行關閉閱讀及下載資料採集（關閉後預設採集所有使用者的資料）",
+    "enable_homepage_reading_stats": "在首頁顯示閱讀統計 Banner（預設開啟）",
     "extended_features": "擴充功能",
     "enable_stamp_feature": "啟用封面加蓋圖章功能",
     "stamp_image_hint": "支援 PNG 格式，圖片尺寸不超過 480x480 像素，檔案大小不超過 128KB。建議使用帶透明背景的 PNG 圖片以獲得更好的效果。",
