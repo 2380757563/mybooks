@@ -1558,6 +1558,7 @@ export default {
                 { text: 'Kindle', value: 'kindle' },
                 { text: 'PureLibro', value: 'purelibro' },
                 { text: this.$t('device.ftp'), value: 'ftp' },
+                { text: this.$t('device.koreader'), value: 'koreader' },
             ];
         },
         voice_options() {
@@ -1882,6 +1883,7 @@ export default {
                 ireader: '10123',
                 dangdang: '11111',
                 ftp: '21',
+                koreader: '80',
             };
             if (portMap[newType]) {
                 this.tempDevice.port = portMap[newType];
@@ -3117,6 +3119,7 @@ export default {
                 'kindle':   'Kindle',
                 'purelibro': 'PureLibro',
                 'ftp':      'FTP',
+                'koreader': 'KoReader',
             };
             return typeMap[type] || type;
         },

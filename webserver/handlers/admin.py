@@ -1446,6 +1446,32 @@ class AuthorInfo(BaseHandler):
         return {"err": "ok", "author": data}
 
 
+class AdminAuthorBio(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        req = tornado.escape.json_decode(self.request.body)
+        name = (req.get("name") or "").strip()
+        bio = req.get("bio") or ""
+
+        if not name:
+            return {"err": "params.error", "msg": _("参数错误")}
+        if len(bio) > 4096:
+            return {"err": "params.bio.too_long", "msg": _("简介内容过长")}
+
+        author = self.sqlite_session.query(Authors).filter(Authors.name == name).first()
+        if author is None:
+            author = Authors(name=name, sort="")
+            self.sqlite_session.add(author)
+        author.bio = bio
+        self.sqlite_session.commit()
+
+        data = author.to_dict()
+        if data.get("create_time"):
+            data["create_time"] = data["create_time"].isoformat()
+        return {"err": "ok", "msg": _("简介保存成功"), "author": data}
+
+
 class AdminUpdateAuthor(BaseHandler):
     @js
     @is_admin
@@ -1507,5 +1533,6 @@ def routes():
         (r"/api/admin/ai/test", AdminAITestConnection),
         (r"/api/sysinfo", AdminSysInfo),
         (r"/api/author/info", AuthorInfo),
+        (r"/api/author/bio", AdminAuthorBio),
         (r"/api/admin/update_author", AdminUpdateAuthor),
     ]

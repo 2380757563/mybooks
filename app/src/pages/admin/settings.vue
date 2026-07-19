@@ -735,6 +735,7 @@ export default {
       { text: this.$t("settings.device_type_ireader"), value: "ireader" },
       { text: this.$t("settings.device_type_hanwang"), value: "hanwang" },
       { text: this.$t("settings.device_type_boox"), value: "boox" },
+      { text: this.$t("settings.device_type_koreader"), value: "koreader" },
       { text: this.$t("settings.device_type_dangdang"), value: "dangdang" },
       { text: "Kindle", value: "kindle" },
       { text: "PureLibro", value: "purelibro" },

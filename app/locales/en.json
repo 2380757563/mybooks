@@ -94,7 +94,10 @@
     "avatarTypeInvalid": "Only JPEG or PNG images are allowed",
     "avatarUploadFailed": "Avatar upload failed",
     "noAuthorBio": "No bio available",
-    "updateAuthorInfo": "Update Info"
+    "updateAuthorInfo": "Update Info",
+    "editAuthorBio": "Edit Bio",
+    "authorBioLabel": "Author bio",
+    "authorBioTooLong": "Bio is too long, 4096 characters max"
   },
   "listMeta": {
     "ratingSuffix": " stars",
@@ -551,6 +554,7 @@
     "device_type_boox": "Boox Reader",
     "device_type_dangdang": "Dangdang Reader",
     "device_type_ftp": "FTP Server",
+    "device_type_koreader": "KoReader",
     "device_ftp_username": "Username (empty = anonymous)",
     "device_ftp_password": "Password",
     "device_ftp_path": "Target Path",
@@ -950,7 +954,8 @@
     "hanwang": "Hanwang Reader",
     "boox": "Boox Reader",
     "dangdang": "Dangdang Reader",
-    "ftp": "FTP Server"
+    "ftp": "FTP Server",
+    "koreader": "KoReader"
   },
   "voice": {
     "xiaobei": "Female | Xiaobei (Liaoning)",

@@ -94,7 +94,10 @@
     "avatarTypeInvalid": "仅允许 JPEG 或 PNG 格式的图片",
     "avatarUploadFailed": "头像上传失败",
     "noAuthorBio": "暂无简介",
-    "updateAuthorInfo": "更新信息"
+    "updateAuthorInfo": "更新信息",
+    "editAuthorBio": "编辑简介",
+    "authorBioLabel": "作者简介",
+    "authorBioTooLong": "简介内容过长，最多4096字符"
   },
   "listMeta": {
     "ratingSuffix": "星",
@@ -738,6 +741,7 @@
     "device_type_boox": "文石Boox",
     "device_type_dangdang": "当当",
     "device_type_ftp": "FTP服务器",
+    "device_type_koreader": "KoReader",
     "device_ftp_username": "用户名(空为匿名)",
     "device_ftp_password": "密码",
     "device_ftp_path": "目标路径",
@@ -953,7 +957,8 @@
     "hanwang": "汉王",
     "boox": "文石Boox",
     "dangdang": "当当阅读器",
-    "ftp": "FTP服务器"
+    "ftp": "FTP服务器",
+    "koreader": "KoReader"
   },
   "voice": {
     "xiaobei": "女声 | 晓北（辽宁）",

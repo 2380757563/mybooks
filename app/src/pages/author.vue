@@ -17,16 +17,25 @@
           <!-- Author Bio -->
           <div class="author-bio-container">
             <div class="author-bio">{{ authorInfo && authorInfo.bio ? authorInfo.bio : $t('listBook.noAuthorBio') }}</div>
-            <v-btn
-              v-if="isAdmin"
-              class="mt-2"
-              small
-              color="primary"
-              :loading="updatingAuthorInfo"
-              @click="updateAuthorInfo"
-            >
-              {{ $t('listBook.updateAuthorInfo') }}
-            </v-btn>
+            <div v-if="isAdmin" class="mt-2">
+              <v-btn
+                small
+                color="primary"
+                :loading="updatingAuthorInfo"
+                @click="updateAuthorInfo"
+              >
+                {{ $t('listBook.updateAuthorInfo') }}
+              </v-btn>
+              <v-btn
+                small
+                outlined
+                color="primary"
+                class="ml-2"
+                @click="openEditBioDialog"
+              >
+                {{ $t('listBook.editAuthorBio') }}
+              </v-btn>
+            </div>
           </div>
         </v-col>
 
@@ -178,6 +187,28 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Edit Bio Dialog -->
+    <v-dialog v-model="dialog_edit_bio" max-width="560">
+      <v-card>
+        <v-card-title>{{ $t('listBook.editAuthorBio') }}</v-card-title>
+        <v-card-text>
+          <v-textarea
+            v-model="bio_draft"
+            :label="$t('listBook.authorBioLabel')"
+            :error-messages="bio_error"
+            rows="6"
+            counter="4096"
+            outlined
+          ></v-textarea>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn text @click="dialog_edit_bio = false">{{ $t('common.cancel') }}</v-btn>
+          <v-spacer></v-spacer>
+          <v-btn text color="primary" :loading="savingBio" @click="saveAuthorBio">{{ $t('common.ok') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -216,6 +247,12 @@ export default {
     dialog_set_avatar: false,
     avatar_file: null,
     avatar_error: '',
+
+    // Bio Edit
+    dialog_edit_bio: false,
+    bio_draft: '',
+    bio_error: '',
+    savingBio: false,
   }),
   computed: {
     visibleMetaItems() {
@@ -518,7 +555,39 @@ export default {
         }).catch(err => {
             this.avatar_error = this.$t('listBook.avatarUploadFailed') || 'Failed to upload avatar';
         });
-    }
+    },
+    openEditBioDialog() {
+        this.bio_error = '';
+        this.bio_draft = (this.authorInfo && this.authorInfo.bio) || '';
+        this.dialog_edit_bio = true;
+    },
+    async saveAuthorBio() {
+        this.bio_error = '';
+        if (this.bio_draft.length > 4096) {
+            this.bio_error = this.$t('listBook.authorBioTooLong');
+            return;
+        }
+        this.savingBio = true;
+        try {
+            const rsp = await this.$backend('/author/bio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: this.currentAuthor, bio: this.bio_draft }),
+            });
+            if (rsp.err === 'ok') {
+                this.authorInfo = rsp.author;
+                this.dialog_edit_bio = false;
+                this.$alert('success', rsp.msg);
+            } else {
+                this.bio_error = rsp.msg || this.$t('common.operationFailed');
+            }
+        } catch (e) {
+            console.error('[author.vue] saveAuthorBio - error:', e);
+            this.bio_error = this.$t('common.operationFailed') || 'Operation failed';
+        } finally {
+            this.savingBio = false;
+        }
+    },
   }
 }
 </script>

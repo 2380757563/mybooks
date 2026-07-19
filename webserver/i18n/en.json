@@ -503,6 +503,8 @@
   "出版社:": "Publisher:",
   "丛书:": "Series:",
   "标签:": "Tags:",
+  "简介内容过长": "Bio is too long",
+  "简介保存成功": "Bio saved successfully",
   "请提供现有作者名称": "Please provide the existing author name",
   "作者清理任务已启动，右上角可以查看进度": "Author cleanup task started. Check progress in the top right corner.",
   "请提供新的作者名称": "Please provide the new author name",
