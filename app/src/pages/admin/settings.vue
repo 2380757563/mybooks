@@ -1264,6 +1264,12 @@ export default {
             type: "checkbox",
           },
           {
+            icon: "mdi-chart-line",
+            key: "ALLOW_USER_DISABLE_STATISTIC",
+            label: "settings.allow_user_disable_statistic",
+            type: "checkbox",
+          },
+          {
             icon: "mdi-restart",
             key: "autoreload",
             label: "settings.autoreload",

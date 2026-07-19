@@ -40,7 +40,8 @@ from webserver.services.converter import ConverterService
 from webserver.services.extract import ExtractService
 from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, ListHandler, auth, js
-from webserver.models import Item, ReadingState, Reader
+from webserver.models import Item, Reading, ReadingState, Reader
+from webserver.services.reading_stats_service import ReadingStatsService
 from webserver.plugins.meta import douban, youshu
 from webserver.plugins.meta.bookbarn_tags import BookBarnTags
 from webserver.plugins.parser.txt import get_content_encoding
@@ -140,7 +141,6 @@ class BookDetail(BaseHandler):
                 "download": 0
             }
 
-        self.count_increase(bid, count_visit=1)
         return {
             "err": "ok",
             "kindle_sender": CONF["smtp_username"],
@@ -1746,8 +1746,9 @@ class BookDownload(BaseHandler, web.StaticFileHandler):
         logging.error("download %s bid=%s, fmt=%s" % (filename, bid, fmt))
         book = self.get_book(bid)
         book_id = book["id"]
-        self.increase_history_count("download_history")
-        self.count_increase(book_id, count_download=1)
+        if self.current_user:
+            protocol = Reading.PROTOCOL_OPDS if self.is_opds else Reading.PROTOCOL_WEB
+            ReadingStatsService.record_download(self.current_user.id, book_id, protocol)
         if "fmt_%s" % fmt not in book:
             raise web.HTTPError(404, reason=_("%s格式无法下载" % fmt))
 
@@ -2557,8 +2558,8 @@ class BookRead(BaseHandler):
         if not book:
             return {"err": "params.book.invalid", "msg": _("书籍已不存在")}
         book_id = book["id"]
-        self.user_history("read_history", book)
-        self.count_increase(book_id, count_download=1)
+        if self.current_user:
+            ReadingStatsService.heartbeat(self.current_user.id, book_id, Reading.PROTOCOL_WEB)
 
         # 若指定了格式且书籍存在该格式，优先按指定格式处理
         fmt_arg = self.get_argument("format", "").lower()
@@ -2891,8 +2892,8 @@ class BookSendToDevice(BaseHandler):
 
     def _send_to_kindle(self, book, book_id, mail_to):
         """通过邮件发送书籍到Kindle设备"""
-        self.user_history("push_history", book)
-        self.count_increase(book_id, count_download=1, count_visit=1)
+        if self.current_user:
+            ReadingStatsService.record_push(self.current_user.id, book_id, Reading.PROTOCOL_DEVICE)
 
         # epub、pdf、txt格式可以直接发送，不需要转换
         for fmt in ["epub", "pdf", "txt"]:
@@ -3148,8 +3149,8 @@ class BookSendToMail(BaseHandler):
             }
 
         # 记录推送历史和增加统计
-        self.user_history("push_history", book)
-        self.count_increase(book_id, count_download=1, count_visit=1)
+        if self.current_user:
+            ReadingStatsService.record_push(self.current_user.id, book_id, Reading.PROTOCOL_EMAIL)
         logging.info(f"[SEND_TO_MAIL] 发送书籍 {book_id} ({file_format}, {file_size} bytes) 到邮箱 {mail_to}")
         MailService().send_book(self.user_id(), self.site_url, book, mail_to, file_format, file_path)
 

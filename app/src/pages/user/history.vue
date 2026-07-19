@@ -81,7 +81,7 @@
                 <div class="d-flex align-center">
                     <legend>{{ $t(`history.${item.name}`) }}</legend>
                     <v-btn
-                        v-if="item.name === 'onlineReading'"
+                        v-if="item.name === 'onlineReading' && canClearHistory"
                         small
                         text
                         color="error"
@@ -110,10 +110,12 @@ export default {
     },
     computed: {
         history: function() {
-            if ( this.user.extra === undefined ) { return [] }
             return [
-                { name: 'onlineReading', books: this.get_history(this.user.extra.read_history) },
+                { name: 'onlineReading', books: this.onlineReadingBooks },
             ]
+        },
+        canClearHistory: function() {
+            return !!(this.user.allow_user_disable_statistic || this.user.is_admin);
         },
     },
     data: () => ({
@@ -121,6 +123,7 @@ export default {
         readingStats: null,
         currentReadingBooks: [],
         monthReadDoneBooks: [],
+        onlineReadingBooks: [],
         clearingHistory: false,
     }),
     async asyncData({ params, app, res }) {
@@ -148,6 +151,17 @@ export default {
                 this.user = rsp.user;
             });
 
+            // 获取在线阅读历史（从 Reading 表读取）
+            this.$backend("/user/history")
+            .then( rsp => {
+                if (rsp.err === 'ok') {
+                    this.onlineReadingBooks = rsp.books || [];
+                }
+            })
+            .catch(error => {
+                console.warn('Failed to load reading history:', error);
+            });
+
             // 获取阅读统计信息
             this.$backend("/reading/stats")
             .then( rsp => {
@@ -163,19 +177,12 @@ export default {
 
             if ( next ) next();
         },
-        get_history(his) {
-            if ( ! his ) { return []; }
-            return his.map( b => {
-                b.href = '/book/' + b.id;
-                return b;
-            });
-        },
         clearHistory(item) {
             this.clearingHistory = true;
             this.$backend('/user/history/clear', { method: 'POST' })
                 .then(rsp => {
                     if (rsp.err === 'ok') {
-                        this.$set(this.user.extra, 'read_history', []);
+                        this.onlineReadingBooks = [];
                     }
                 })
                 .finally(() => {

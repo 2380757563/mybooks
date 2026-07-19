@@ -115,6 +115,9 @@ class Reader(Base, SQLAlchemyMixin):
     limit_categories = Column(String(512), default="")
     limit_tags = Column(String(512), default="")
     podcast_token = Column(String(128), default="")
+    total_reading_seconds = Column(Integer, default=0, nullable=False)  # 累计阅读时长（秒），来自 Reading(action=read) 心跳累加
+    download_count = Column(Integer, default=0, nullable=False)  # 累计下载次数，仅 action=download 事件
+    allow_statistic = Column(Boolean, default=True, nullable=False)  # 是否采集该用户的阅读/下载统计，默认采集（opt-out）
 
     def __str__(self):
         return "<id=%d, username=%s, email=%s, admin:%d>" % (
@@ -139,7 +142,10 @@ class Reader(Base, SQLAlchemyMixin):
 
     def save(self):
         self.shrink_column_extra()
-        return super().save()
+        result = super().save()
+        from webserver.services.reader_cache import ReaderStatsCache
+        ReaderStatsCache().set_allow_statistic(self.id, self.allow_statistic)
+        return result
 
     def init_default_user(self):
         class DefaultUserInfo:
@@ -383,8 +389,8 @@ class Item(Base, SQLAlchemyMixin):
 
     book_id = Column(Integer, default=0, primary_key=True)
     count_guest = Column(Integer, default=0, nullable=False)
-    count_visit = Column(Integer, default=0, nullable=False)
-    count_download = Column(Integer, default=0, nullable=False)
+    count_visit = Column(Integer, default=0, nullable=False)  # 首次阅读次数：某用户首次产生该书的 Reading(action=read) 记录时 +1，由 ReadingWriteBuffer.flush() 维护
+    count_download = Column(Integer, default=0, nullable=False)  # 下载+推送次数：每新增一条 Reading(action=download/push) 记录 +1，由 ReadingWriteBuffer.flush() 维护
     website = Column(String(255), default="", nullable=False)
 
     collector_id = Column(Integer, ForeignKey("readers.id"))
@@ -534,6 +540,47 @@ class ReadingState(Base, SQLAlchemyMixin):
     def set_download(self, download_status):
         """设置下载状态"""
         self.download = 1 if download_status else 0
+
+
+# 用户对某本书的阅读/下载/推送行为记录（详见 document/Reading_Stats_Design.md）
+# action=read: 每个 (reader_id, book_id) 只保留一行，duration 跨所有历史会话累加，
+#              start_time 是"最近一次阅读会话"的开始时间；由 ux_readings_read 部分唯一索引 + upsert 维护（见 async_service.py）
+# action=download/push: 事件制，每次都新插入一行
+class Reading(Base, SQLAlchemyMixin):
+    __tablename__ = "readings"
+
+    ACTION_READ = "read"
+    ACTION_DOWNLOAD = "download"
+    ACTION_PUSH = "push"
+
+    PROTOCOL_WEB = "web"          # action=read | download
+    PROTOCOL_APP = "app"          # action=read（MyReader）
+    PROTOCOL_OPDS = "opds"        # action=download
+    PROTOCOL_WEBDAV = "webdav"    # action=download
+    PROTOCOL_DEVICE = "device"    # action=push
+    PROTOCOL_EMAIL = "email"      # action=push
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reader_id = Column(Integer, ForeignKey("readers.id"), nullable=False)
+    book_id = Column(Integer, nullable=False)
+    book_title = Column(String(512), default="")  # 保留字段，本轮不填充
+    action = Column(String(16), nullable=False)    # read | download | push
+    protocol = Column(String(16), nullable=False)  # 见 PROTOCOL_* 常量，按 action 区分含义
+    start_time = Column(DateTime, nullable=False)  # UTC；read=最近一次阅读会话开始时间，download/push=事件发生时间
+    duration = Column(Integer, default=0, nullable=False)  # 秒；仅 action=read 有意义，download/push 恒为 0
+    update_time = Column(DateTime, nullable=False)  # UTC；read=最后一次心跳时间，download/push=事件发生时间
+
+    reader = relationship(Reader, backref="readings")
+
+    def __init__(self, reader_id, book_id, action, protocol, start_time, duration=0, update_time=None):
+        super(Reading, self).__init__()
+        self.reader_id = reader_id
+        self.book_id = book_id
+        self.action = action
+        self.protocol = protocol
+        self.start_time = start_time
+        self.duration = duration
+        self.update_time = update_time or start_time
 
 
 class Device(Base, SQLAlchemyMixin):

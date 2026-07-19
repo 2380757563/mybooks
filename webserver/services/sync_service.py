@@ -23,6 +23,8 @@ from collections import defaultdict
 from typing import Dict, Optional, Set
 
 from webserver import loader
+from webserver.models import Reading
+from webserver.services.reading_stats_service import ReadingStatsService, parse_book_id_from_hash
 
 CONF = loader.get_settings()
 
@@ -196,6 +198,12 @@ class MyReaderSyncService:
                     merged_list.extend(book_merged)
                     if applied:
                         changed_scopes.add((kind, book_hash))
+                        if kind == "configs":
+                            # configs 记录（阅读进度/位置）是"仍在阅读"的心跳信号，见
+                            # document/Reading_Stats_Design.md §3.1；books/notes 的 push 不触发。
+                            book_id = parse_book_id_from_hash(book_hash)
+                            if book_id is not None:
+                                ReadingStatsService.heartbeat(uid, book_id, Reading.PROTOCOL_APP)
                 if merged_list:
                     result[kind] = merged_list
         for scope, book_hash in changed_scopes:

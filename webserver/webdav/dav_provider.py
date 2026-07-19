@@ -91,6 +91,11 @@ class WebDavResource(DAVNonCollection):
     def get_content(self):
         logging.info(f"****** Getting content for book ID {self.id}, path: {self.file_path}")
         if self.file_path and os.path.exists(self.file_path):
+            user = self.environ.get("mybooks.user")
+            if user is not None:
+                from webserver.models import Reading
+                from webserver.services.reading_stats_service import ReadingStatsService
+                ReadingStatsService.record_download(user.id, self.id, Reading.PROTOCOL_WEBDAV)
             return open(self.file_path, "rb")
         # Return an empty BytesIO object instead of raw bytes
         return BytesIO(b"")

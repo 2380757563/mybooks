@@ -31,7 +31,7 @@ from webserver.services.book_barn import BookBarnClient, BookBarnService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.services.book_search import BookSearch
 from webserver.handlers.base import BaseHandler, auth, js, is_admin
-from webserver.models import Reader, Item, Authors
+from webserver.models import Reader, Item, Authors, Reading
 from webserver.base.formatter import SimpleBookFormatter
 from webserver.base.setting_saver import SettingsSaver
 from webserver.base.trash_manager import TrashManager
@@ -83,8 +83,19 @@ class AdminUsers(BaseHandler):
         query = self.sqlite_session.query(Reader).order_by(f)
         total = query.count()
         start = page * num
+        page_users = query.limit(num).offset(start).all()
+        user_ids = [u.id for u in page_users]
+        reading_counts = {}
+        if user_ids:
+            rows = (
+                self.sqlite_session.query(Reading.reader_id, Reading.action, func.count(Reading.id))
+                .filter(Reading.reader_id.in_(user_ids), Reading.action.in_([Reading.ACTION_READ, Reading.ACTION_PUSH]))
+                .group_by(Reading.reader_id, Reading.action)
+                .all()
+            )
+            reading_counts = {(reader_id, action): cnt for reader_id, action, cnt in rows}
         items = []
-        for user in query.limit(num).offset(start).all():
+        for user in page_users:
             has_social_account = (
                 hasattr(user, "social_auth") and user.social_auth.count() > 0
             )
@@ -119,6 +130,10 @@ class AdminUsers(BaseHandler):
                 "read_limit": user.read_limit or 0,
                 "limit_categories": user.limit_categories or "",
                 "limit_tags": user.limit_tags or "",
+                "read_count": reading_counts.get((user.id, Reading.ACTION_READ), 0),
+                "push_count": reading_counts.get((user.id, Reading.ACTION_PUSH), 0),
+                "download_count": user.download_count or 0,
+                "total_reading_seconds": user.total_reading_seconds or 0,
             }
             if enable_vip_quota:
                 d["vipquota"] = user.vipquota or 0
@@ -410,7 +425,8 @@ class AdminSettings(BaseHandler):
             "BATCH_ADD_IN_FORCE",
             "DEFAULT_LANGUAGE",
             "ENABLE_DATA_SYNC",
-            "ENABLE_AUTHOR_INFO"
+            "ENABLE_AUTHOR_INFO",
+            "ALLOW_USER_DISABLE_STATISTIC",
         ]
 
         current_icon = CONF.get(

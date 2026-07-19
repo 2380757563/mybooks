@@ -121,6 +121,13 @@
                 hide-details
                 class="mt-0"
               ></v-checkbox>
+              <v-checkbox
+                v-if="user.allow_user_disable_statistic"
+                v-model="user.allow_statistic"
+                :label="$t('user.allow_statistic')"
+                hide-details
+                class="mt-0"
+              ></v-checkbox>
             </v-col>
 
             <!-- Password -->
@@ -450,6 +457,8 @@ export default {
         vipquota: undefined,
         vip_expire: "",
         podcast_token: "",
+        allow_statistic: true,
+        allow_user_disable_statistic: false,
         extra: {
           allow_sending_mail: true
         },
@@ -670,6 +679,7 @@ export default {
         kindle_email: this.user.kindle_email,
         podcast_token: this.user.podcast_token,
         allow_sending_mail: this.user.extra.allow_sending_mail,
+        allow_statistic: this.user.allow_statistic,
       };
 
       this.$backend("/user/update", {

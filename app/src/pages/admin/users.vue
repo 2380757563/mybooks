@@ -22,9 +22,9 @@
             </template>
             <template v-slot:item.detail="{ item }">
                 <span v-if="item.extra.visit_history"> {{ $t('admin.users.visit', { count: item.extra.visit_history.length }) }} </span>
-                <span v-if="item.extra.read_history"> {{ $t('admin.users.read_cnt', { count: item.extra.read_history.length }) }} </span>
-                <span v-if="item.extra.push_history"> {{ $t('admin.users.push_cnt', { count: item.extra.push_history.length }) }} </span>
-                <span v-if="item.extra.download_history_count"> {{ $t('admin.users.download_cnt', { count: item.extra.download_history_count }) }} </span>
+                <span v-if="item.read_count"> {{ $t('admin.users.read_cnt', { count: item.read_count }) }} </span>
+                <span v-if="item.push_count"> {{ $t('admin.users.push_cnt', { count: item.push_count }) }} </span>
+                <span v-if="item.download_count"> {{ $t('admin.users.download_cnt', { count: item.download_count }) }} </span>
                 <span v-if="item.extra.upload_history_count"> {{ $t('admin.users.upload_cnt', { count: item.extra.upload_history_count }) }} </span>
                 <span v-if="item.vipquota"> {{ $t('admin.users.vipquota', { count: item.vipquota }) }} </span>
             </template>

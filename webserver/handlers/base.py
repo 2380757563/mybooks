@@ -817,19 +817,6 @@ class BaseHandler(web.RequestHandler):
         else:
             return not matched  # blacklist: must not match any
 
-    def count_increase(self, book_id, **kwargs):
-        try:
-            item = self.sqlite_session.query(Item).filter(Item.book_id == book_id).one()
-        except Exception:
-            item = Item()
-            item.book_id = book_id
-
-        item.count_guest += kwargs.get("count_guest", 0)
-        item.count_visit += kwargs.get("count_visit", 0)
-        item.count_download += kwargs.get("count_download", 0)
-        self.sqlite_session.add(item)
-        self.sqlite_session.commit()
-
     def search_for_books(self, query):
         self.search_restriction = ""
         return self.calibre_db.search_getting_ids(

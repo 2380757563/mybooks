@@ -493,6 +493,13 @@ def make_app():
         from webserver.services.monitor_service import get_monitor_service
         get_monitor_service().start()
 
+    from webserver.services.reading_stats_service import ReadingStatsService
+    ReadingStatsService.start()
+    import atexit
+    # best-effort：覆盖正常退出/SIGINT，不保证 SIGKILL/supervisor 强杀场景，
+    # 见 document/Reading_Stats_Design.md §11.4
+    atexit.register(ReadingStatsService.stop)
+
     return app
 
 

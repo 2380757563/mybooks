@@ -832,8 +832,9 @@ class MCPService:
                 }))]
 
             # 下载计数
-            self.base_handler.increase_history_count("download_history")
-            self.base_handler.count_increase(book["id"], count_download=1)
+            from webserver.models import Reading
+            from webserver.services.reading_stats_service import ReadingStatsService
+            ReadingStatsService.record_download(user.id, book["id"], Reading.PROTOCOL_WEB)
 
             with open(file_path, "rb") as f:
                 file_data = f.read()

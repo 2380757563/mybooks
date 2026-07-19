@@ -14,7 +14,7 @@ from tornado import web
 from webserver import loader
 from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, auth, js
-from webserver.models import Device, ExpectedItem, Memo, Message, Reader, StickyItem
+from webserver.models import Device, ExpectedItem, Memo, Message, Reader, Reading, StickyItem
 
 CONF = loader.get_settings()
 COOKIE_REDIRECT = "login_redirect"
@@ -96,6 +96,10 @@ class UserUpdate(BaseHandler):
 
         if "allow_sending_mail" in data:
             user.extra["allow_sending_mail"] = bool(data.get("allow_sending_mail"))
+
+        if "allow_statistic" in data and CONF.get("ALLOW_USER_DISABLE_STATISTIC", False):
+            # 服务端二次校验总开关，避免绕过前端隐藏直接改这个字段
+            user.allow_statistic = bool(data.get("allow_statistic"))
 
         try:
             user.save()
@@ -475,6 +479,10 @@ class UserInfo(BaseHandler):
             "extra": {},
             "create_time": user.create_time.strftime("%Y-%m-%d %H:%M:%S"),
             "podcast_token": user.podcast_token or "",
+            "allow_statistic": user.allow_statistic,
+            "allow_user_disable_statistic": CONF.get("ALLOW_USER_DISABLE_STATISTIC", False),
+            "total_reading_seconds": user.total_reading_seconds or 0,
+            "download_count": user.download_count or 0,
         })
         if enable_vip_quota:
             d["vipquota"] = user.vipquota or 0
@@ -795,7 +803,7 @@ class UnpinItem(BaseHandler):
 
 
 class UserHistoryClear(BaseHandler):
-    """清理用户阅读记录"""
+    """清空用户阅读历史（物理删除 Reading(action=read) 记录）"""
 
     @js
     @auth
@@ -803,16 +811,50 @@ class UserHistoryClear(BaseHandler):
         user = self.current_user
         if not user:
             return {"err": "auth.error", "msg": _("请先登录")}
+        if not (CONF.get("ALLOW_USER_DISABLE_STATISTIC", False) or user.is_admin()):
+            return {"err": "permission", "msg": _("当前不允许清空阅读历史")}
         try:
-            extra = dict(user.extra) if user.extra else {}
-            extra["read_history"] = []
-            user.extra = extra
-            user.save()
+            self.sqlite_session.query(Reading).filter(
+                Reading.reader_id == user.id, Reading.action == Reading.ACTION_READ
+            ).delete(synchronize_session=False)
+            self.sqlite_session.commit()
             return {"err": "ok"}
         except Exception as e:
             logging.error("Clear read history failed: %s", e)
             self.sqlite_session.rollback()
             return {"err": "db.error", "msg": _("数据库操作异常，请重试")}
+
+
+class UserReadingHistory(BaseHandler):
+    """在线阅读历史（从 Reading(action=read) 表读取，替代旧的 extra.read_history）"""
+
+    @js
+    @auth
+    def get(self):
+        user = self.current_user
+        rows = (
+            self.sqlite_session.query(Reading)
+            .filter(Reading.reader_id == user.id, Reading.action == Reading.ACTION_READ)
+            .order_by(Reading.update_time.desc())
+            .limit(24)
+            .all()
+        )
+        ids = [r.book_id for r in rows]
+        books_by_id = {b["id"]: b for b in self.calibre_db.get_data_as_dict(ids=ids)} if ids else {}
+        result = []
+        for r in rows:
+            b = books_by_id.get(r.book_id)
+            if not b:
+                continue
+            b = dict(b)
+            b["timestamp"] = int(r.update_time.replace(tzinfo=datetime.timezone.utc).timestamp())
+            b["img"] = self.cdn_url + "/get/cover/%(id)s.jpg?t=%(timestamp)s" % b
+            b["href"] = "/book/%(id)s" % b
+            b["thumb"] = self.cdn_url + "/get/thumb_240_320/%(id)s.jpg?t=%(timestamp)s&size=240x320" % b
+            result.append(b)
+            if len(result) >= 12:
+                break
+        return {"err": "ok", "books": result}
 
 
 class UserExpectedItems(BaseHandler):
@@ -1188,6 +1230,7 @@ def routes():
         (r"/api/user/vip", UserVipInfo),
         (r"/api/user/messages", UserMessages),
         (r"/api/user/messages/clear", UserMessagesClear),
+        (r"/api/user/history", UserReadingHistory),
         (r"/api/user/sign_in", SignIn),
         (r"/api/user/sign_up", SignUp),
         (r"/api/user/new", UserNew),

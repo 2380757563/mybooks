@@ -41,7 +41,8 @@ class AsyncService(metaclass=SingletonType):
                 need_sync_item_time, changed = self.adjust_item_table()
                 reader_changed = self.adjust_reader_table()
                 scanfile_changed = self.adjust_scanfile_table()
-                changed = changed or reader_changed or scanfile_changed
+                self.adjust_readings_table()
+                changed = changed or reader_changed or scanfile_changed or True  # readings index creation is idempotent but must always be committed
                 if changed:
                     self.session.commit()
             except Exception as err:
@@ -124,7 +125,31 @@ class AsyncService(metaclass=SingletonType):
                 ALTER TABLE readers ADD COLUMN podcast_token STRING(128) DEFAULT ''
             """))
             changed = True
+
+        if "total_reading_seconds" not in columns:
+            self.session.execute(text("""
+                ALTER TABLE readers ADD COLUMN total_reading_seconds INTEGER DEFAULT 0
+            """))
+            self.session.execute(text("""
+                ALTER TABLE readers ADD COLUMN download_count INTEGER DEFAULT 0
+            """))
+            self.session.execute(text("""
+                ALTER TABLE readers ADD COLUMN allow_statistic BOOLEAN DEFAULT 1
+            """))
+            changed = True
         return changed
+
+    def adjust_readings_table(self):
+        # Reading 表本身随 Base.metadata.create_all() 自动创建；这里只补一个
+        # 部分唯一索引，支撑 action=read 的 upsert（同一 reader_id+book_id 只保留一行）。
+        self.session.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_readings_read
+            ON readings (reader_id, book_id) WHERE action = 'read'
+        """))
+        self.session.execute(text("""
+            CREATE INDEX IF NOT EXISTS ix_readings_reader_book_action
+            ON readings (reader_id, book_id, action)
+        """))
 
     def adjust_scanfile_table(self):
         result = self.session.execute(text("PRAGMA table_info(scanfiles)")).fetchall()
