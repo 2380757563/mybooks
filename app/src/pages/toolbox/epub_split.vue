@@ -98,15 +98,15 @@
               </v-row>
               <div class="es-chapter-list mb-4">
                 <v-checkbox
-                  v-for="chapter in chapters"
+                  v-for="(chapter, index) in chapters"
                   :key="chapter.num"
-                  v-model="selectedChapters"
-                  :value="chapter.num"
+                  :input-value="selectedChapters.includes(chapter.num)"
                   :label="chapter.title"
                   :title="chapter.preview"
                   dense
                   hide-details
                   class="es-chapter-item"
+                  @click.native.capture="onChapterClick($event, chapter, index)"
                 />
               </div>
             </template>
@@ -171,6 +171,7 @@ export default {
     chaptersLoading: false,
     chapters: [],
     selectedChapters: [],
+    lastClickedChapterIndex: null,
     chaptersErrorMsg: '',
 
     useFirstChapterCover: false,
@@ -207,6 +208,7 @@ export default {
       this.selected = null;
       this.chapters = [];
       this.selectedChapters = [];
+      this.lastClickedChapterIndex = null;
       this.chaptersErrorMsg = '';
       this.errorMsg = '';
       this.resultBook = null;
@@ -247,6 +249,27 @@ export default {
     },
     clearChapterSelection() {
       this.selectedChapters = [];
+      this.lastClickedChapterIndex = null;
+    },
+    onChapterClick(event, chapter, index) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.shiftKey && this.lastClickedChapterIndex !== null) {
+        const start = Math.min(this.lastClickedChapterIndex, index);
+        const end = Math.max(this.lastClickedChapterIndex, index);
+        const rangeNums = this.chapters.slice(start, end + 1).map((c) => c.num);
+        const merged = new Set(this.selectedChapters);
+        rangeNums.forEach((num) => merged.add(num));
+        this.selectedChapters = this.chapters.map((c) => c.num).filter((num) => merged.has(num));
+      } else {
+        const idx = this.selectedChapters.indexOf(chapter.num);
+        if (idx === -1) {
+          this.selectedChapters = [...this.selectedChapters, chapter.num];
+        } else {
+          this.selectedChapters = this.selectedChapters.filter((num) => num !== chapter.num);
+        }
+      }
+      this.lastClickedChapterIndex = index;
     },
     async generateBook() {
       if (this.selectedChapters.length === 0) return;
