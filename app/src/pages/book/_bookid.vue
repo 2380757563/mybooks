@@ -375,6 +375,10 @@
                                     <v-icon>settings_applications</v-icon>
                                     {{ $t('book.editBookInfo') }}
                                 </v-list-item>
+                                <v-list-item @click="dialog_send_to_device = true" :disabled="!hasCompatibleFormats">
+                                    <v-icon>devices</v-icon>
+                                    {{ $t('book.sendToDevice') }}
+                                </v-list-item>
                                 <v-list-item @click="getRefer">
                                     <v-icon>apps</v-icon>
                                     {{ $t('book.updateInfoFromInternet') }}
