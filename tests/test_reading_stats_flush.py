@@ -18,7 +18,7 @@ class TestReadingWriteBufferFlush(unittest.TestCase):
         models.bind_session(self.session)
         models.Base.metadata.create_all(engine)
         self.session.execute(
-            text("CREATE UNIQUE INDEX ux_readings_read ON readings (reader_id, book_id) WHERE action='read'")
+            text("CREATE UNIQUE INDEX ux_readings_read ON readings (reader_id, book_id, date) WHERE action='read'")
         )
         reader = Reader()
         reader.id = 1
@@ -54,6 +54,37 @@ class TestReadingWriteBufferFlush(unittest.TestCase):
 
         reader = self.session.query(Reader).filter_by(id=1).one()
         self.assertEqual(reader.total_reading_seconds, 5)
+
+    def test_reading_on_a_different_day_creates_a_new_row_and_bumps_count_visit_again(self):
+        t0 = datetime.datetime(2026, 1, 1, 12, 0, 0)
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, t0)
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, t0 + datetime.timedelta(seconds=5))
+        self.buf.flush()
+
+        rows = self.session.query(Reading).filter_by(reader_id=1, book_id=100, action=Reading.ACTION_READ).all()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].date, t0.date())
+        self.assertEqual(rows[0].duration, 5)
+        item = self.session.query(Item).filter_by(book_id=100).one()
+        self.assertEqual(item.count_visit, 1)
+
+        # same book, next day: a distinct per-day row, and count_visit counts it again
+        t1 = t0 + datetime.timedelta(days=1)
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, t1)
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, t1 + datetime.timedelta(seconds=8))
+        self.buf.flush()
+
+        rows = self.session.query(Reading).filter_by(reader_id=1, book_id=100, action=Reading.ACTION_READ).order_by(Reading.date).all()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0].date, t0.date())
+        self.assertEqual(rows[0].duration, 5)  # untouched by the next day's activity
+        self.assertEqual(rows[1].date, t1.date())
+        self.assertEqual(rows[1].duration, 8)
+        item = self.session.query(Item).filter_by(book_id=100).one()
+        self.assertEqual(item.count_visit, 2)  # opened on two distinct days -> counted twice
+
+        reader = self.session.query(Reader).filter_by(id=1).one()
+        self.assertEqual(reader.total_reading_seconds, 13)  # 5 + 8, still a global cross-day total
 
     def test_download_and_push_events_both_bump_item_count_download(self):
         t0 = datetime.datetime(2026, 1, 1, 0, 0, 0)

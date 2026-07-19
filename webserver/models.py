@@ -10,7 +10,7 @@ import os
 from webserver.i18n import _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.orm import relationship, declarative_base
 from webserver.constants import BOOK_TYPE_EBOOK
@@ -543,9 +543,10 @@ class ReadingState(Base, SQLAlchemyMixin):
 
 
 # 用户对某本书的阅读/下载/推送行为记录（详见 document/Reading_Stats_Design.md）
-# action=read: 每个 (reader_id, book_id) 只保留一行，duration 跨所有历史会话累加，
-#              start_time 是"最近一次阅读会话"的开始时间；由 ux_readings_read 部分唯一索引 + upsert 维护（见 async_service.py）
-# action=download/push: 事件制，每次都新插入一行
+# action=read: 每个 (reader_id, book_id, date) 只保留一行（date 是 UTC 日期，不含时间，
+#              用于按天统计阅读时长），duration 是当天累计时长，start_time 是当天"最近一次
+#              阅读会话"的开始时间；由 ux_readings_read 部分唯一索引 + upsert 维护（见 async_service.py）
+# action=download/push: 事件制，每次都新插入一行；date 取事件发生当天，不参与唯一性约束
 class Reading(Base, SQLAlchemyMixin):
     __tablename__ = "readings"
 
@@ -566,13 +567,14 @@ class Reading(Base, SQLAlchemyMixin):
     book_title = Column(String(512), default="")  # 保留字段，本轮不填充
     action = Column(String(16), nullable=False)    # read | download | push
     protocol = Column(String(16), nullable=False)  # 见 PROTOCOL_* 常量，按 action 区分含义
-    start_time = Column(DateTime, nullable=False)  # UTC；read=最近一次阅读会话开始时间，download/push=事件发生时间
+    date = Column(Date, nullable=False)  # UTC 日期（不含时间）；action=read 时是唯一键的一部分
+    start_time = Column(DateTime, nullable=False)  # UTC；read=当天最近一次阅读会话开始时间，download/push=事件发生时间
     duration = Column(Integer, default=0, nullable=False)  # 秒；仅 action=read 有意义，download/push 恒为 0
     update_time = Column(DateTime, nullable=False)  # UTC；read=最后一次心跳时间，download/push=事件发生时间
 
     reader = relationship(Reader, backref="readings")
 
-    def __init__(self, reader_id, book_id, action, protocol, start_time, duration=0, update_time=None):
+    def __init__(self, reader_id, book_id, action, protocol, start_time, duration=0, update_time=None, date=None):
         super(Reading, self).__init__()
         self.reader_id = reader_id
         self.book_id = book_id
@@ -581,6 +583,7 @@ class Reading(Base, SQLAlchemyMixin):
         self.start_time = start_time
         self.duration = duration
         self.update_time = update_time or start_time
+        self.date = date or self.update_time.date()
 
 
 class Device(Base, SQLAlchemyMixin):

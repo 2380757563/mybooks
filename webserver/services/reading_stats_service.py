@@ -44,12 +44,20 @@ def parse_book_id_from_hash(book_hash: Optional[str]) -> Optional[int]:
 
 @dataclass
 class _PendingSession:
+    """跟踪一个 (reader_id, book_id) 当前"打开中"的 Reading(action=read) 天级行。
+
+    current_date 标识现在缓冲的是哪一天的行；日期变化（跨天）或心跳间隔超过
+    HEARTBEAT_MAX_GAP 都会重置为一行新的天级记录（duration_delta 清零、dirty=True）。
+    """
+
+    current_date: datetime.date
     session_start: datetime.datetime
     last_seen: datetime.datetime
     protocol: str
     duration_delta: int = 0
     dirty: bool = False
-    # 是否已经确认过 Item.count_visit 的首次阅读计数（只需要判定一次，成功 flush 后置 True）
+    # 是否已经确认过 Item.count_visit 的首次阅读计数（按 current_date 这一天判定一次，
+    # 跨天/新开一行时会随 current_date 一起重置为 False）
     visit_counted: bool = False
 
 
@@ -80,26 +88,20 @@ class ReadingWriteBuffer:
         with self._lock:
             key = (reader_id, book_id)
             session = self._sessions.get(key)
-            if session is None:
-                # First heartbeat this process has seen for this book; whether a
-                # Reading(action=read) row already exists in the DB is resolved
-                # by the upsert in flush(), not here.
+            today = now_utc.date()
+            # 三种情况都视为"开启一行新的天级记录"：从未见过这本书的心跳、日期跨天了、
+            # 或者心跳间隔超过阈值（新的一次阅读会话）。跨天时丢弃这次心跳的 delta（最多
+            # 相当于一个心跳周期的误差，可接受，见 document/Reading_Stats_Design.md §11.4）。
+            is_new_bucket = session is None or session.current_date != today or (now_utc - session.last_seen) > HEARTBEAT_MAX_GAP
+            if is_new_bucket:
                 self._sessions[key] = _PendingSession(
-                    session_start=now_utc, last_seen=now_utc, protocol=protocol, duration_delta=0, dirty=True
+                    current_date=today, session_start=now_utc, last_seen=now_utc, protocol=protocol, duration_delta=0, dirty=True
                 )
-                delta = 0
-            elif (now_utc - session.last_seen) <= HEARTBEAT_MAX_GAP:
-                delta = int((now_utc - session.last_seen).total_seconds())
-                session.duration_delta += delta
-                session.last_seen = now_utc
-                session.protocol = protocol
-            else:
-                # Gap too large: treat as a new reading session on the same row.
-                delta = 0
-                session.session_start = now_utc
-                session.last_seen = now_utc
-                session.protocol = protocol
-                session.dirty = True
+                return
+            delta = int((now_utc - session.last_seen).total_seconds())
+            session.duration_delta += delta
+            session.last_seen = now_utc
+            session.protocol = protocol
             if delta:
                 self._reader_seconds_delta[reader_id] = self._reader_seconds_delta.get(reader_id, 0) + delta
 
@@ -111,13 +113,13 @@ class ReadingWriteBuffer:
 
     def flush(self) -> None:
         with self._lock:
-            pending = []
-            visit_check_keys = []
-            for key, s in self._sessions.items():
+            pending = []  # (reader_id, book_id, date, session_start, duration_delta, last_seen, protocol)
+            visit_check_keys = []  # (reader_id, book_id, date)
+            for (reader_id, book_id), s in self._sessions.items():
                 if s.duration_delta or s.dirty:
-                    pending.append((key, s.session_start, s.duration_delta, s.last_seen, s.protocol))
+                    pending.append((reader_id, book_id, s.current_date, s.session_start, s.duration_delta, s.last_seen, s.protocol))
                     if not s.visit_counted:
-                        visit_check_keys.append(key)
+                        visit_check_keys.append((reader_id, book_id, s.current_date))
             for s in self._sessions.values():
                 s.duration_delta = 0
                 s.dirty = False
@@ -130,25 +132,31 @@ class ReadingWriteBuffer:
 
         db = Reading._session()
         try:
-            # Item.count_visit = 首次阅读次数：只在这本书对这个 reader 第一次真正落库
-            # action=read 记录时才 +1，需要在 upsert 前查一次是否已存在。
+            # Item.count_visit = 唯一打开次数：这本书对这个 reader 在这一天第一次真正
+            # 落库 action=read 记录时才 +1（不同天再打开也各算一次），需要在 upsert
+            # 前查一次这一天的行是否已存在。
             book_visit_delta: Dict[int, int] = {}
-            for reader_id, book_id in visit_check_keys:
+            for reader_id, book_id, date in visit_check_keys:
                 exists = (
                     db.query(Reading.id)
-                    .filter(Reading.reader_id == reader_id, Reading.book_id == book_id, Reading.action == Reading.ACTION_READ)
+                    .filter(
+                        Reading.reader_id == reader_id,
+                        Reading.book_id == book_id,
+                        Reading.action == Reading.ACTION_READ,
+                        Reading.date == date,
+                    )
                     .first()
                 )
                 if exists is None:
                     book_visit_delta[book_id] = book_visit_delta.get(book_id, 0) + 1
 
-            for (reader_id, book_id), session_start, duration_delta, last_seen, protocol in pending:
+            for reader_id, book_id, date, session_start, duration_delta, last_seen, protocol in pending:
                 db.execute(
                     text(
                         """
-                        INSERT INTO readings (reader_id, book_id, action, protocol, start_time, duration, update_time)
-                        VALUES (:reader_id, :book_id, 'read', :protocol, :start_time, :duration, :update_time)
-                        ON CONFLICT(reader_id, book_id) WHERE action='read' DO UPDATE SET
+                        INSERT INTO readings (reader_id, book_id, action, protocol, date, start_time, duration, update_time)
+                        VALUES (:reader_id, :book_id, 'read', :protocol, :date, :start_time, :duration, :update_time)
+                        ON CONFLICT(reader_id, book_id, date) WHERE action='read' DO UPDATE SET
                             duration = duration + excluded.duration,
                             update_time = excluded.update_time,
                             start_time = excluded.start_time,
@@ -158,6 +166,7 @@ class ReadingWriteBuffer:
                     dict(
                         reader_id=reader_id,
                         book_id=book_id,
+                        date=date,
                         protocol=protocol,
                         start_time=session_start,
                         duration=duration_delta,
@@ -192,20 +201,23 @@ class ReadingWriteBuffer:
             db.commit()
             if visit_check_keys:
                 with self._lock:
-                    for key in visit_check_keys:
-                        session = self._sessions.get(key)
-                        if session is not None:
+                    for reader_id, book_id, date in visit_check_keys:
+                        session = self._sessions.get((reader_id, book_id))
+                        # 只有 flush 期间没有再被心跳跨天/开新会话覆盖时才标记，
+                        # 否则这个 date 对应的 bucket 已经不是当前打开的那个了。
+                        if session is not None and session.current_date == date:
                             session.visit_counted = True
         except Exception:
             db.rollback()
             logging.error("[reading_stats] flush failed, data kept for retry on next tick", exc_info=True)
             with self._lock:
-                for (reader_id, book_id), session_start, duration_delta, last_seen, protocol in pending:
-                    key = (reader_id, book_id)
-                    session = self._sessions.get(key)
-                    if session is not None:
+                for reader_id, book_id, date, session_start, duration_delta, last_seen, protocol in pending:
+                    session = self._sessions.get((reader_id, book_id))
+                    if session is not None and session.current_date == date:
                         session.duration_delta += duration_delta
                         session.dirty = True
+                    # 否则这一天的 bucket 已经因为跨天/新会话被覆盖，这次失败的增量随之丢弃
+                    # （见 document/Reading_Stats_Design.md §11.4，属于已知的、有界的近似误差）
                 self._events = events_snapshot + self._events
                 for reader_id, delta in seconds_delta.items():
                     self._reader_seconds_delta[reader_id] = self._reader_seconds_delta.get(reader_id, 0) + delta

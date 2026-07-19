@@ -140,11 +140,20 @@ class AsyncService(metaclass=SingletonType):
         return changed
 
     def adjust_readings_table(self):
-        # Reading 表本身随 Base.metadata.create_all() 自动创建；这里只补一个
-        # 部分唯一索引，支撑 action=read 的 upsert（同一 reader_id+book_id 只保留一行）。
+        # Reading 表本身随 Base.metadata.create_all() 自动创建。
+        result = self.session.execute(text("PRAGMA table_info(readings)")).fetchall()
+        columns = [row[1] for row in result]
+        if "date" not in columns:
+            self.session.execute(text("ALTER TABLE readings ADD COLUMN date DATE"))
+            # 回填历史行的 date（早期版本按 reader_id+book_id 全局一行，没有按天分桶）
+            self.session.execute(text("UPDATE readings SET date = DATE(update_time) WHERE date IS NULL"))
+            # 旧的部分唯一索引是 (reader_id, book_id)，与新的 (reader_id, book_id, date) 定义不同，需要重建
+            self.session.execute(text("DROP INDEX IF EXISTS ux_readings_read"))
+
+        # 部分唯一索引，支撑 action=read 的 upsert（同一 reader_id+book_id+date 只保留一行，见 §11 upsert）
         self.session.execute(text("""
             CREATE UNIQUE INDEX IF NOT EXISTS ux_readings_read
-            ON readings (reader_id, book_id) WHERE action = 'read'
+            ON readings (reader_id, book_id, date) WHERE action = 'read'
         """))
         self.session.execute(text("""
             CREATE INDEX IF NOT EXISTS ix_readings_reader_book_action

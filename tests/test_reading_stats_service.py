@@ -37,6 +37,7 @@ class TestReadingWriteBuffer(unittest.TestCase):
         self.assertEqual(session.duration_delta, 0)
         self.assertTrue(session.dirty)
         self.assertEqual(session.session_start, self.t0)
+        self.assertEqual(session.current_date, self.t0.date())
         self.assertEqual(self.buf._reader_seconds_delta, {})
 
     def test_heartbeat_within_gap_accumulates_duration(self):
@@ -58,13 +59,28 @@ class TestReadingWriteBuffer(unittest.TestCase):
         self.assertTrue(session.dirty)
         self.assertNotIn(1, self.buf._reader_seconds_delta)
 
+    def test_heartbeat_crossing_midnight_opens_a_new_day_bucket(self):
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, self.t0)
+        t1 = self.t0 + datetime.timedelta(seconds=5)
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, t1)  # duration_delta=5, same day
+
+        next_day = self.t0 + datetime.timedelta(days=1, seconds=10)  # gap well within 60s window
+        self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, next_day)
+        session = self.buf._sessions[(1, 100)]
+        # crossing into a new date always opens a fresh bucket, even though the
+        # real-time gap here is small — see document/Reading_Stats_Design.md §11.4
+        self.assertEqual(session.current_date, next_day.date())
+        self.assertEqual(session.duration_delta, 0)
+        self.assertTrue(session.dirty)
+        self.assertFalse(session.visit_counted)
+
     def test_flush_snapshot_clears_pending_but_keeps_session_state(self):
         self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, self.t0)
         t1 = self.t0 + datetime.timedelta(seconds=5)
         self.buf.on_heartbeat(1, 100, Reading.PROTOCOL_APP, t1)
         with self.buf._lock:
             pending = [
-                (key, s.session_start, s.duration_delta, s.last_seen, s.protocol)
+                (key, s.current_date, s.session_start, s.duration_delta, s.last_seen, s.protocol)
                 for key, s in self.buf._sessions.items()
                 if s.duration_delta or s.dirty
             ]
@@ -72,7 +88,7 @@ class TestReadingWriteBuffer(unittest.TestCase):
                 s.duration_delta = 0
                 s.dirty = False
         self.assertEqual(len(pending), 1)
-        self.assertEqual(pending[0][2], 5)
+        self.assertEqual(pending[0][3], 5)
         session = self.buf._sessions[(1, 100)]
         self.assertEqual(session.duration_delta, 0)
         self.assertFalse(session.dirty)
