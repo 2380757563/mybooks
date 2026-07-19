@@ -96,6 +96,7 @@ class ToolSet:
         from .formats_pruning import FormatsPruningTool
         from .epub_fixer import EpubFixerTool
         from .epub_split import EpubSplitTool
+        from .author_clean_tool import AuthorCleanTool
         ToolSet.register(RareBookDownloader.info())
         ToolSet.register(MergeFormatsTool.info())
         ToolSet.register(ReviewBookLanguageTool.info())
@@ -104,6 +105,7 @@ class ToolSet:
         ToolSet.register(FormatsPruningTool.info())
         ToolSet.register(EpubFixerTool.info())
         ToolSet.register(EpubSplitTool.info())
+        ToolSet.register(AuthorCleanTool.info())
         MinifyPdfTool.cleanup_old_files()
 
     @staticmethod

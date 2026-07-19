@@ -1111,6 +1111,26 @@
     "startBtn": "开始执行",
     "success": "书名语言检测任务已启动，右上角可查看进度"
   },
+  "authorClean": {
+    "title": "作者清理",
+    "close": "关闭",
+    "description": "输入一个现有作者名称，对该作者名下的所有书籍执行清理或替换操作。",
+    "authorLabel": "现有作者名称",
+    "authorPlaceholder": "输入或选择一个现有作者",
+    "actionLabel": "操作类型",
+    "actionClean": "清理（从多作者书籍中删除该作者）",
+    "actionReplace": "替换（将该作者名替换为新名称）",
+    "cleanHint": "仅当书籍还有其他作者时才会删除该作者，只有一个作者的书籍将保持不变。",
+    "newAuthorLabel": "新作者名称",
+    "newAuthorPlaceholder": "仅允许字母、数字、“.”和“·”",
+    "newAuthorInvalid": "新作者名称仅允许字母、数字、“.”和“·”，不能包含空格、引号等其他符号",
+    "replaceHint": "该作者名下所有书籍中匹配的作者都会被替换为新名称。",
+    "startBtn": "开始执行",
+    "confirmTitle": "确认执行",
+    "confirmClean": "确定要清理作者“{author}”吗？该操作将从多作者书籍中删除此作者。",
+    "confirmReplace": "确定要将作者“{author}”替换为“{newAuthor}”吗？",
+    "success": "任务已启动，右上角可查看进度"
+  },
   "rareBookDownloader": {
     "title": "古书下载",
     "subtitle": "从香港科技大学图书馆下载古书并导入书库",

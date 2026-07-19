@@ -1108,6 +1108,26 @@
     "startBtn": "Start",
     "success": "Book title language review task started. Check progress in the top right corner."
   },
+  "authorClean": {
+    "title": "Author Cleanup",
+    "close": "Close",
+    "description": "Enter an existing author name and clean up or replace it across all matching books.",
+    "authorLabel": "Existing author name",
+    "authorPlaceholder": "Type or select an existing author",
+    "actionLabel": "Action",
+    "actionClean": "Clean (remove this author from multi-author books)",
+    "actionReplace": "Replace (rename this author to a new name)",
+    "cleanHint": "The author is only removed when the book has other authors; single-author books are left unchanged.",
+    "newAuthorLabel": "New author name",
+    "newAuthorPlaceholder": "Only letters, digits, \".\" and \"·\" are allowed",
+    "newAuthorInvalid": "The new author name may only contain letters, digits, \".\" and \"·\" — spaces, quotes and other symbols are not allowed",
+    "replaceHint": "All matching authors on this author's books will be renamed to the new name.",
+    "startBtn": "Start",
+    "confirmTitle": "Confirm",
+    "confirmClean": "Clean up author \"{author}\"? This removes the author from multi-author books.",
+    "confirmReplace": "Replace author \"{author}\" with \"{newAuthor}\"?",
+    "success": "Task started. Check progress in the top right corner."
+  },
   "rareBookDownloader": {
     "title": "Rare Book Downloader",
     "subtitle": "Download rare books from HKUST Library and import into your library",

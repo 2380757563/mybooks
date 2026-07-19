@@ -502,5 +502,11 @@
   "简介:": "Comments:",
   "出版社:": "Publisher:",
   "丛书:": "Series:",
-  "标签:": "Tags:"
+  "标签:": "Tags:",
+  "请提供现有作者名称": "Please provide the existing author name",
+  "作者清理任务已启动，右上角可以查看进度": "Author cleanup task started. Check progress in the top right corner.",
+  "请提供新的作者名称": "Please provide the new author name",
+  "新作者名称仅允许使用字母、数字、“.”和“·”，不能包含空格、引号等其他符号": "The new author name may only contain letters, digits, \".\" and \"·\" — spaces, quotes and other symbols are not allowed",
+  "作者替换任务已启动，右上角可以查看进度": "Author replace task started. Check progress in the top right corner.",
+  "无效的操作类型": "Invalid action type"
 }

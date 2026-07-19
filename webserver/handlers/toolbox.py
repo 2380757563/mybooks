@@ -15,6 +15,7 @@ from webserver.toolbox.minify_pdf import MinifyPdfTool
 from webserver.toolbox.formats_pruning import FormatsPruningTool
 from webserver.toolbox.epub_fixer import EpubFixerTool
 from webserver.toolbox.epub_split import EpubSplitTool
+from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -334,6 +335,35 @@ class AdminEpubSplitGenerate(BaseHandler):
         return {"err": "ok", "msg": _("新书生成成功"), "data": result}
 
 
+class AdminAuthorClean(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        action = (data.get("action") or "").strip()
+        author_name = (data.get("author_name") or "").strip()
+        new_author_name = (data.get("new_author_name") or "").strip()
+
+        if not author_name:
+            return {"err": "params.author_name.missing", "msg": _("请提供现有作者名称")}
+
+        if action == "clean":
+            AuthorCleanTool().clean(author_name, self.user_id())
+            return {"err": "ok", "msg": _("作者清理任务已启动，右上角可以查看进度")}
+        elif action == "replace":
+            if not new_author_name:
+                return {"err": "params.new_author_name.missing", "msg": _("请提供新的作者名称")}
+            if not AuthorCleanTool.validate_new_author_name(new_author_name):
+                return {
+                    "err": "params.new_author_name.invalid",
+                    "msg": _("新作者名称仅允许使用字母、数字、“.”和“·”，不能包含空格、引号等其他符号"),
+                }
+            AuthorCleanTool().replace(author_name, new_author_name, self.user_id())
+            return {"err": "ok", "msg": _("作者替换任务已启动，右上角可以查看进度")}
+        else:
+            return {"err": "params.action.invalid", "msg": _("无效的操作类型")}
+
+
 def routes():
     return [
         (r"/api/toolbox/list", AdminToolList),
@@ -349,4 +379,5 @@ def routes():
         (r"/api/toolbox/epub_fixer/fix", AdminEpubFixerFix),
         (r"/api/toolbox/epub_split/chapters", AdminEpubSplitChapters),
         (r"/api/toolbox/epub_split/generate", AdminEpubSplitGenerate),
+        (r"/api/toolbox/author_clean", AdminAuthorClean),
     ]

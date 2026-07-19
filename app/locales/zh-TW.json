@@ -1108,6 +1108,26 @@
     "startBtn": "開始執行",
     "success": "書名語言偵測任務已啟動，右上角可查看進度"
   },
+  "authorClean": {
+    "title": "作者清理",
+    "close": "關閉",
+    "description": "輸入一個現有作者名稱，對該作者名下的所有書籍執行清理或替換操作。",
+    "authorLabel": "現有作者名稱",
+    "authorPlaceholder": "輸入或選擇一個現有作者",
+    "actionLabel": "操作類型",
+    "actionClean": "清理（從多作者書籍中刪除該作者）",
+    "actionReplace": "替換（將該作者名替換為新名稱）",
+    "cleanHint": "僅當書籍還有其他作者時才會刪除該作者，只有一個作者的書籍將保持不變。",
+    "newAuthorLabel": "新作者名稱",
+    "newAuthorPlaceholder": "僅允許字母、數字、「.」和「·」",
+    "newAuthorInvalid": "新作者名稱僅允許字母、數字、「.」和「·」，不能包含空格、引號等其他符號",
+    "replaceHint": "該作者名下所有書籍中匹配的作者都會被替換為新名稱。",
+    "startBtn": "開始執行",
+    "confirmTitle": "確認執行",
+    "confirmClean": "確定要清理作者「{author}」嗎？該操作將從多作者書籍中刪除此作者。",
+    "confirmReplace": "確定要將作者「{author}」替換為「{newAuthor}」嗎？",
+    "success": "任務已啟動，右上角可查看進度"
+  },
   "rareBookDownloader": {
     "title": "古書下載",
     "subtitle": "從香港科技大學圖書館下載古書並匯入書庫",
