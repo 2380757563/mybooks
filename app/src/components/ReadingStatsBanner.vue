@@ -1,7 +1,7 @@
 <template>
     <v-row v-if="stats" class="reading-stats-banner">
         <v-col cols=12>
-            <div class="d-flex align-center mb-2">
+            <div class="d-flex align-center mb-2" v-if="showTitle">
                 <p class="ma-0 title">{{ $t('index.readingStats.title') }}</p>
             </div>
             <div class="reading-stats-cards">
@@ -62,6 +62,10 @@ import DoughnutChart from '~/components/charts/DoughnutChart.vue';
 export default {
     name: 'ReadingStatsBanner',
     components: { BarChart, LineChart, DoughnutChart },
+    props: {
+        uid: { type: [Number, String], default: null },
+        showTitle: { type: Boolean, default: true },
+    },
     data: () => ({
         stats: null,
     }),
@@ -191,7 +195,8 @@ export default {
                 return;
             }
             try {
-                const rsp = await this.$backend('/user/reading_stats');
+                const url = this.uid ? `/user/reading_stats?uid=${encodeURIComponent(this.uid)}` : '/user/reading_stats';
+                const rsp = await this.$backend(url);
                 if (rsp.err === 'ok' && rsp.enabled) {
                     this.stats = rsp;
                 }

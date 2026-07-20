@@ -338,6 +338,8 @@
       "push_cnt": "Pushed {count} books",
       "download_cnt": "Downloaded {count} books",
       "upload_cnt": "Uploaded {count} books",
+      "expand_detail": "Expand details",
+      "collapse_detail": "Collapse details",
       "modify_permissions": "Modify User Permissions",
       "allowed": "Allowed {permission}",
       "prohibited": "Prohibited {permission}",

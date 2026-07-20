@@ -336,6 +336,8 @@
       "push_cnt": "推送{count}本",
       "download_cnt": "下载{count}本",
       "upload_cnt": "上传{count}本",
+      "expand_detail": "展开详情",
+      "collapse_detail": "收起详情",
       "modify_permissions": "修改用户权限",
       "allowed": "已允许{permission}",
       "prohibited": "已禁止{permission}",

@@ -866,6 +866,14 @@ class UserReadingDashboard(BaseHandler):
         from webserver.services import reading_dashboard_service
 
         user = self.current_user
+        uid = self.get_argument("uid", "").strip()
+        if uid:
+            if not self.is_admin():
+                return {"err": "failed", "msg": "permission denied"}
+            user = self.sqlite_session.query(Reader).get(int(uid))
+            if user is None:
+                return {"err": "failed", "msg": "user not found"}
+
         stats = reading_dashboard_service.get_stats(self.sqlite_session, user)
         if stats is None:
             return {"err": "ok", "enabled": False}

@@ -15,18 +15,25 @@
             :loading="loading"
             :items-per-page="10"
             :footer-props="{ 'items-per-page-options': [10, 50, 100] }"
+            item-key="id"
+            :expanded="expandedItems"
             class="elevation-1"
         >
             <template v-slot:item.login_ip="{ item }">
                 {{ item.extra.login_ip }}
             </template>
             <template v-slot:item.detail="{ item }">
-                <span v-if="item.extra.visit_history"> {{ $t('admin.users.visit', { count: item.extra.visit_history.length }) }} </span>
-                <span v-if="item.read_count"> {{ $t('admin.users.read_cnt', { count: item.read_count }) }} </span>
-                <span v-if="item.push_count"> {{ $t('admin.users.push_cnt', { count: item.push_count }) }} </span>
-                <span v-if="item.download_count"> {{ $t('admin.users.download_cnt', { count: item.download_count }) }} </span>
-                <span v-if="item.extra.upload_history_count"> {{ $t('admin.users.upload_cnt', { count: item.extra.upload_history_count }) }} </span>
-                <span v-if="item.vipquota"> {{ $t('admin.users.vipquota', { count: item.vipquota }) }} </span>
+                <div>
+                    <span v-if="item.extra.upload_history_count"> {{ $t('admin.users.upload_cnt', { count: item.extra.upload_history_count }) }} </span>
+                </div>
+                <v-btn text color="primary" class="pa-0 detail-toggle-btn" @click="toggleStatsDetail(item)">
+                    {{ expandedUserId === item.id ? $t('admin.users.collapse_detail') : $t('admin.users.expand_detail') }}
+                </v-btn>
+            </template>
+            <template v-slot:expanded-item="{ headers, item }">
+                <td :colspan="headers.length" v-if="expandedUserId === item.id">
+                    <reading-stats-banner :uid="item.id" :show-title="false" />
+                </td>
             </template>
             <template v-slot:item.actions="{ item }">
                 <v-btn small color="#31D18A" class="white--text" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
@@ -317,12 +324,16 @@
 </template>
 
 <script>
+import ReadingStatsBanner from '~/components/ReadingStatsBanner.vue';
+
 export default {
+    components: { ReadingStatsBanner },
     data: () => ({
         page: 1,
         items: [],
         total: 0,
         loading: true,
+        expandedUserId: null,
         options: { sortBy: ["access_time"], sortDesc: [true] },
         headers: [],
         permissions: [],
@@ -407,8 +418,14 @@ export default {
         pageCount: function () {
             return parseInt(this.total / 20);
         },
+        expandedItems() {
+            return this.items.filter((i) => i.id === this.expandedUserId);
+        },
     },
     methods: {
+        toggleStatsDetail(item) {
+            this.expandedUserId = this.expandedUserId === item.id ? null : item.id;
+        },
         openReadingRangeDialog(item) {
             this.readingRangeUserId = item.id;
             this.readingRange = {
@@ -576,6 +593,7 @@ export default {
         },
         getDataFromApi() {
             this.loading = true;
+            this.expandedUserId = null;
             const { sortBy, sortDesc, page, itemsPerPage } = this.options;
 
             var data = new URLSearchParams();
@@ -621,3 +639,9 @@ export default {
     },
 };
 </script>
+
+<style scoped>
+.detail-toggle-btn >>> .v-btn__content {
+    font-size: 14px;
+}
+</style>
