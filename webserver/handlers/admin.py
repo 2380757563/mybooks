@@ -67,12 +67,24 @@ class AdminUsers(BaseHandler):
         desc = self.get_argument("desc", "desc")
         logging.debug("num=%d, page=%d, sort=%s, desc=%s" % (num, page, sort, desc))
 
+        push_count_subq = None
+        if sort == "push_count":
+            push_count_subq = (
+                self.sqlite_session.query(Reading.reader_id.label("reader_id"), func.count(Reading.id).label("push_cnt"))
+                .filter(Reading.action == Reading.ACTION_PUSH)
+                .group_by(Reading.reader_id)
+                .subquery()
+            )
+
         f = {
             "id": Reader.id,
             "access_time": Reader.access_time,
             "create_time": Reader.create_time,
             "update_time": Reader.update_time,
             "username": Reader.username,
+            "total_reading_seconds": Reader.total_reading_seconds,
+            "download_count": Reader.download_count,
+            "push_count": func.coalesce(push_count_subq.c.push_cnt, 0) if push_count_subq is not None else None,
         }.get(sort, Reader.id)
         if desc == "false":
             f = f.asc()
@@ -80,7 +92,10 @@ class AdminUsers(BaseHandler):
             f = f.desc()
 
         enable_vip_quota = CONF.get(ENABLE_VIP_QUOTA_KEY, False)
-        query = self.sqlite_session.query(Reader).order_by(f)
+        query = self.sqlite_session.query(Reader)
+        if push_count_subq is not None:
+            query = query.outerjoin(push_count_subq, Reader.id == push_count_subq.c.reader_id)
+        query = query.order_by(f)
         total = query.count()
         start = page * num
         page_users = query.limit(num).offset(start).all()

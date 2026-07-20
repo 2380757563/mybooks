@@ -33,7 +33,9 @@
         </v-col>
     </v-row>
 
-    <reading-stats-banner></reading-stats-banner>
+    <div class="reading-stats-banner-wrapper">
+        <reading-stats-banner></reading-stats-banner>
+    </div>
 
     <v-row v-if="random_books.length > 0">
         <v-col cols=12>
@@ -228,6 +230,12 @@ export default {
 </script>
 
 <style>
+@media (max-width: 640px) {
+    .reading-stats-banner-wrapper {
+        display: none;
+    }
+}
+
 /* 书库统计标题栏样式 */
 .library-stats-bar {
     background: #55655f;

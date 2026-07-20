@@ -22,6 +22,17 @@
             <template v-slot:item.login_ip="{ item }">
                 {{ item.extra.login_ip }}
             </template>
+            <template v-slot:item.total_reading_seconds="{ item }">
+                {{ (item.total_reading_seconds / 3600).toFixed(1) }}
+            </template>
+            <template v-slot:item.create_time="{ item }">
+                <div>{{ splitDateTime(item.create_time).date }}</div>
+                <div>{{ splitDateTime(item.create_time).time }}</div>
+            </template>
+            <template v-slot:item.access_time="{ item }">
+                <div>{{ splitDateTime(item.access_time).date }}</div>
+                <div>{{ splitDateTime(item.access_time).time }}</div>
+            </template>
             <template v-slot:item.detail="{ item }">
                 <div>
                     <span v-if="item.extra.upload_history_count"> {{ $t('admin.users.upload_cnt', { count: item.extra.upload_history_count }) }} </span>
@@ -389,6 +400,9 @@ export default {
             { text: this.$t('admin.users.create_time'), sortable: true, value: "create_time" },
             { text: this.$t('admin.users.access_time'), sortable: true, value: "access_time" },
             { text: this.$t('admin.users.login_ip'), sortable: false, value: "login_ip" },
+            { text: this.$t('admin.users.total_reading_hours'), sortable: true, value: "total_reading_seconds" },
+            { text: this.$t('admin.users.download_count'), sortable: true, value: "download_count" },
+            { text: this.$t('admin.users.push_count'), sortable: true, value: "push_count" },
             { text: this.$t('admin.users.detail'), sortable: false, value: "detail" },
             { text: this.$t('admin.users.actions'), sortable: false, value: "actions" },
         ];
@@ -423,6 +437,13 @@ export default {
         },
     },
     methods: {
+        splitDateTime(value) {
+            if (!value) {
+                return { date: "", time: "" };
+            }
+            const [date, time = ""] = value.split(" ");
+            return { date, time };
+        },
         toggleStatsDetail(item) {
             this.expandedUserId = this.expandedUserId === item.id ? null : item.id;
         },
