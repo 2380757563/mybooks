@@ -109,5 +109,11 @@ export default {
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {
+    extend(config) {
+      // vue-chartjs@3.x expects a default export from 'chart.js', but chart.js@3.x
+      // only exports named bindings and requires explicit controller/scale registration.
+      // 'chart.js/auto' provides both a default export and auto-registers everything.
+      config.resolve.alias['chart.js'] = 'chart.js/auto';
+    },
   }
 }
