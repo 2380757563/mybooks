@@ -642,6 +642,8 @@
     "trash_clear_confirm_message": "确定要清理回收站(library/.caltrash)及上传目录(upload)吗？此操作不可恢复。",
     "trash_clear_confirm_button": "确认清理",
     "trash_unknown": "未知",
+    "thanksTo": "特别感谢",
+    "thanksToDesc": "特别感谢资助过项目，以及积极反馈过产品建议的朋友。因为有你们，MyBooks才变得更好！",
     "basic_info": "基础信息",
     "language_switch": "语言切换",
     "theme_switch": "网站配色切换",

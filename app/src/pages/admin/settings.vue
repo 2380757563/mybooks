@@ -670,6 +670,31 @@
       </v-expand-transition>
     </v-card>
 
+    <v-card class="my-2 elevation-4" v-if="thanksToNames.length > 0">
+      <v-card-title @click="thanksToShow = !thanksToShow">
+        <v-btn @click.once="thanksToShow = !thanksToShow" icon>
+          <v-icon>{{
+            thanksToShow ? "keyboard_arrow_down" : "keyboard_arrow_up"
+          }}</v-icon>
+        </v-btn>
+        <v-icon color="red" small class="thanks-heart-icon mr-1">mdi-heart</v-icon>
+        {{ $t("settings.thanksTo") }}
+        <v-icon color="red" small class="thanks-heart-icon ml-1">mdi-heart</v-icon>
+      </v-card-title>
+      <v-expand-transition>
+        <v-card-text v-show="thanksToShow" style="padding: 0">
+          <div style="padding: 0 16px 16px">
+            <div class="thanks-to-section">
+              <p class="thanks-to-desc">{{ $t("settings.thanksToDesc") }}</p>
+              <div class="thanks-to-names">
+                <span v-for="(name, idx) in thanksToNames" :key="idx" class="thanks-to-chip">{{ name }}</span>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+      </v-expand-transition>
+    </v-card>
+
     <v-dialog v-model="trashConfirmDialog" max-width="400" persistent>
       <v-card>
         <v-card-title class="headline">{{
@@ -1380,6 +1405,8 @@ export default {
     settings: {},
     site_url: "",
     cards: [],
+    thanksToNames: [],
+    thanksToShow: false,
     appliedToken: false,
     testingConnection: false,
     testingAI: false,
@@ -1451,6 +1478,7 @@ export default {
   mounted() {
     this.fetchTrashSize();
     this.loadStampImage();
+    this.loadThanksTo();
   },
   beforeDestroy() {
     // 页面销毁时移除settings-page类名
@@ -1459,6 +1487,16 @@ export default {
     }
   },
   methods: {
+    async loadThanksTo() {
+      try {
+        const rsp = await this.$backend("/admin/thanks/notes");
+        if (rsp.err === "ok") {
+          this.thanksToNames = rsp.names || [];
+        }
+      } catch (error) {
+        console.warn("Failed to load thanks-to list:", error);
+      }
+    },
     saveSettings: function () {
       if (this.settings["site_language"] === "") {
         this.settings["site_language"] = "zh";
@@ -1707,6 +1745,65 @@ export default {
 <style>
 .cursor-pointer {
   cursor: pointer;
+}
+
+.thanks-heart-icon {
+  animation: thanks-to-heartbeat 1.2s ease-in-out infinite;
+}
+
+@keyframes thanks-to-heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+.thanks-to-section {
+  position: relative;
+  padding: 12px 10px;
+  border-radius: 14px;
+  background-color: rgba(223, 219, 214, 0.25);
+  text-align: center;
+  overflow: hidden;
+}
+
+.thanks-to-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url('/static/images/star.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.thanks-to-desc,
+.thanks-to-names {
+  position: relative;
+  z-index: 1;
+}
+
+.thanks-to-desc {
+  margin-bottom: 8px;
+  color: #ff7300;
+  font-weight: bold;
+}
+
+.thanks-to-names {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.thanks-to-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #005692e0;
+  font-size: 13px;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .save-btn {

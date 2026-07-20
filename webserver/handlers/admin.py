@@ -1120,6 +1120,20 @@ class ReleaseNotes(BaseHandler):
             return {"err": "ok", "msg": ""}
 
 
+class ThanksTo(BaseHandler):
+    @js
+    def get(self):
+        thanks_to_path = CONF["static_path"] + "/static/thanks_to.txt"
+        names = []
+        if os.path.exists(thanks_to_path):
+            with open(thanks_to_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            names = [name.strip() for name in content.split(",") if name.strip()]
+        else:
+            logging.error("Thanks-to file not found")
+        return {"err": "ok", "names": names}
+
+
 class AdminTokenHandler(BaseHandler):
     @js
     @auth
@@ -1550,6 +1564,7 @@ def routes():
         (r"/api/admin/clear/invalid/items", ClearInvalidItems),
         (r"/api/admin/audio/test", AudioTestConnection),
         (r"/api/admin/release/notes", ReleaseNotes),
+        (r"/api/admin/thanks/notes", ThanksTo),
         (r"/api/admin/token", AdminTokenHandler),
         (r"/api/admin/tasks/running", AdminRunningTasks),
         (r"/api/admin/trash/size", AdminTrashSize),

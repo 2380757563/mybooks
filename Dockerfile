@@ -103,6 +103,7 @@ COPY --from=builder /app-static/dist/avatar/ /data/books/avatar/
 # `node app/server.js`, not `node server.js` (see conf/supervisor/mybooks.conf).
 COPY myreader-dist/ /var/www/myreader/
 COPY release_notes.txt /var/www/mybooks/app/dist/static/
+COPY thanks_to.txt /var/www/mybooks/app/dist/static/
 
 
 RUN rm -f /etc/nginx/conf.d/default.conf /var/www/html -rf && \

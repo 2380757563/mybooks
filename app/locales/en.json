@@ -445,6 +445,8 @@
     "trash_clear_confirm_message": "Are you sure you want to clear the trash bin and upload directory? This action cannot be reverted.",
     "trash_clear_confirm_button": "Confirm Clear",
     "trash_unknown": "Unknown",
+    "thanksTo": "Special Thanks",
+    "thanksToDesc": "Special thanks to friends who sponsored and actively helped",
     "basic_info": "Basic Information",
     "language_switch": "Languages",
     "theme_switch": "Color Theme",
