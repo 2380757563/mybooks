@@ -6,11 +6,15 @@
             </div>
             <div class="reading-stats-cards">
                 <!-- 总阅读时长 -->
-                <div class="stats-card">
+                <div class="stats-card total-hours-card">
                     <div class="stats-card-label">{{ $t('index.readingStats.totalReadingHours') }}</div>
                     <div class="stats-card-body total-hours-body">
-                        <span class="total-hours-int">{{ totalHours.intPart }}</span>
-                        <span class="total-hours-frac">.{{ totalHours.fracPart }} {{ $t('index.readingStats.hoursUnit') }}</span>
+                        <div class="total-hours-circle">
+                            <span class="total-hours-number">
+                                <span class="total-hours-int">{{ totalHours.intPart }}</span><span class="total-hours-frac">.{{ totalHours.fracPart }}</span>
+                            </span>
+                            <span class="total-hours-unit">{{ $t('index.readingStats.hoursUnit') }}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -18,7 +22,7 @@
                 <div class="stats-card">
                     <div class="stats-card-label">{{ $t('index.readingStats.downloadAndPush') }}</div>
                     <div class="stats-card-body chart-body">
-                        <bar-chart :chart-data="totalsBarData" :chart-options="barOptions" />
+                        <bar-chart :chart-data="totalsBarData" :chart-options="barOptions" :styles="chartCanvasStyle" />
                     </div>
                 </div>
 
@@ -26,7 +30,7 @@
                 <div class="stats-card wide">
                     <div class="stats-card-label">{{ $t('index.readingStats.weeklyReadingTime') }}</div>
                     <div class="stats-card-body chart-body">
-                        <bar-chart :chart-data="weeklyReadingData" :chart-options="weeklyReadingOptions" />
+                        <bar-chart :chart-data="weeklyReadingData" :chart-options="weeklyReadingOptions" :styles="chartCanvasStyle" />
                     </div>
                 </div>
 
@@ -34,7 +38,7 @@
                 <div class="stats-card wide">
                     <div class="stats-card-label">{{ $t('index.readingStats.weeklyDownloadAndPush') }}</div>
                     <div class="stats-card-body chart-body">
-                        <line-chart :chart-data="weeklyEventsData" :chart-options="lineOptions" />
+                        <line-chart :chart-data="weeklyEventsData" :chart-options="lineOptions" :styles="chartCanvasStyle" />
                     </div>
                 </div>
 
@@ -42,7 +46,7 @@
                 <div class="stats-card">
                     <div class="stats-card-label">{{ $t('index.readingStats.bookStatus') }}</div>
                     <div class="stats-card-body chart-body">
-                        <doughnut-chart :chart-data="bookStatusData" :chart-options="bookStatusOptions" />
+                        <doughnut-chart :chart-data="bookStatusData" :chart-options="bookStatusOptions" :styles="chartCanvasStyle" />
                     </div>
                 </div>
             </div>
@@ -62,6 +66,9 @@ export default {
         stats: null,
     }),
     computed: {
+        chartCanvasStyle() {
+            return { position: 'relative', width: '100%', height: '100%' };
+        },
         isLoggedIn() {
             return !!(this.$store.state.user && this.$store.state.user.is_login);
         },
@@ -144,7 +151,7 @@ export default {
                 plugins: { legend: { display: false } },
                 scales: {
                     x: { ticks: { color: '#eee', font: { size: 10 } }, grid: { display: false } },
-                    y: { ticks: { color: '#eee', font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    y: { beginAtZero: true, ticks: { color: '#eee', font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(255,255,255,0.1)' } },
                 },
             };
         },
@@ -163,10 +170,10 @@ export default {
             return {
                 maintainAspectRatio: false,
                 responsive: true,
-                plugins: { legend: { display: true, labels: { color: '#eee', boxWidth: 10, font: { size: 10 } } } },
+                plugins: { legend: { display: true, position: 'left', labels: { color: '#eee', boxWidth: 10, font: { size: 10 } } } },
                 scales: {
                     x: { ticks: { color: '#eee', font: { size: 10 } }, grid: { display: false } },
-                    y: { ticks: { color: '#eee', font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    y: { beginAtZero: true, ticks: { color: '#eee', font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(255,255,255,0.1)' } },
                 },
             };
         },
@@ -212,9 +219,10 @@ export default {
 }
 
 .stats-card {
-    flex: 1 1 200px;
-    max-width: 260px;
-    height: 120px;
+    flex: 1 1 170px;
+    max-width: 220px;
+    min-width: 0;
+    height: 150px;
     background: rgba(0, 0, 0, 0.28);
     border-radius: 16px;
     padding: 8px 12px;
@@ -225,8 +233,15 @@ export default {
 }
 
 .stats-card.wide {
-    flex: 2 1 320px;
-    max-width: 420px;
+    flex: 2 1 275px;
+    max-width: 360px;
+}
+
+.total-hours-card {
+    flex: 1 1 120px;
+    max-width: 140px;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
 .stats-card-label {
@@ -249,20 +264,41 @@ export default {
 
 .total-hours-body {
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    container-type: size;
+}
+
+.total-hours-circle {
+    width: min(100cqw, 100cqh);
+    height: min(100cqw, 100cqh);
+    border-radius: 50%;
+    background: rgba(33, 150, 243, 0.28);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
     color: #ffffff;
 }
 
-.total-hours-int {
-    font-size: 32px;
-    font-weight: bold;
+.total-hours-number {
     line-height: 1;
+}
+
+.total-hours-int {
+    font-size: 20px;
+    font-weight: bold;
 }
 
 .total-hours-frac {
     font-size: 14px;
-    margin-left: 2px;
+    font-weight: bold;
+}
+
+.total-hours-unit {
+    font-size: 11px;
+    margin-top: 2px;
     color: rgba(255, 255, 255, 0.85);
 }
 
