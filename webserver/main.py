@@ -443,9 +443,6 @@ def make_app():
     app = web.Application(app_routes, **app_settings)
     app._engine = engine
 
-    # Start background service
-    BookBarnService().get_daily_books()
-
     # Init the resources
     resources_service = ResourceService()
 

@@ -431,15 +431,6 @@
               >
                 <v-icon>key</v-icon>{{ $t("settings.bookbarn_apply_token") }}
               </v-btn>
-              <v-checkbox
-                small
-                hide-details
-                v-model="settings['ENABLE_RECEIVING_BOOKS']"
-                :key="'ENABLE_RECEIVING_BOOKS'"
-                :label="$t('settings.enable_receiving_books')"
-                :disabled="!settings['ENABLE_BOOKBARN']"
-              >
-              </v-checkbox>
               <v-select
                 small
                 :prepend-icon="clock"
