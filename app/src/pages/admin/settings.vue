@@ -715,6 +715,26 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="restartConfirmDialog" max-width="400" persistent>
+      <v-card>
+        <v-card-title class="headline">{{
+          $t("settings.restart_confirm_title")
+        }}</v-card-title>
+        <v-card-text>{{
+          $t("settings.restart_confirm_message")
+        }}</v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="restartConfirmDialog = false">{{
+            $t("common.cancel")
+          }}</v-btn>
+          <v-btn color="orange darken-2" dark @click="restartServer">{{
+            $t("settings.restart_confirm_button")
+          }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <br />
     <div class="text-center">
       <p>{{ $t("settings.save_hints") }}</p>
@@ -726,6 +746,15 @@
         elevation="4"
       >
         {{ $t("settings.save") }}
+      </v-btn>
+      <v-btn
+        color="orange"
+        @click="restartConfirmDialog = true"
+        class="save-btn restart-btn"
+        large
+        elevation="4"
+      >
+        {{ $t("settings.restart_server") }}
       </v-btn>
     </div>
   </div>
@@ -1426,6 +1455,7 @@ export default {
     trashLoading: false,
     trashConfirmDialog: false,
     saveConfirmDialog: false,
+    restartConfirmDialog: false,
     stampPreviewUrl: "",
     stampPositions: [
       { value: "top-left", icon: "mdi-format-align-top" },
@@ -1552,6 +1582,18 @@ export default {
           this.$alert("error", rsp.msg || this.$t("settings.save_error"));
         } else {
           this.$alert("success", rsp.msg || this.$t("settings.save_success"));
+        }
+      });
+    },
+    restartServer: function () {
+      this.restartConfirmDialog = false;
+      this.$backend("/admin/restart", {
+        method: "POST",
+      }).then((rsp) => {
+        if (rsp.err != "ok") {
+          this.$alert("error", rsp.msg || this.$t("settings.restart_error"));
+        } else {
+          this.$alert("success", rsp.msg || this.$t("settings.restart_success"));
         }
       });
     },
@@ -1838,6 +1880,28 @@ export default {
 .theme--dark .save-btn {
   background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 50%, #1565c0 100%) !important;
   box-shadow: 0 4px 12px rgba(66, 165, 245, 0.35), 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.restart-btn {
+  margin-left: 16px !important;
+  background: linear-gradient(135deg, #fb8c00 0%, #f57c00 50%, #e65100 100%) !important;
+  box-shadow: 0 4px 12px rgba(245, 124, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.restart-btn:hover {
+  background: linear-gradient(135deg, #ffa726 0%, #fb8c00 50%, #f57c00 100%) !important;
+  box-shadow: 0 6px 18px rgba(245, 124, 0, 0.55), 0 3px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+.restart-btn:active {
+  box-shadow: 0 2px 6px rgba(245, 124, 0, 0.35), inset 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(1px) !important;
+}
+
+.theme--dark .restart-btn {
+  background: linear-gradient(135deg, #ffa726 0%, #fb8c00 50%, #f57c00 100%) !important;
+  box-shadow: 0 4px 12px rgba(255, 167, 38, 0.35), 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 .device-item {

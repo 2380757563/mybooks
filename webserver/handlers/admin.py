@@ -8,6 +8,7 @@ import re
 import shutil
 import ssl
 import subprocess
+import sys
 import tempfile
 import time
 import traceback
@@ -16,6 +17,7 @@ from webserver.i18n import _, normalize_language
 from sqlalchemy import func, extract
 
 import tornado
+import tornado.ioloop
 
 from webserver import loader
 from webserver.services.autofill import AutoFillService
@@ -1189,6 +1191,16 @@ class AdminRunningTasks(BaseHandler):
         return {"err": "ok", "tasks": running_tasks, "messages": rsp_messages}
 
 
+class AdminRestartServer(BaseHandler):
+    """Admin API: 重启服务，进程退出后由 supervisor 自动拉起"""
+    @js
+    @is_admin
+    def post(self):
+        logging.warning("[ADMIN] Server restart requested by user %s", self.current_user.username)
+        tornado.ioloop.IOLoop.current().call_later(1, lambda: sys.exit(0))
+        return {"err": "ok", "msg": _("服务正在重启，请稍后刷新页面")}
+
+
 class AdminTrashSize(BaseHandler):
     @js
     @auth
@@ -1569,6 +1581,7 @@ def routes():
         (r"/api/admin/tasks/running", AdminRunningTasks),
         (r"/api/admin/trash/size", AdminTrashSize),
         (r"/api/admin/trash/clear", AdminTrashClear),
+        (r"/api/admin/restart", AdminRestartServer),
         (r"/api/admin/stamp", AdminStamp),
         (r"/api/library/stats", LibraryStats),
         (r"/api/admin/syslog", AdminSyslog),
