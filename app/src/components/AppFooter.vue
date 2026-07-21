@@ -16,6 +16,8 @@
                 <v-btn small text target="_blank" href="/opds-readme"> {{ $t('appHeader.opdsIntroduction') }}</v-btn>
                 <span>|</span>
                 <v-btn small text target="_blank" href="/webdav-readme"> {{ $t('appHeader.webdavIntroduction') }} </v-btn>
+                <span>|</span>
+                <v-btn small text target="_blank" href="https://github.com/PoxenStudio/MyReader"> MyReader </v-btn>
             </p>
             <p v-if="version" class="version-info cursor-pointer" @click="showReleaseNotes">
                 {{ $t('appHeader.systemVersion') }}: {{ version }} {{ standalone ? '(Standalone)' : '' }}
