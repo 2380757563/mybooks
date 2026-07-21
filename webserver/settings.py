@@ -60,6 +60,8 @@ settings = {
     # Chunked upload size threshold (0 means disabled, >0 means files larger than this will be uploaded in chunks)
     "CHUNK_UPLOAD_SIZE": "0MB",
 
+    "AUTO_CHECKING_NEW_VERSION": True,
+
     "ENABLE_BOOKBARN": False,
     "BOOKBARN_TOKEN": "",
     "ENABLE_RECEIVING_BOOKS": False,

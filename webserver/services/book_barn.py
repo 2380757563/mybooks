@@ -124,6 +124,9 @@ class BookBarnClient:
             raise Exception(f"[BARN]Failed to apply token: {response.status_code} - {response.text}")
 
     def checkLatestRelease(self, token):
+        if not CONF.get("AUTO_CHECKING_NEW_VERSION", True):
+            logging.info("Auto checking new version is disabled, skip checking latest release.")
+            return None
         if VERSION == "v0.0.1":
             logging.info("Current version is v0.0.1, skip checking latest release for development version.")
             return None

@@ -1310,6 +1310,12 @@ export default {
             label: "settings.enable_audio_conversion_log",
             type: "checkbox",
           },
+          {
+            icon: "mdi-update",
+            key: "AUTO_CHECKING_NEW_VERSION",
+            label: "settings.auto_checking_new_version",
+            type: "checkbox",
+          },
         ],
       },
 
