@@ -34,7 +34,7 @@
     </v-row>
 
     <div class="reading-stats-banner-wrapper">
-        <reading-stats-banner></reading-stats-banner>
+        <reading-stats-banner :show-title="false"></reading-stats-banner>
     </div>
 
     <v-row v-if="random_books.length > 0">
