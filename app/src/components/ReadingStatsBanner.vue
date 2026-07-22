@@ -205,6 +205,13 @@ export default {
             }
         },
     },
+    watch: {
+        isLoggedIn(loggedIn) {
+            if (loggedIn) {
+                this.loadStats();
+            }
+        },
+    },
     mounted() {
         this.loadStats();
     },
