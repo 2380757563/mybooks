@@ -231,8 +231,7 @@ export default {
 }
 
 .stats-card {
-    flex: 1 1 170px;
-    max-width: 220px;
+    flex: 1 1 155px;
     min-width: 0;
     height: 150px;
     background: rgba(0, 0, 0, 0.28);
@@ -245,8 +244,7 @@ export default {
 }
 
 .stats-card.wide {
-    flex: 2 1 275px;
-    max-width: 360px;
+    flex: 2 1 250px;
 }
 
 .total-hours-card {
