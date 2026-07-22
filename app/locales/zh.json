@@ -754,7 +754,7 @@
     "add": "添加",
     "description": "说明",
     "book_barn_service": "书栈服务",
-    "book_barn_description": "书栈所提供的均为网上公开信息, 开启后支持图书转音频, 或者每日自动导入2~5本图书。保存设置后才会生效。",
+    "book_barn_description": "书栈所提供的均为网上公开信息, 开启后支持获取作者信息及书籍标签信息。",
     "bookbarn_enable": "启用书栈服务",
     "bookbarn_token": "授权Token",
     "bookbarn_apply_token": "获取Token",
@@ -1160,13 +1160,14 @@
     "success": "书名语言检测任务已启动，右上角可查看进度"
   },
   "bookbarnAcceptor": {
-    "title": "书栈推书开关",
+    "title": "书栈收书",
     "close": "关闭",
-    "description": "查看书栈(BookBarn)服务状态与Token，开关接收推书功能。当前服务状态不稳定，不建议使用！",
+    "description": "查看书栈(BookBarn)服务状态与Token，开关收书功能。当前服务状态不稳定，不建议使用！",
     "serviceStatus": "书栈服务：",
     "enabled": "已开启",
     "disabled": "未开启",
-    "enableReceiving": "开启接收推书",
+    "enableReceiving": "开启收书",
+    "collectionHour": "收书任务执行时间（每日）",
     "token": "书栈Token",
     "applyToken": "申请Token",
     "success": "操作成功"

@@ -431,19 +431,6 @@
               >
                 <v-icon>key</v-icon>{{ $t("settings.bookbarn_apply_token") }}
               </v-btn>
-              <v-select
-                small
-                :prepend-icon="clock"
-                v-model="settings['BOOKBARN_COLLECTION_HOUR']"
-                :disabled="
-                  !settings['ENABLE_BOOKBARN'] ||
-                  !settings['ENABLE_RECEIVING_BOOKS']
-                "
-                :items="card.hours"
-                :key="'BOOKBARN_COLLECTION_HOUR'"
-                :label="$t('settings.bookbarn_collection_hour')"
-              >
-              </v-select>
             </template>
 
             <template v-if="card.show_ai_capabilities">

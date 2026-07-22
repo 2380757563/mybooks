@@ -17,7 +17,7 @@ CONF = loader.get_settings()
 class BookBarnAcceptorTool(BaseTool):
     """管理书栈"接收推书"开关及Token。"""
 
-    service_item_name = "书栈推书开关"
+    service_item_name = "书栈收书"
 
     @staticmethod
     def info() -> dict:

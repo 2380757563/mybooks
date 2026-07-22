@@ -146,7 +146,6 @@ export default {
     async setCollectionHour(hour) {
       this.resultMsg = '';
       this.savingHour = true;
-      const prevHour = this.status.collection_hour;
       try {
         const rsp = await this.$backend('/toolbox/bookbarn_acceptor/set_collection_hour', {
           method: 'POST',
@@ -157,12 +156,12 @@ export default {
         if (rsp.err === 'ok' && rsp.data) {
           this.status = rsp.data;
         } else {
-          this.status.collection_hour = prevHour;
+          await this.loadStatus();
         }
       } catch (e) {
         this.resultMsg = String(e);
         this.resultType = 'error';
-        this.status.collection_hour = prevHour;
+        await this.loadStatus();
       } finally {
         this.savingHour = false;
       }

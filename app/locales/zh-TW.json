@@ -753,7 +753,7 @@
     "add": "新增",
     "description": "說明",
     "book_barn_service": "書棧服務",
-    "book_barn_description": "書棧所提供的均為網路上公開資訊，開啟後支援圖書轉音訊，或者每日自動匯入 2~5 本圖書。儲存設定後才會生效。",
+    "book_barn_description": "書棧所提供的均為網路上公開資訊，儲存設定後才會生效。",
     "bookbarn_enable": "啟用書棧服務",
     "bookbarn_token": "授權 Token",
     "bookbarn_apply_token": "取得 Token",
@@ -1157,13 +1157,14 @@
     "success": "書名語言偵測任務已啟動，右上角可查看進度"
   },
   "bookbarnAcceptor": {
-    "title": "書棧推書開關",
+    "title": "書棧收書",
     "close": "關閉",
-    "description": "查看書棧(BookBarn)服務狀態與Token，開關接收推書功能。",
+    "description": "查看書棧(BookBarn)服務狀態與Token，開關接收功能。",
     "serviceStatus": "書棧服務：",
     "enabled": "已開啟",
     "disabled": "未開啟",
     "enableReceiving": "開啟接收推書",
+    "collectionHour": "收書任務執行時間（每日）",
     "token": "書棧Token",
     "applyToken": "申請Token",
     "success": "操作成功"
