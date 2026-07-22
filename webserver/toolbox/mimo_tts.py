@@ -32,7 +32,7 @@ KEY_FILE = ".mimo_key"
 
 
 class MimoTTSTool(BaseTool):
-    service_item_name = "TTS有声书"
+    service_item_name = "Mimo-TTS有声书"
 
     _convert_lock = threading.Lock()
     _last_task_id: Optional[int] = None
@@ -52,11 +52,11 @@ class MimoTTSTool(BaseTool):
     def info() -> dict:
         return {
             "tool_id": "mimo_tts",
-            "name": "TTS有声书",
-            "description": "通过 TTS API（支持 MiMo Chat / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式），目前仅支持 EPUB 格式，生成后可在线播放",
+            "name": "Mimo-TTS有声书",
+            "description": "通过 TTS API（支持 MiMo Chat / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式）。",
             "revision": "0.3.0",
-            "author": "MyBooks",
-            "publish_date": "2026-07-21",
+            "author": "Shiningsprk-Arch",
+            "publish_date": "2026-07-22",
         }
 
     # ── Encryption helpers ──────────────────────────────────────
@@ -174,6 +174,9 @@ class MimoTTSTool(BaseTool):
         chapters = []
         seen = set()
         def resolve_toc(toc_items, depth=0):
+            if depth > 1:
+                return
+            prefix = "_" * depth
             for entry in toc_items:
                 if isinstance(entry, tuple):
                     link, sub = entry
@@ -182,7 +185,7 @@ class MimoTTSTool(BaseTool):
                         title = link.title or ""
                         if href not in seen:
                             seen.add(href)
-                            chapters.append({"title": title, "href": href})
+                            chapters.append({"title": prefix + title, "href": href})
                         if sub:
                             resolve_toc(sub, depth + 1)
                 elif hasattr(entry, 'href') and entry.href:
@@ -190,7 +193,7 @@ class MimoTTSTool(BaseTool):
                     title = getattr(entry, 'title', '') or ''
                     if href not in seen:
                         seen.add(href)
-                        chapters.append({"title": title, "href": href})
+                        chapters.append({"title": prefix + title, "href": href})
 
         resolve_toc(book.toc)
 
@@ -330,6 +333,17 @@ class MimoTTSTool(BaseTool):
             output_dir = os.path.join(AUDIO_OUTPUT_FOLDER, str(book_id))
             os.makedirs(output_dir, exist_ok=True)
 
+            # Save the cover image to the output dir
+            try:
+                cover_data = self.db.cover(book_id, index_is_id=True)
+                if cover_data:
+                    cover_path = os.path.join(output_dir, "cover.jpg")
+                    with open(cover_path, "wb") as f:
+                        f.write(cover_data)
+                    logging.info(f"[MimoTTSTool]Saved cover image for book {book_id} to {cover_path}")
+            except Exception as e:
+                logging.error(f"[MimoTTSTool]Failed to save cover image for book {book_id}: {e}")
+
             existing = set()
             if os.path.isdir(output_dir):
                 for fname in os.listdir(output_dir):
@@ -399,3 +413,17 @@ class MimoTTSTool(BaseTool):
         finally:
             self.complete_task(task_id, error_message=error_message)
             MimoTTSTool._convert_lock.release()
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print("Usage: python -m webserver.toolbox.mimo_tts <epub_path>")
+        sys.exit(1)
+
+    epub_path = sys.argv[1]
+    chapters = MimoTTSTool._extract_chapters(epub_path)
+    print(f"Extracted {len(chapters)} chapters from {epub_path}")
+    for i, ch in enumerate(chapters):
+        print(f"[{i}] {ch['title']!r} ({len(ch['text'])} chars) href={ch['href']}")

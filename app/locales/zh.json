@@ -1412,7 +1412,7 @@
     }
   },
   "mimoTts": {
-    "title": "TTS 有声书",
+    "title": "Mimo-TTS 有声书",
     "close": "关闭",
     "hint": "通过 TTS API 将书籍合成为有声书（WAV格式），支持 MiMo Chat / OpenAI TTS 等兼容接口。目前仅支持 EPUB 格式，生成后可在书籍详情页在线播放。",
     "selectBook": "选择书籍",
@@ -1425,7 +1425,7 @@
     "modelName": "模型",
     "modelNamePlaceholder": "例如：mimo-v2.5-tts",
     "authType": "认证方式",
-    "authTypeApiKey": "api-key",
+    "authTypeApiKey": "API-KEY",
     "authTypeBearer": "Authorization: Bearer",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "输入你的 API Key",
@@ -1450,6 +1450,7 @@
     "configLoaded": "已加载已保存的配置",
     "startBtn": "开始转换",
     "convertStarted": "转换任务已启动，可在右上角查看进度",
-    "noEpub": "所选书籍没有 EPUB 格式"
+    "noEpub": "所选书籍没有 EPUB 格式",
+    "audioOpen": "打开有声书"
   }
 }

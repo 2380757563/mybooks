@@ -99,7 +99,6 @@ class ToolSet:
         from .author_clean_tool import AuthorCleanTool
         from .mimo_tts import MimoTTSTool
 
-        ToolSet.register(RareBookDownloader.info())
         ToolSet.register(MergeFormatsTool.info())
         ToolSet.register(ReviewBookLanguageTool.info())
         ToolSet.register(MinifyPdfTool.info())
@@ -109,6 +108,8 @@ class ToolSet:
         ToolSet.register(EpubSplitTool.info())
         ToolSet.register(AuthorCleanTool.info())
         ToolSet.register(MimoTTSTool.info())
+        ToolSet.register(RareBookDownloader.info())
+
         MinifyPdfTool.cleanup_old_files()
 
     @staticmethod

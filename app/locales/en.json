@@ -1410,7 +1410,7 @@
     }
   },
   "mimoTts": {
-    "title": "TTS Audiobook",
+    "title": "Mimo-TTS Audiobook",
     "close": "Close",
     "hint": "Convert books to audiobooks via TTS API (supports MiMo Chat / OpenAI TTS compatible endpoints). Currently only EPUB format is supported. Generated audio files will appear in the book detail page.",
     "selectBook": "Select Book",
@@ -1423,7 +1423,7 @@
     "modelName": "Model",
     "modelNamePlaceholder": "e.g. mimo-v2.5-tts",
     "authType": "Auth Method",
-    "authTypeApiKey": "api-key",
+    "authTypeApiKey": "API-KEY",
     "authTypeBearer": "Authorization: Bearer",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "Enter your API Key",
@@ -1448,6 +1448,7 @@
     "configLoaded": "Loaded saved configuration",
     "startBtn": "Start Conversion",
     "convertStarted": "Conversion task started, check progress in the top-right panel",
-    "noEpub": "The selected book has no EPUB format"
+    "noEpub": "The selected book has no EPUB format",
+    "audioOpen": "Open Audio"
   }
 }

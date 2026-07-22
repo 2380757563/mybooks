@@ -81,7 +81,7 @@
               v-model="apiType"
               :label="$t('mimoTts.apiType')"
               :items="apiTypeOptions"
-              item-title="label"
+              item-text="label"
               item-value="value"
               outlined
               dense
@@ -117,7 +117,7 @@
               v-model="authType"
               :label="$t('mimoTts.authType')"
               :items="authTypeOptions"
-              item-title="label"
+              item-text="label"
               item-value="value"
               outlined
               dense
@@ -143,7 +143,7 @@
                 v-model="voiceType"
                 :label="$t('mimoTts.voiceLabel')"
                 :items="voiceOptions"
-                item-title="label"
+                item-text="label"
                 item-value="value"
                 outlined
                 dense
@@ -170,7 +170,7 @@
                 v-model="voiceName"
                 :label="$t('mimoTts.voiceName')"
                 :items="speechVoiceOptions"
-                item-title="label"
+                item-text="label"
                 item-value="value"
                 outlined
                 dense
@@ -185,7 +185,7 @@
                 v-model="voiceType"
                 :label="$t('mimoTts.voiceLabel')"
                 :items="voiceOptions"
-                item-title="label"
+                item-text="label"
                 item-value="value"
                 outlined
                 dense
@@ -218,7 +218,7 @@
               >{{ resultMsg }}</v-alert>
             </transition>
 
-            <div class="d-flex justify-center flex-wrap ga-3">
+            <div class="d-flex justify-center flex-wrap mt-btn-row">
               <v-btn
                 color="secondary"
                 variant="outlined"
@@ -250,7 +250,7 @@
                 @click="$router.push('/audio/' + selected.id)"
               >
                 <v-icon left>mdi-headphones</v-icon>
-                {{ $t('reader.audio_open') }}
+                {{ $t('mimoTts.audioOpen') }}
               </v-btn>
             </div>
           </template>
@@ -542,12 +542,18 @@ export default {
   font-size: 11px !important;
 }
 
+.mt-btn-row {
+  gap: 12px;
+}
+
 .mt-start-btn {
   min-width: 180px;
+  padding: 4px;
 }
 
 .mt-test-btn {
   min-width: 140px;
+  padding: 4px;
 }
 
 .mt-fade-enter-active,
