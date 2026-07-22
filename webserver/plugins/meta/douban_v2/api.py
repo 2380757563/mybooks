@@ -52,7 +52,7 @@ def _parse_js_challenge_cookies(html):
     return cookies
 
 
-def search(query, max_count=1):
+def search(query, max_count=1, skip_error=False):
     """搜索豆瓣图书，返回 (items, search_url)。items 为过滤后的 search_subject 列表。"""
     encoded = urllib.parse.quote(str(query))
     url = f"{_SEARCH_BASE}?search_text={encoded}&cat=1001"
@@ -81,11 +81,14 @@ def search(query, max_count=1):
     error_info = data.get("error_info", "")
     if error_info:
         logging.error(f"[DoubanV2] 响应错误：{error_info}")
+        if skip_error:
+            return None
         return [{
-            "title": "",
+            "title": "BLOCKED",
             "abstract": "",
-            "summary": error_info,
+            "summary": f"出现错误：{error_info} 需要等待一段时间后才能恢复！",
             "publisher": "",
+            "cover_url": "/static/images/blocked.png",
             "isbn": "",
         }], url
 
@@ -421,7 +424,7 @@ def build_metadata_batch(items, search_url, isbn=None, copy_image=False, max_wor
     results = [None] * len(items)
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="douban-v2-detail") as executor:
         future_to_index = {
-            executor.submit(build_metadata, item, search_url, isbn=isbn, copy_image=copy_image, get_detail=(get_detail and idx == 0)): idx
+            executor.submit(build_metadata, item, search_url, isbn=isbn, copy_image=copy_image, get_detail=(get_detail and idx <= 1)): idx
             for idx, item in enumerate(items)
         }
         for future in as_completed(future_to_index):

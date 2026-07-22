@@ -887,7 +887,7 @@ class BookRefer(BaseHandler):
                 logging.error(f"Error fetching book meta from plugin {provider_key}: {e}")
                 return {"err": "plugin.no_result", "msg": _("未找到相关信息或被限制访问，频繁出现请稍后再试，或查看日志确认原因")}
         else:
-            if provider_key == douban_v2.KEY and metadata and metadata["comments"] == "-*-":
+            if provider_key == douban_v2.KEY and metadata and metadata["comments"] == ".....":
                 metadata["comments"] = ""
                 refer_mi = self.plugin_get_book_meta(provider_key, provider_value, metadata)
             if not refer_mi:

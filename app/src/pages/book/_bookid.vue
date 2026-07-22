@@ -208,9 +208,10 @@
                                     </v-chip
                                     >
                                     <v-spacer></v-spacer>
-                                    <v-menu offset-y right>
+                                    <v-menu offset-y right :disabled="book.title === 'BLOCKED'">
                                         <template v-slot:activator="{ on }">
                                             <v-btn color="primary" small rounded v-on="on"
+                                                   :disabled="book.title === 'BLOCKED'"
                                                    :loading="refer_books_setting_btn_loading">
                                                 <v-icon small>done</v-icon>
                                                 {{ $t('common.set') }}
@@ -2134,7 +2135,9 @@ export default {
                 .then((rsp) => {
                     this.refer_books = rsp.books.map((b) => {
                         b.href = "";
-                        b.img = "/get/pcover?url=" + encodeURIComponent(b.cover_url);
+                        b.img = b.cover_url && b.cover_url.startsWith("/")
+                            ? b.cover_url
+                            : "/get/pcover?url=" + encodeURIComponent(b.cover_url);
                         return b;
                     });
                 })

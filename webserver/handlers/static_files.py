@@ -154,6 +154,7 @@ class ProxyImageHandler(BaseHandler):
     async def get(self):
         """使用异步 HTTP 客户端获取远程图片"""
         url = self.get_argument("url", None)
+
         # set the content-type according the extension of the url, default to image/jpeg
         ext = os.path.splitext(url)[1].lower() if url else ""
         content_type = (mimetypes.guess_type(ext)[0] if ext else None) or "image/jpeg"

@@ -37,8 +37,10 @@ class DoubanV2MetaPlugin(MetaSourcePlugin):
         query = mi.isbn or mi.title
         if not query:
             return None
-        items, search_url = api.search(query, max_count=_max_count())
+        items, search_url = api.search(query, max_count=_max_count(), skip_error=True)
         if not items:
+            return None
+        if items[0].get("title", "") == "BLOCKED":
             return None
         # 优先取标题完全匹配的，否则取首个结果
         best = next((i for i in items if i.get("title") == mi.title), items[0])
