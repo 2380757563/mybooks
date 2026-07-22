@@ -584,7 +584,7 @@
                                     <v-icon left>mdi-robot</v-icon>
                                     {{ $t('book.aiUpdate') }}
                                 </v-chip>
-                                <v-menu offset-y>
+                                <v-menu offset-y :close-on-content-click="false" v-model="categoryMenu" content-class="mt-category-menu">
                                     <template v-slot:activator="{ on, attrs }">
                                         <v-chip rounded smallF color="green" class="white--text" v-bind="attrs" v-on="on" :disabled="categories.length === 0">
                                             <v-icon>category</v-icon>
@@ -592,11 +592,23 @@
                                             <v-icon color="white" class="ml-1">edit</v-icon>
                                         </v-chip>
                                     </template>
-                                    <v-list dense>
-                                        <v-list-item v-for="(cat, index) in categories" :key="index" @click="setCategory(cat)">
-                                            <v-list-item-title :class="cat === $t('book.clearCategory') ? 'red--text' : ''">{{ cat }}</v-list-item-title>
-                                        </v-list-item>
-                                    </v-list>
+                                    <v-card>
+                                        <v-autocomplete
+                                            v-model="categorySelect"
+                                            :items="categories"
+                                            dense
+                                            filled
+                                            autofocus
+                                            hide-details
+                                            clearable
+                                            style="min-width: 220px;font-size: 14px;"
+                                            @change="onCategorySelected"
+                                        >
+                                            <template v-slot:item="{ item }">
+                                                <v-list-item-title :class="item === $t('book.clearCategory') ? 'red--text' : ''">{{ item }}</v-list-item-title>
+                                            </template>
+                                        </v-autocomplete>
+                                    </v-card>
                                 </v-menu><v-menu offset-y>
                                     <template v-slot:activator="{ on, attrs }">
                                         <v-chip rounded smallF color="#003153" class="white--text" v-bind="attrs" v-on="on" :disabled="categories.length === 0">
@@ -1658,6 +1670,8 @@ export default {
         err: "",
         msg: "",
         categories: [],
+        categoryMenu: false,
+        categorySelect: null,
         book: {id: 0, title: "", files: [], tags: [], pubdate: "", state: {favorite: 0, wants: 0, read_state: 0}},
         audios: {count: 0, files: [], status: "ok"},
         suggestionBooks: [],
@@ -2980,6 +2994,14 @@ export default {
             }
         },
 
+        onCategorySelected(category) {
+            this.categoryMenu = false;
+            this.categorySelect = null;
+            if (category) {
+                this.setCategory(category);
+            }
+        },
+
         async setCategory(category) {
             try {
                 // 如果category是国际化的"清除"选项，则传空值到接口
@@ -3583,6 +3605,13 @@ export default {
 </script>
 
 <style>
+/* 分类下拉外层 v-menu 的 .v-menu__content 会渲染出一个无法使用的滚动条；
+   通过 content-class 只给这个外层菜单加类名，避免影响 v-autocomplete 自身
+   建议列表所用的（无类名）.v-menu__content，否则会连带隐藏建议列表的滚动条。 */
+.mt-category-menu.v-menu__content {
+    overflow-y: hidden !important;
+}
+
 .book-action-btns {
     display: flex;
     gap: 8px;
