@@ -7,6 +7,7 @@
 
 import logging
 import re
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from webserver.i18n import _
 
@@ -104,6 +105,7 @@ class BookSearch:
             except Exception as e:
                 logging.error("信息源[%s]查询失败: %s" % (plugin.name, str(e)))
                 results[plugin] = []
+                logging.error(traceback.format_exc())
 
         # 按信息源声明顺序拼接，保持与改造前一致的展示顺序
         books = []

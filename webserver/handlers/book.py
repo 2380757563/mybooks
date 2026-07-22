@@ -42,7 +42,7 @@ from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, ListHandler, auth, js
 from webserver.models import Item, Reading, ReadingState, Reader
 from webserver.services.reading_stats_service import ReadingStatsService
-from webserver.plugins.meta import douban, youshu
+from webserver.plugins.meta import douban, youshu, douban_v2
 from webserver.plugins.meta.bookbarn_tags import BookBarnTags
 from webserver.plugins.parser.txt import get_content_encoding
 from webserver.handlers.audio import AudioUtils
@@ -873,6 +873,7 @@ class BookRefer(BaseHandler):
         if only_meta == "yes" and only_cover == "yes":
             return {"err": "params.conflict", "msg": _("参数冲突")}
 
+        refer_mi = None
         if provider_key in (douban.KEY, youshu.KEY):
             try:
                 refer_mi = self.plugin_get_book_meta(provider_key, provider_value, mi)
@@ -886,7 +887,11 @@ class BookRefer(BaseHandler):
                 logging.error(f"Error fetching book meta from plugin {provider_key}: {e}")
                 return {"err": "plugin.no_result", "msg": _("未找到相关信息或被限制访问，频繁出现请稍后再试，或查看日志确认原因")}
         else:
-            refer_mi = self._convert_to_metadata(metadata) if metadata else mi
+            if provider_key == douban_v2.KEY and metadata and metadata["comments"] == "-*-":
+                metadata["comments"] = ""
+                refer_mi = self.plugin_get_book_meta(provider_key, provider_value, metadata)
+            if not refer_mi:
+                refer_mi = self._convert_to_metadata(metadata) if metadata else mi
             if only_meta != "yes":
                 try:
                     cover_url = metadata.get("cover_url") if metadata else None

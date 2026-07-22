@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -59,20 +60,34 @@ def search(query, max_count=1):
         resp = requests.get(url, headers=_SEARCH_HEADERS, timeout=10)
         resp.raise_for_status()
     except requests.exceptions.RequestException as e:
-        logging.error("豆瓣V2搜索请求失败: %s", e)
+        logging.error("[DoubanV2]搜索请求失败: %s", e)
         return [], ""
+
+    if resp.status_code != 200:
+        logging.error(f"[DoubanV2]{resp.text[:200]}")
 
     pattern = r"window\.__DATA__\s*=\s*({.*?});"
     match = re.search(pattern, resp.text, re.DOTALL)
     if not match:
-        logging.warning("豆瓣V2未能匹配 window.__DATA__，可能触发反爬")
+        logging.warning("[DoubanV2]豆瓣V2未能匹配 window.__DATA__，可能触发反爬")
         return [], url
 
     try:
         data = json.loads(match.group(1))
     except json.JSONDecodeError:
-        logging.error("豆瓣V2 JSON 解析失败")
+        logging.error("[DoubanV2]豆瓣V2 JSON 解析失败")
         return [], url
+
+    error_info = data.get("error_info", "")
+    if error_info:
+        logging.error(f"[DoubanV2] 响应错误：{error_info}")
+        return [{
+            "title": "",
+            "abstract": "",
+            "summary": error_info,
+            "publisher": "",
+            "isbn": "",
+        }], url
 
     items = [i for i in data.get("items", []) if i.get("tpl_name") == "search_subject"]
     return items[:max_count], url
@@ -245,7 +260,7 @@ class _BookDetailParser(HTMLParser):
 
 
 def get_book_detail(book_url, search_url):
-    logging.info("[D2]get book detail: %s", book_url)
+    logging.debug("[D2]get book detail: %s", book_url)
     if not book_url:
         return None
     headers = {**_SEARCH_HEADERS, "Referer": search_url}
@@ -253,18 +268,18 @@ def get_book_detail(book_url, search_url):
         resp = requests.get(book_url, headers=headers, timeout=10)
         resp.raise_for_status()
     except requests.exceptions.RequestException as e:
-        logging.error("豆瓣V2获取书籍页面失败 %s: %s", book_url, e)
+        logging.error("[DoubanV2]获取书籍页面失败 %s: %s", book_url, e)
         return None
 
     if resp.status_code != 200:
-        logging.error("豆瓣V2获取书籍页面失败，状态码 %s != 200", resp.status_code)
+        logging.error("[DoubanV2]获取书籍页面失败，状态码 %s != 200", resp.status_code)
         return None
 
     parser = _BookDetailParser()
     parser.feed(resp.text)
     authors = list(parser.authors)
     authors.extend(f"{translator}(译)" for translator in parser.translators)
-    logging.info(
+    logging.debug(
         "[D2]parsed book detail: authors=%s, isbn=%s, publisher=%s, pub_date=%s, series=%s, intro_len=%d",
         authors, parser.isbn, parser.publisher, parser.pub_date, parser.series, len(parser.get_intro() or ""))
     return {
@@ -324,16 +339,21 @@ def _parse_date(s):
     return None
 
 
-def build_metadata(item, search_url, isbn=None, copy_image=False):
+def build_metadata(item, search_url, isbn=None, copy_image=False, get_detail=False):
     from calibre.ebooks.metadata.book.base import Metadata
     from calibre.utils.date import utcnow
 
     title = item.get("title", "")
     parsed = _parse_abstract(item.get("abstract", ""))
     book_url = item.get("url", "")
+    if not book_url:
+        book_url = item.get("website", "")
 
     # 从书籍详情页获取精确作者、ISBN 和简介（失败时回退到 abstract 解析值）
-    detail = get_book_detail(book_url, search_url) if book_url else None
+    if get_detail and book_url:
+        detail = get_book_detail(book_url, search_url)
+    else:
+        detail = None
 
     if detail and detail["authors"]:
         authors = detail["authors"]
@@ -353,13 +373,16 @@ def build_metadata(item, search_url, isbn=None, copy_image=False):
 
     if isbn:
         mi.isbn = isbn
-    elif detail and detail["isbn"]:
-        mi.isbn = detail["isbn"]
+    elif detail:
+        mi.isbn = detail.get("isbn", "")
 
-    if detail and detail["intro"]:
-        mi.comments = detail["intro"]
+    if detail:
+        mi.comments = detail.get("intro", "")
+    else:
+        mi.comments = item.get("summary", ".....")
 
-    rating_val = item.get("rating", {}).get("value", 0)
+    rating = item.get("rating", {})
+    rating_val = rating.get("value", 0) if isinstance(rating, dict) else rating
     if rating_val:
         mi.rating = round(float(rating_val))
 
@@ -382,30 +405,51 @@ def build_metadata(item, search_url, isbn=None, copy_image=False):
                 mi.cover_data = cover_data
             else:
                 mi.cover_url = cover_url
-
     return mi
 
 
+def build_metadata_batch(items, search_url, isbn=None, copy_image=False, max_workers=2, get_detail=False):
+    """并行构建多条搜索结果的 metadata。
+
+    详情页请求（get_book_detail/get_cover）是主要耗时点，且各条目相互独立，
+    用线程池并发抓取以缩短多结果场景下的整体耗时；单条目失败不影响其余结果，
+    返回顺序与 items 保持一致。
+    """
+    if not items:
+        return []
+    workers = min(max_workers, len(items))
+    results = [None] * len(items)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="douban-v2-detail") as executor:
+        future_to_index = {
+            executor.submit(build_metadata, item, search_url, isbn=isbn, copy_image=copy_image, get_detail=(get_detail and idx == 0)): idx
+            for idx, item in enumerate(items)
+        }
+        for future in as_completed(future_to_index):
+            idx = future_to_index[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                logging.warning("豆瓣V2构建元数据失败: %s", e)
+    return [mi for mi in results if mi is not None]
+
+
 if __name__ == "__main__":
-    items, search_url = search("白鹿原")
+    logging.basicConfig(level=logging.INFO)
+    items, search_url = search("东京梦华录", max_count=5)
+    print(f"共找到 {len(items)} 条结果")
     for item in items:
         print(item)
-        rating = item.get("rating", {}).get("value", 0)
-        comments = item.get("comments", "")
+
+    metas = build_metadata_batch(items, search_url, copy_image=False, get_detail=False)
+    for item, mi in zip(items, metas):
+        print("-" * 40)
+        rating = item.get("rating", {})
+        rating = rating.get("value", 0) if isinstance(rating, dict) else rating
+        print(f"Title: {mi.title}")
         print(f"Rating: {rating}")
-        print(f"Comments: {comments}")
-
-        book_url = item.get("url", "")
-        if book_url:
-            detail = get_book_detail(book_url, search_url)
-            if detail:
-                print(f"Authors: {detail['authors']}")
-                print(f"ISBN: {detail['isbn']}")
-                print(f"Publisher: {detail['publisher']}")
-                print(f"Pub Date: {detail['pub_date']}")
-                print(f"Series: {detail['series']}")
-                print(f"Intro: {detail['intro']}")
-            else:
-                print("Failed to get book detail.")
-
-        break
+        print(f"Authors: {mi.authors}")
+        print(f"ISBN: {mi.isbn}")
+        print(f"Publisher: {mi.publisher}")
+        print(f"PubDate: {mi.pubdate}")
+        print(f"Series: {mi.series}")
+        print(f"Intro: {mi.comments}")

@@ -85,21 +85,21 @@ class DoubanBookApi(object):
         try:
             rsp = requests.get(url, timeout=10, headers=CHROME_HEADERS, params=params)
         except Exception as e:
-            logging.error("豆瓣接口异常: request fail, err=%s", str(e))
+            logging.error("[Douban]豆瓣接口异常: request fail, err=%s", str(e))
             return None
 
         if rsp.status_code != 200:
-            logging.error("豆瓣接口异常: status_code[%s] != 200 OK", rsp.status_code)
+            logging.error("[Douban]豆瓣接口异常: status_code[%s] != 200 OK", rsp.status_code)
             return None
 
         try:
             data = rsp.json()
         except json.JSONDecodeError:
-            logging.error("豆瓣接口异常: json decode fail, content:\n%s", rsp.content)
+            logging.error("[Douban]豆瓣接口异常: json decode fail, content:\n%s", rsp.content)
             return None
 
         if "code" in data and data["code"] != 0:
-            logging.error("豆瓣接口异常: code=%d, msg=%s", rsp["code"], rsp["msg"])
+            logging.error("[Douban]豆瓣接口异常: code=%d, msg=%s", rsp["code"], rsp["msg"])
             return None
         return data
 

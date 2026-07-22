@@ -3,13 +3,21 @@
 # @author: PoxenStudio, 2026-06
 
 import logging
+import traceback
 
+from webserver import loader
 from webserver.i18n import _
 from webserver.constants import META_SOURCE_DOUBAN_V2
 from webserver.plugins.meta.base import MetaSourcePlugin
 
 from . import api
 from .api import KEY
+
+CONF = loader.get_settings()
+
+
+def _max_count():
+    return max(1, min(int(CONF.get("douban_max_count", 2)), 5))
 
 
 class DoubanV2MetaPlugin(MetaSourcePlugin):
@@ -22,55 +30,41 @@ class DoubanV2MetaPlugin(MetaSourcePlugin):
         query = isbn or title
         if not query:
             return []
-        items, search_url = api.search(query, max_count=1)
-        results = []
-        for item in items:
-            try:
-                mi = api.build_metadata(item, search_url, isbn=isbn, copy_image=False)
-                results.append(mi)
-            except Exception as e:
-                logging.warning("豆瓣V2构建元数据失败: %s", e)
-        return results
+        items, search_url = api.search(query, max_count=_max_count())
+        return api.build_metadata_batch(items, search_url, isbn=isbn, copy_image=False, get_detail=True)
 
     def search_best(self, mi):
         query = mi.isbn or mi.title
         if not query:
             return None
-        items, search_url = api.search(query)
+        items, search_url = api.search(query, max_count=_max_count())
         if not items:
             return None
         # 优先取标题完全匹配的，否则取首个结果
         best = next((i for i in items if i.get("title") == mi.title), items[0])
         try:
-            return api.build_metadata(best, search_url, isbn=getattr(mi, "isbn", None), copy_image=True)
+            return api.build_metadata(best, search_url, isbn=getattr(mi, "isbn", None), copy_image=True, get_detail=(len(items) == 1))
         except Exception:
-            logging.error(_("豆瓣V2查询 %s 失败"), query)
+            logging.error(_("[DoubanV2]查询 %s 失败"), query)
             return None
 
-    def get_metadata_by_provider(self, provider_value, mi=None):
+    def get_metadata_by_provider(self, provider_value, item=None):
         # 按标题重新搜索，找到 provider_value 匹配的条目后下载封面
-        title = mi.title if mi else None
-        if not title:
-            return mi
-        items, search_url = api.search(title)
-        for item in items:
-            if str(item.get("id")) == str(provider_value):
-                try:
-                    return api.build_metadata(
-                        item, search_url,
-                        isbn=getattr(mi, "isbn", None),
-                        copy_image=True,
-                    )
-                except Exception:
-                    logging.error("豆瓣V2获取详情失败，provider_value=%s", provider_value)
-                    break
-        # 兜底：对已有 cover_url 直接下载封面
-        cover_url = getattr(mi, "cover_url", None)
-        if mi and cover_url:
-            cover_data = api.get_cover(cover_url)
-            if cover_data:
-                mi.cover_data = cover_data
-        return mi
+        if not item:
+            return None
+        try:
+            return api.build_metadata(
+                item, "https://book.douban.com",
+                isbn=None,
+                copy_image=True,
+                get_detail=True
+            )
+        except Exception as e:
+            logging.error("[DoubanV2]获取详情失败，provider_value=%s", provider_value)
+            logging.error(f"[DoubanV2] Exception {e}")
+            logging.error(f"[DoubanV2] {traceback.format_exc()}")
+
+        return None
 
     def get_cover(self, cover_url):
         return api.get_cover(cover_url)
@@ -85,5 +79,5 @@ class DoubanV2MetaPlugin(MetaSourcePlugin):
         try:
             return api.build_metadata(items[0], search_url, isbn=isbn, copy_image=True)
         except Exception:
-            logging.error("豆瓣V2 ISBN查询 %s 失败", isbn)
+            logging.error("[DoubanV2] ISBN查询 %s 失败", isbn)
             return None
