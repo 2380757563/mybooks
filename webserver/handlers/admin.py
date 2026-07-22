@@ -413,6 +413,7 @@ class AdminSettings(BaseHandler):
             "AI_MCP_TOKEN",
             "AI_DEEPSEEK_API_KEY",
             "AI_API_URL",
+            "AI_ALLOW_SET_CATEGORY",
             "MAIN_PAGE_RANDOM_COUNT",
             "MAIN_PAGE_RECENT_COUNT",
             "INDEX_PAGE_TYPE",

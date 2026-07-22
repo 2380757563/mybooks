@@ -354,7 +354,7 @@ class BookBarnClient:
                 if len(data) > 0:
                     return data[0]
                 else:
-                    logging.warning(f"[BARN]No author found with name {author_name}")
+                    logging.debug(f"[BARN]No author found with name {author_name}")
                     return None
             else:
                 logging.warning("No data found in the response.")

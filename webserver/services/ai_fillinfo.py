@@ -49,12 +49,13 @@ class AIFillInfoService(AsyncService):
         return ""
 
     def _apply_ai_info(self, book_id: int, mi, info: AIBookInfo) -> bool:
+        allow_category = CONF.get("AI_ALLOW_SET_CATEGORY", True)
         try:
             if info.tags:
                 mi.tags = info.tags
             if info.comments:
                 mi.comments = info.comments
-            if info.category:
+            if info.category and allow_category:
                 mi.set(CALIBRE_COLUMN_CATEGORY, info.category)
             if info.authors:
                 mi.authors = mi.authors = [utils.super_strip(a) for a in info.authors]
@@ -62,7 +63,7 @@ class AIFillInfoService(AsyncService):
                 mi.pubdate = str2date(info.pubdate)
 
             self.db.set_metadata(book_id, mi, ignore_errors=True, force_changes=True)
-            if info.category:
+            if info.category and allow_category:
                 try:
                     self.db.new_api.set_field(CALIBRE_COLUMN_CATEGORY, {book_id: info.category})
                 except Exception as cache_err:

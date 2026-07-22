@@ -472,7 +472,6 @@
                 :rules="[modelNameRule]"
                 :maxlength="128"
               ></v-text-field>
-              <v-divider class="my-2"></v-divider>
               <v-text-field
                 :prepend-icon="'mdi-key'"
                 v-model="settings['AI_MCP_TOKEN']"
@@ -494,6 +493,17 @@
                 </span>
                 <span v-else>{{ $t('settings.test_ai_settings') }}</span>
               </v-btn>
+              <v-divider class="my-2"></v-divider>
+              <v-checkbox
+                small
+                hide-details
+                :disabled="!settings['AI_ENABLED']"
+                v-model="settings['AI_ALLOW_SET_CATEGORY']"
+                :key="'AI_ALLOW_SET_CATEGORY'"
+                :label="$t('settings.ai_allow_set_category')"
+                class="mb-3"
+                prepend-icon="mdi-scatter-plot-outline"
+              ></v-checkbox>
             </template>
 
             <template v-if="card.show_socials">

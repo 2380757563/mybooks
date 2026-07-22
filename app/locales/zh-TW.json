@@ -784,6 +784,7 @@
     "device_ftp_password": "密碼",
     "device_ftp_path": "目標路徑",
     "ai_enabled": "啟用 AI 助手 (Beta)",
+    "ai_allow_set_category": "使用 AI 產生的書籍分類",
     "ai_capabilities_description": "設定 AI 助手相關功能",
     "ai_capability": "AI 助手",
     "ai_model": "AI 模型",

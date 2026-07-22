@@ -577,6 +577,7 @@
     "default_reader_name": "Reader",
     "device_mailbox": "Email Address (Should end with @kindle.com)",
     "ai_enabled": "Enable AI assistant(Beta)",
+    "ai_allow_set_category": "Use AI-generated book category",
     "ai_capabilities_description": "Configure AI assistant features",
     "ai_model": "AI Model",
     "ai_mcp_token": "MCP Access Token",
