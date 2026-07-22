@@ -17,6 +17,7 @@ from webserver.toolbox.epub_fixer import EpubFixerTool
 from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
+from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -336,7 +337,6 @@ class AdminEpubSplitGenerate(BaseHandler):
         return {"err": "ok", "msg": _("新书生成成功"), "data": result}
 
 
-
 class AdminAuthorClean(BaseHandler):
     @js
     @is_admin
@@ -456,6 +456,61 @@ class AdminMimoTTSTest(BaseHandler):
         return {"err": "test.failed", "msg": _("连接失败：%s") % err_msg}
 
 
+class AdminBookBarnAcceptorStatus(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        return {"err": "ok", "data": BookBarnAcceptorTool().get_status()}
+
+
+class AdminBookBarnAcceptorToggle(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        enabled = bool(data.get("enabled", False))
+
+        result = BookBarnAcceptorTool().set_receiving_books(enabled)
+        if result.get("err") != "ok":
+            return result
+
+        return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
+
+
+class AdminBookBarnAcceptorApplyToken(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        try:
+            token = BookBarnAcceptorTool().apply_token(self.get_os())
+        except Exception as err:
+            return {"err": "params.error", "msg": _("Token申请失败: %s") % str(err)}
+        return {"err": "ok", "msg": _("Token申请成功"), "token": token}
+
+
+class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        hour = data.get("hour")
+
+        try:
+            hour = int(hour)
+        except (TypeError, ValueError):
+            return {"err": "params.missing", "msg": _("请提供有效的小时数")}
+
+        try:
+            result = BookBarnAcceptorTool().set_collection_hour(hour)
+        except ValueError:
+            return {"err": "params.invalid", "msg": _("小时数须为0-23之间的整数")}
+
+        if result.get("err") != "ok":
+            return result
+
+        return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
+
+
 def routes():
     return [
         (r"/api/toolbox/list", AdminToolList),
@@ -475,4 +530,8 @@ def routes():
         (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
         (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
         (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
+        (r"/api/toolbox/bookbarn_acceptor/status", AdminBookBarnAcceptorStatus),
+        (r"/api/toolbox/bookbarn_acceptor/toggle", AdminBookBarnAcceptorToggle),
+        (r"/api/toolbox/bookbarn_acceptor/apply_token", AdminBookBarnAcceptorApplyToken),
+        (r"/api/toolbox/bookbarn_acceptor/set_collection_hour", AdminBookBarnAcceptorSetCollectionHour),
     ]

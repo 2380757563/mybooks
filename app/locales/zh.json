@@ -1159,6 +1159,18 @@
     "startBtn": "开始执行",
     "success": "书名语言检测任务已启动，右上角可查看进度"
   },
+  "bookbarnAcceptor": {
+    "title": "书栈推书开关",
+    "close": "关闭",
+    "description": "查看书栈(BookBarn)服务状态与Token，开关接收推书功能。当前服务状态不稳定，不建议使用！",
+    "serviceStatus": "书栈服务：",
+    "enabled": "已开启",
+    "disabled": "未开启",
+    "enableReceiving": "开启接收推书",
+    "token": "书栈Token",
+    "applyToken": "申请Token",
+    "success": "操作成功"
+  },
   "authorClean": {
     "title": "作者清理",
     "close": "关闭",

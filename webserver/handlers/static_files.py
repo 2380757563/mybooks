@@ -260,7 +260,7 @@ class ToolIconHandler(BaseHandler):
                 icon_path = candidate
                 break
         if icon_path is None:
-            icon_path = os.path.join(toolbox_dir, "default_tool.jpg")
+            icon_path = os.path.join(toolbox_dir, "default_tool.png")
         if not os.path.exists(icon_path):
             raise web.HTTPError(404, "Tool icon not found")
         mime_type = mimetypes.guess_type(icon_path)[0] or "image/jpeg"

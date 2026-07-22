@@ -1156,6 +1156,18 @@
     "startBtn": "開始執行",
     "success": "書名語言偵測任務已啟動，右上角可查看進度"
   },
+  "bookbarnAcceptor": {
+    "title": "書棧推書開關",
+    "close": "關閉",
+    "description": "查看書棧(BookBarn)服務狀態與Token，開關接收推書功能。",
+    "serviceStatus": "書棧服務：",
+    "enabled": "已開啟",
+    "disabled": "未開啟",
+    "enableReceiving": "開啟接收推書",
+    "token": "書棧Token",
+    "applyToken": "申請Token",
+    "success": "操作成功"
+  },
   "authorClean": {
     "title": "作者清理",
     "close": "關閉",

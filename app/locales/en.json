@@ -1156,6 +1156,18 @@
     "startBtn": "Start",
     "success": "Book title language review task started. Check progress in the top right corner."
   },
+  "bookbarnAcceptor": {
+    "title": "BookBarn Receiving Switch",
+    "close": "Close",
+    "description": "View the BookBarn service status and token, toggle whether pushed books are received.",
+    "serviceStatus": "BookBarn service:",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "enableReceiving": "Enable receiving pushed books",
+    "token": "BookBarn Token",
+    "applyToken": "Request New Token",
+    "success": "Operation successful"
+  },
   "authorClean": {
     "title": "Author Cleanup",
     "close": "Close",

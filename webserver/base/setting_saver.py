@@ -11,6 +11,34 @@ from webserver.version import VERSION
 
 CONF = loader.get_settings()
 
+# Keys that AdminSettings (app/src/pages/admin/settings.vue) persists to auto.py.
+# Kept in sync with the `KEYS` whitelist in webserver.handlers.admin.AdminSettings.post —
+# anything outside this set (e.g. computed path settings) must never be written to auto.py.
+PERSISTABLE_KEYS = frozenset({
+    "ALLOW_GUEST_DOWNLOAD", "ALLOW_GUEST_PUSH", "ALLOW_GUEST_READ", "ALLOW_GUEST_UPLOAD",
+    "ALLOW_REGISTER", "BOOK_NAMES_FORMAT", "BOOK_NAV", "EPUB_VIEWER", "FRIENDS", "FOOTER",
+    "FOOTER_WATERMARK", "HIDE_PROJECT_LINKS", "HEADER", "INVITE_CODE", "INVITE_MESSAGE",
+    "INVITE_MODE", "MAX_UPLOAD_SIZE", "CHUNK_UPLOAD_SIZE", "RESET_MAIL_CONTENT", "RESET_MAIL_TITLE",
+    "SIGNUP_MAIL_CONTENT", "SIGNUP_MAIL_TITLE", "SOCIALS", "autoreload", "cookie_secret",
+    "scan_upload_path", "convert_timeout", "douban_apikey", "douban_baseurl", "douban_max_count",
+    "auto_fill_meta", "push_title", "push_content", "site_title", "smtp_password", "smtp_server",
+    "smtp_username", "smtp_encryption", "static_host", "xsrf_cookies", "settings_path",
+    "avatar_service", "google_analytics_id", "site_language", "site_theme", "site_icon",
+    "ENABLE_BOOKBARN", "ENABLE_PHYSICAL_BOOKS", "BOOKBARN_COLLECTION_HOUR", "BOOKBARN_TOKEN",
+    "ENABLE_RECEIVING_BOOKS", "USE_BOOKBARN_PROXY", "BOOK2AUDIO_PROXY", "LAST_REVISION", "DEVICES",
+    "AI_ENABLED", "AI_MODEL", "AI_MCP_TOKEN", "AI_DEEPSEEK_API_KEY", "AI_API_URL",
+    "MAIN_PAGE_RANDOM_COUNT", "MAIN_PAGE_RECENT_COUNT", "INDEX_PAGE_TYPE", "DEFAULT_PAGE_SIZE",
+    "ENABLE_WEBDAV_SERVICE", "WEBDAV_SYNC_FOLDER", "ENABLE_AUDIO_CONVERSION_LOG",
+    "ENABLE_OPDS_SERVICE", "ENABLE_OPDS_AUTH", "ENABLE_PODCAST_SERVICE", "META_SELECTED_SOURCES",
+    "PDF_TILE_WITH_FILE_NAME", "ALLOW_NEW_USER_MANAGE_BOOK", "ALLOW_NEW_USER_PUSH_BOOK",
+    "ALLOW_READ_RANGE_SETTING", "ENABLE_AUTO_NEW_USER_APPROVAL", "IMPORT_BY_INOTIFY",
+    "IMPORT_CATEGORY_WITH_FOLDER", "REMOVE_IMPORTED_FILE", "UPDATE_CATEGORY_WITH_FOLDER_RENAME",
+    "LOG_LEVEL_DEBUG", "ENABLE_STAMP_FEATURE", "STAMP_POSITION", "ENABLE_TXT_TO_TXTZ_PLUGIN",
+    "SEND_MAIL_FOR_NEW_BOOKS", "USE_DYNAMIC_COVER", "BATCH_ADD_IN_FORCE", "DEFAULT_LANGUAGE",
+    "ENABLE_DATA_SYNC", "ENABLE_AUTHOR_INFO", "ALLOW_USER_DISABLE_STATISTIC",
+    "ENABLE_HOMEPAGE_READING_STATS",
+})
+
 
 class SettingsSaver:
     # Settings that are read once at process startup and therefore require a
@@ -85,6 +113,22 @@ TITLE_TEMPLATE="%%s | %(site_title)s"
 
         with open(CONF["nuxt_env_path"], "w", encoding="utf-8") as f:
             f.write(nuxtjs_env)
+
+    def save_partial(self, overrides: dict) -> dict:
+        """Persist a small set of settings changes without wiping unrelated
+        settings previously saved to auto.py.
+
+        Seeds the args with every currently-active persistable setting from
+        CONF, then applies ``overrides`` on top, so keys untouched by the
+        caller keep their existing value in auto.py instead of disappearing.
+        """
+        args = loader.SettingsLoader()
+        args.clear()
+        for key, val in CONF.items():
+            if key in PERSISTABLE_KEYS or key.startswith("SOCIAL_AUTH"):
+                args[key] = val
+        args.update(overrides)
+        return self.save_extra_settings(args)
 
     def save_extra_settings(self, args):
         # Must check before CONF.update() so we can compare old vs. new values.
