@@ -55,7 +55,7 @@ class MimoTTSTool(BaseTool):
             "name": "Mimo-TTS有声书",
             "description": "通过 TTS API（支持 MiMo Chat / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式）。",
             "revision": "0.3.0",
-            "author": "Shiningsprk-Arch",
+            "author": "黏菌",
             "publish_date": "2026-07-22",
         }
 

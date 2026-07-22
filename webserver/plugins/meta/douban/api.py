@@ -10,9 +10,9 @@ import json
 import logging
 import re
 import sys
-from webserver.i18n import _
 from urllib.parse import urlparse
 from pathlib import Path
+from webserver.i18n import _
 from webserver.constants import CHROME_HEADERS
 
 import requests
@@ -20,6 +20,7 @@ import requests
 
 DEFAULT_COVER_SUFFIX = "/book-default-"
 UPDATE_IMAGE_SUFFIX = "/update_image"
+DEFAULT_BASE_URL = "http://localhost:8022/"
 
 KEY = "douban"
 REMOVES = [
@@ -62,7 +63,7 @@ class SimpleMetaData:
 
 
 class DoubanBookApi(object):
-    def __init__(self, apikey, baseUrl, copy_image=True, manual_select=False, maxCount=2):
+    def __init__(self, apikey, baseUrl=DEFAULT_BASE_URL, copy_image=True, manual_select=False, maxCount=2):
         self.apikey = apikey
         self.baseUrl = baseUrl
         self.maxCount = maxCount
@@ -252,15 +253,14 @@ def select_douban_metadata(mi):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("%s BOOK-TITLE BASE-URL" % sys.argv[0])
+    if len(sys.argv) != 2:
+        print("%s title" % sys.argv[0])
         exit(0)
 
     from pprint import pprint
-
     logging.basicConfig(level=logging.DEBUG)
-    api = DoubanBookApi("fake-api-key", sys.argv[2])
-    books = api.get_books_by_title(sys.argv[1])
+    api = DoubanBookApi("0df993c66c0c636e29ecbb5344252a4a", maxCount=5)
+    books = api.get_book_by_title(sys.argv[1])
     pprint(books)
-    metas = [str2date(b["pubdate"]) for b in books]
-    pprint(metas)
+    # metas = [str2date(b["pubdate"]) for b in books]
+    # pprint(metas)
