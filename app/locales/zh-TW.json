@@ -1462,7 +1462,11 @@
     "configLoaded": "已載入已儲存的配置",
     "startBtn": "開始轉換",
     "convertStarted": "轉換任務已啟動，可在右上角查看進度",
-    "noEpub": "所選書籍沒有 EPUB 格式",
-    "audioOpen": "打開有聲書"
+    "convertCompleted": "轉換任務已完成",
+    "convertFailed": "轉換任務失敗",
+    "statusProcessing": "處理中",
+    "statusCompleted": "已完成",
+    "noResults": "未找到相關書籍",
+    "noEpub": "所選書籍沒有 EPUB 格式"
   }
 }
