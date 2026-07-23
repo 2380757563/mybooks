@@ -1462,7 +1462,11 @@
     "configLoaded": "Loaded saved configuration",
     "startBtn": "Start Conversion",
     "convertStarted": "Conversion task started, check progress in the top-right panel",
-    "noEpub": "The selected book has no EPUB format",
-    "audioOpen": "Open Audio"
+    "convertCompleted": "Conversion task completed",
+    "convertFailed": "Conversion task failed",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
+    "noResults": "No books found",
+    "noEpub": "The selected book has no EPUB format"
   }
 }
