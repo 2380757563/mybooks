@@ -37,7 +37,7 @@
               <v-progress-circular indeterminate color="primary" size="32" />
             </div>
             <div v-else-if="books.length === 0 && searched" class="text-center py-4 grey--text">
-              {{ $t('mimoTts.noResults', $t('epubSplit.noResults')) }}
+              {{ $t('mimoTts.noResults') }}
             </div>
             <v-list v-else-if="books.length > 0" dense class="mt-list pa-0">
               <v-list-item
@@ -81,7 +81,7 @@
               v-model="apiType"
               :label="$t('mimoTts.apiType')"
               :items="apiTypeOptions"
-              item-text="label"
+              item-title="label"
               item-value="value"
               outlined
               dense
@@ -117,7 +117,7 @@
               v-model="authType"
               :label="$t('mimoTts.authType')"
               :items="authTypeOptions"
-              item-text="label"
+              item-title="label"
               item-value="value"
               outlined
               dense
@@ -143,7 +143,7 @@
                 v-model="voiceType"
                 :label="$t('mimoTts.voiceLabel')"
                 :items="voiceOptions"
-                item-text="label"
+                item-title="label"
                 item-value="value"
                 outlined
                 dense
@@ -170,7 +170,7 @@
                 v-model="voiceName"
                 :label="$t('mimoTts.voiceName')"
                 :items="speechVoiceOptions"
-                item-text="label"
+                item-title="label"
                 item-value="value"
                 outlined
                 dense
@@ -185,7 +185,7 @@
                 v-model="voiceType"
                 :label="$t('mimoTts.voiceLabel')"
                 :items="voiceOptions"
-                item-text="label"
+                item-title="label"
                 item-value="value"
                 outlined
                 dense
@@ -218,7 +218,7 @@
               >{{ resultMsg }}</v-alert>
             </transition>
 
-            <div class="d-flex justify-center flex-wrap mt-btn-row">
+            <div class="d-flex justify-center flex-wrap ga-3">
               <v-btn
                 color="secondary"
                 variant="outlined"
@@ -243,6 +243,14 @@
               </v-btn>
             </div>
 
+            <div v-if="processing || completed" class="mt-4">
+              <div class="mb-1 d-flex justify-space-between text-caption">
+                <span>{{ status === 'completed' ? $t('mimoTts.statusCompleted') : $t('mimoTts.statusProcessing') }}</span>
+                <span>{{ progress }}%</span>
+              </div>
+              <v-progress-linear v-model="progress" height="10" rounded color="primary" />
+            </div>
+
             <div v-if="completed" class="d-flex justify-center mt-4">
               <v-btn
                 color="success"
@@ -250,7 +258,7 @@
                 @click="$router.push('/audio/' + selected.id)"
               >
                 <v-icon left>mdi-headphones</v-icon>
-                {{ $t('mimoTts.audioOpen') }}
+                {{ $t('reader.audio_open') }}
               </v-btn>
             </div>
           </template>
@@ -301,6 +309,9 @@ export default {
     resultMsg: '',
     resultType: 'success',
     completed: false,
+    progress: 0,
+    status: '',
+    pollInterval: null,
   }),
   computed: {
     apiTypeOptions() {
@@ -360,6 +371,12 @@ export default {
   async created() {
     this.$store.commit('navbar', true);
     await this.loadSavedConfig();
+  },
+  beforeDestroy() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
   },
   methods: {
     onApiTypeChange(type) {
@@ -468,6 +485,8 @@ export default {
       this.resultMsg = '';
       this.completed = false;
       this.processing = true;
+      this.progress = 0;
+      this.status = '';
       try {
         const rsp = await this.$backend('/toolbox/mimo_tts/convert', {
           method: 'POST',
@@ -486,17 +505,57 @@ export default {
         if (rsp.err === 'ok') {
           this.resultMsg = rsp.msg || this.$t('mimoTts.convertStarted');
           this.resultType = 'success';
-          this.completed = true;
+          this.pollProgress();
         } else {
           this.resultMsg = rsp.msg || rsp.err;
           this.resultType = 'error';
+          this.processing = false;
         }
       } catch (e) {
         this.resultMsg = String(e);
         this.resultType = 'error';
-      } finally {
         this.processing = false;
       }
+    },
+    pollProgress() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+      }
+      this.pollInterval = setInterval(async () => {
+        try {
+          const rsp = await this.$backend('/toolbox/mimo_tts/progress');
+          if (rsp.err === 'ok' && rsp.data) {
+            this.progress = rsp.data.progress || 0;
+            this.status = rsp.data.status || '';
+            if (rsp.data.status === 'completed') {
+              clearInterval(this.pollInterval);
+              this.pollInterval = null;
+              this.processing = false;
+              this.completed = true;
+              this.resultMsg = rsp.msg || this.$t('mimoTts.convertCompleted');
+              this.resultType = 'success';
+            } else if (rsp.data.status === 'failed') {
+              clearInterval(this.pollInterval);
+              this.pollInterval = null;
+              this.processing = false;
+              this.resultMsg = rsp.msg || this.$t('mimoTts.convertFailed');
+              this.resultType = 'error';
+            }
+          } else {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+            this.processing = false;
+            this.resultMsg = rsp.msg || rsp.err;
+            this.resultType = 'error';
+          }
+        } catch (e) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.processing = false;
+          this.resultMsg = String(e);
+          this.resultType = 'error';
+        }
+      }, 2000);
     },
   },
 };
