@@ -18,6 +18,7 @@ from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
+from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -404,7 +405,9 @@ class AdminMimoTTSConvert(BaseHandler):
         if tool.is_running():
             return {"err": "task.running", "msg": _("已有 TTS 转换任务正在运行，请稍后再试")}
 
-        tool.convert(int(book_id), api_key, voice_desc, self.user_id(),
+        # audio_speech 模式下 voice_desc 无意义，传空字符串避免混淆
+        effective_voice_desc = voice_desc if api_type == "chat_completions" else ""
+        tool.convert(int(book_id), api_key, effective_voice_desc, self.user_id(),
                      api_url, model_name, api_type, voice_name, auth_type)
         return {"err": "ok", "msg": _("TTS 转换任务已启动，右上角可以查看进度")}
 
@@ -423,6 +426,34 @@ class AdminMimoTTSConfig(BaseHandler):
     def delete(self):
         MimoTTSTool().clear_api_config()
         return {"err": "ok", "msg": _("已清除已保存的配置")}
+
+
+class AdminMimoTTSProgress(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        task = MimoTTSTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动 TTS 转换任务")}
+
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "stage": progress_data.get("stage", ""),
+            "chapter": progress_data.get("chapter", 0),
+            "total": progress_data.get("total", 0),
+            "chapter_title": progress_data.get("chapter_title", ""),
+        }
+
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
+
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("TTS 转换任务已完成"), "data": result}
+
+        return {"err": "ok", "data": result}
 
 
 class AdminMimoTTSTest(BaseHandler):
@@ -527,11 +558,12 @@ def routes():
         (r"/api/toolbox/epub_split/chapters", AdminEpubSplitChapters),
         (r"/api/toolbox/epub_split/generate", AdminEpubSplitGenerate),
         (r"/api/toolbox/author_clean", AdminAuthorClean),
-        (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
-        (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
-        (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
         (r"/api/toolbox/bookbarn_acceptor/status", AdminBookBarnAcceptorStatus),
         (r"/api/toolbox/bookbarn_acceptor/toggle", AdminBookBarnAcceptorToggle),
         (r"/api/toolbox/bookbarn_acceptor/apply_token", AdminBookBarnAcceptorApplyToken),
         (r"/api/toolbox/bookbarn_acceptor/set_collection_hour", AdminBookBarnAcceptorSetCollectionHour),
+        (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
+        (r"/api/toolbox/mimo_tts/progress", AdminMimoTTSProgress),
+        (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
+        (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
     ]
