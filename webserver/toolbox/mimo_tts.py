@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import stat
 import threading
 import traceback
 from typing import Optional
@@ -29,6 +30,7 @@ MIN_WAV_SIZE = 44
 PBKDF2_ITER = 100000
 CONFIG_FILE = "api_config.enc"
 KEY_FILE = ".mimo_key"
+MAX_FILENAME_LEN = 120
 
 
 class MimoTTSTool(BaseTool):
@@ -56,7 +58,7 @@ class MimoTTSTool(BaseTool):
             "description": "通过 TTS API（支持 MiMo Chat / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式）。",
             "revision": "0.3.0",
             "author": "黏菌",
-            "publish_date": "2026-07-22",
+            "publish_date": "2026-07-24",
         }
 
     # ── Encryption helpers ──────────────────────────────────────
@@ -79,6 +81,11 @@ class MimoTTSTool(BaseTool):
         os.makedirs(self._config_dir(), exist_ok=True)
         with open(path, "wb") as f:
             f.write(key)
+        # 设置密钥文件权限为仅所有者可读写 (0o600)
+        try:
+            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+        except Exception:
+            pass
         return key
 
     @staticmethod
@@ -174,9 +181,6 @@ class MimoTTSTool(BaseTool):
         chapters = []
         seen = set()
         def resolve_toc(toc_items, depth=0):
-            if depth > 1:
-                return
-            prefix = "_" * depth
             for entry in toc_items:
                 if isinstance(entry, tuple):
                     link, sub = entry
@@ -185,7 +189,7 @@ class MimoTTSTool(BaseTool):
                         title = link.title or ""
                         if href not in seen:
                             seen.add(href)
-                            chapters.append({"title": prefix + title, "href": href})
+                            chapters.append({"title": title, "href": href})
                         if sub:
                             resolve_toc(sub, depth + 1)
                 elif hasattr(entry, 'href') and entry.href:
@@ -193,20 +197,27 @@ class MimoTTSTool(BaseTool):
                     title = getattr(entry, 'title', '') or ''
                     if href not in seen:
                         seen.add(href)
-                        chapters.append({"title": prefix + title, "href": href})
+                        chapters.append({"title": title, "href": href})
 
         resolve_toc(book.toc)
 
         if not chapters:
             for item in book.get_items():
                 if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                    chapters.append({"title": "", "href": item.get_name()})
+                    name = item.get_name()
+                    # 跳过导航文件
+                    if name and not name.lower().startswith('nav') and not name.lower().startswith('toc'):
+                        title = Path(name).stem
+                        chapters.append({"title": title, "href": name})
 
         for ch in chapters:
             href = ch["href"]
             item = spine_items.get(href)
             if item:
-                soup = BeautifulSoup(item.get_content(), "html.parser")
+                content = item.get_content()
+                if isinstance(content, bytes):
+                    content = content.decode('utf-8', errors='ignore')
+                soup = BeautifulSoup(content, "html.parser")
                 for tag in soup(["script", "style", "nav"]):
                     tag.decompose()
                 text = soup.get_text(separator="\n")
@@ -265,6 +276,10 @@ class MimoTTSTool(BaseTool):
             }
             resp = requests.post(api_url, headers=headers, json=payload, timeout=120)
             resp.raise_for_status()
+            # 校验响应格式是否为音频
+            content_type = resp.headers.get("Content-Type", "").lower()
+            if content_type and not any(ct in content_type for ct in ["audio", "wav", "octet-stream", "mpeg"]):
+                raise RuntimeError(_("API 返回非音频格式: %s") % content_type)
             return resp.content
 
         payload = {
@@ -283,6 +298,25 @@ class MimoTTSTool(BaseTool):
         data = resp.json()
         audio_data = data["choices"][0]["message"]["audio"]["data"]
         return base64.b64decode(audio_data)
+
+    # ── Filename sanitization ───────────────────────────────────
+
+    @staticmethod
+    def _sanitize_filename(title: str, fallback: str) -> str:
+        if not title or not title.strip():
+            title = fallback
+        # 替换换行、制表符为空格
+        title = re.sub(r'[\r\n\t]+', ' ', title)
+        # 替换 Windows / Unix 非法字符
+        title = re.sub(r'[<>:"/\\|?*]', '_', title)
+        # 替换连续空格/下划线为单个
+        title = re.sub(r'[ _]+', '_', title)
+        # 去除首尾空格和下划线
+        title = title.strip().strip('_')
+        # 限制长度
+        if len(title) > MAX_FILENAME_LEN:
+            title = title[:MAX_FILENAME_LEN].rsplit('_', 1)[0]
+        return title or fallback
 
     # ── Convert (with resume) ───────────────────────────────────
 
@@ -305,20 +339,17 @@ class MimoTTSTool(BaseTool):
         try:
             books = self.db.get_data_as_dict(ids=[book_id])
             if not books:
-                error_message = _("书籍不存在：ID=%d") % book_id
-                return
+                raise RuntimeError(_("书籍不存在：ID=%d") % book_id)
 
             book = books[0]
             book_title = book.get("title", "Unknown")
             fmts = [f.upper() for f in (book.get("available_formats") or [])]
             if "EPUB" not in fmts:
-                error_message = _("该书籍没有 EPUB 格式，无法转换")
-                return
+                raise RuntimeError(_("该书籍没有 EPUB 格式，无法转换"))
 
             epub_path = self.db.format_abspath(book_id, "EPUB", index_is_id=True)
             if not epub_path or not os.path.exists(epub_path):
-                error_message = _("找不到 EPUB 文件")
-                return
+                raise RuntimeError(_("找不到 EPUB 文件"))
 
             self.update_task_progress(task_id, 5, {"status": "running", "stage": "parsing"})
 
@@ -327,8 +358,7 @@ class MimoTTSTool(BaseTool):
             total_chapters = len(chapters)
 
             if total_chapters == 0:
-                error_message = _("未从 EPUB 中提取到任何章节内容")
-                return
+                raise RuntimeError(_("未从 EPUB 中提取到任何章节内容"))
 
             output_dir = os.path.join(AUDIO_OUTPUT_FOLDER, str(book_id))
             os.makedirs(output_dir, exist_ok=True)
@@ -352,6 +382,10 @@ class MimoTTSTool(BaseTool):
                         existing.add(fname)
 
             skipped = 0
+            failed_parts = 0
+            total_parts_all = sum(len(self._split_text(ch.get("text", "").strip())) for ch in chapters)
+            completed_parts = 0
+
             for idx, chapter in enumerate(chapters):
                 text = chapter.get("text", "").strip()
                 if not text:
@@ -359,12 +393,13 @@ class MimoTTSTool(BaseTool):
 
                 parts = self._split_text(text)
                 for pidx, part in enumerate(parts):
-                    safe_title = re.sub(r'[<>:"/\\|?*]', '_', chapter.get("title", f"ch{idx+1}"))
+                    safe_title = self._sanitize_filename(chapter.get("title", ""), f"ch{idx+1}")
                     suffix = f"_part{pidx}" if len(parts) > 1 else ""
                     filename = f"{idx+1:04d}_{safe_title}{suffix}.wav"
 
                     if filename in existing:
                         skipped += 1
+                        completed_parts += 1
                         continue
 
                     try:
@@ -373,15 +408,16 @@ class MimoTTSTool(BaseTool):
                                                     voice_name, auth_type)
                     except Exception as e:
                         logging.error("[MimoTTSTool] TTS failed for chapter %d part %d: %s", idx+1, pidx, e)
+                        failed_parts += 1
                         continue
 
                     filepath = os.path.join(output_dir, filename)
                     with open(filepath, "wb") as f:
                         f.write(wav_data)
+                    completed_parts += 1
 
-                chapters_done = sum(1 for i in range(idx + 1)
-                                    if chapters[i].get("text", "").strip())
-                progress = int(5 + (chapters_done / total_chapters) * 90)
+                # 按已完成 part 数 / 总 part 数 计算进度
+                progress = int(5 + (completed_parts / max(total_parts_all, 1)) * 90)
                 self.update_task_progress(task_id, min(progress, 95), {
                     "status": "running",
                     "stage": "converting",
@@ -398,7 +434,10 @@ class MimoTTSTool(BaseTool):
                 "total_chapters": total_chapters,
             })
 
-            if skipped > 0:
+            if failed_parts > 0:
+                self.add_msg(user_id, "warning",
+                             _("《%s》的有声书转换已完成（%d 个片段失败），可在书籍详情页查看") % (book_title, failed_parts))
+            elif skipped > 0:
                 self.add_msg(user_id, "success",
                              _("《%s》的有声书转换已完成（续传跳过 %d 个已有文件），可在书籍详情页播放") % (book_title, skipped))
             else:
