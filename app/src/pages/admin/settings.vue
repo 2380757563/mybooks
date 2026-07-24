@@ -950,7 +950,19 @@ export default {
             key: "ENABLE_AUTHOR_INFO",
             label: "settings.enable_author_info",
             type: "checkbox"
-          }
+          },
+          {
+            icon: "mdi-chart-line",
+            key: "ALLOW_USER_DISABLE_STATISTIC",
+            label: "settings.allow_user_disable_statistic",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-view-dashboard-outline",
+            key: "ENABLE_HOMEPAGE_READING_STATS",
+            label: "settings.enable_homepage_reading_stats",
+            type: "checkbox",
+          },
         ]
       },
       {
@@ -1303,18 +1315,6 @@ export default {
             icon: "mdi-podcast",
             key: "ENABLE_PODCAST_SERVICE",
             label: "settings.enable_podcast_service",
-            type: "checkbox",
-          },
-          {
-            icon: "mdi-chart-line",
-            key: "ALLOW_USER_DISABLE_STATISTIC",
-            label: "settings.allow_user_disable_statistic",
-            type: "checkbox",
-          },
-          {
-            icon: "mdi-view-dashboard-outline",
-            key: "ENABLE_HOMEPAGE_READING_STATS",
-            label: "settings.enable_homepage_reading_stats",
             type: "checkbox",
           },
           {
