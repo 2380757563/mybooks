@@ -60,6 +60,8 @@ class BookSearch:
             plugin = klass()
             if provider_key in plugin.SOURCE_KEYS:
                 return plugin
+            if plugin.PROVIDER_KEY == provider_key:
+                return plugin
         return None
 
     @staticmethod
