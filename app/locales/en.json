@@ -1467,6 +1467,7 @@
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "noResults": "No books found",
-    "noEpub": "The selected book has no EPUB format"
+    "noEpub": "The selected book has no EPUB format",
+    "audioOpen": "Open Audio"
   }
 }

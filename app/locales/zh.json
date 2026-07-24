@@ -1469,6 +1469,7 @@
     "statusProcessing": "处理中",
     "statusCompleted": "已完成",
     "noResults": "未找到相关书籍",
-    "noEpub": "所选书籍没有 EPUB 格式"
+    "noEpub": "所选书籍没有 EPUB 格式",
+    "audioOpen": "打开有声书"
   }
 }

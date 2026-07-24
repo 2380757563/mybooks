@@ -1467,6 +1467,7 @@
     "statusProcessing": "處理中",
     "statusCompleted": "已完成",
     "noResults": "未找到相關書籍",
-    "noEpub": "所選書籍沒有 EPUB 格式"
+    "noEpub": "所選書籍沒有 EPUB 格式",
+    "audioOpen": "打開有聲書"
   }
 }
