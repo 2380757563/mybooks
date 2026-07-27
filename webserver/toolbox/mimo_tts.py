@@ -394,7 +394,7 @@ class MimoTTSTool(BaseTool):
                 parts = self._split_text(text)
                 for pidx, part in enumerate(parts):
                     safe_title = self._sanitize_filename(chapter.get("title", ""), f"ch{idx+1}")
-                    suffix = f"_part{pidx}" if len(parts) > 1 else ""
+                    suffix = f"_part{pidx:03d}" if len(parts) > 1 else ""
                     filename = f"{idx+1:04d}_{safe_title}{suffix}.wav"
 
                     if filename in existing:
