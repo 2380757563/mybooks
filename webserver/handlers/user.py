@@ -848,12 +848,15 @@ class UserReadingHistory(BaseHandler):
                 continue
             b = dict(b)
             b["timestamp"] = int(r.update_time.replace(tzinfo=datetime.timezone.utc).timestamp())
+            b["pubdate"] = None
+            b["last_modified"] = None
             b["img"] = self.cdn_url + "/get/cover/%(id)s.jpg?t=%(timestamp)s" % b
             b["href"] = "/book/%(id)s" % b
             b["thumb"] = self.cdn_url + "/get/thumb_240_320/%(id)s.jpg?t=%(timestamp)s&size=240x320" % b
             result.append(b)
             if len(result) >= 12:
                 break
+        logging.info(result)
         return {"err": "ok", "books": result}
 
 
