@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 import os
 import time
+import mimetypes
 import tornado
 
 from webserver.i18n import _
@@ -18,7 +19,6 @@ from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
-from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -380,6 +380,7 @@ class AdminMimoTTSConvert(BaseHandler):
         api_type = (data.get("api_type") or "chat_completions").strip()
         voice_name = (data.get("voice_name") or "").strip()
         auth_type = (data.get("auth_type") or "api-key").strip()
+        clone_voice = (data.get("clone_voice") or "").strip()
 
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
@@ -396,6 +397,14 @@ class AdminMimoTTSConvert(BaseHandler):
                 model_name = "tts-1"
             else:
                 model_name = "mimo-v2.5-tts"
+        if api_type == "chat_completions":
+            model_name = "mimo-v2.5-tts"
+        if clone_voice:
+            if api_type != "chat_completions":
+                return {"err": "params.invalid", "msg": _("音色克隆仅支持 MiMo TTS 类型 API")}
+            if not MimoTTSTool().get_clone_voice_path(clone_voice):
+                return {"err": "clone.not_found", "msg": _("克隆音色「%s」不存在，请重新上传") % clone_voice}
+            model_name = "mimo-v2.5-tts-voiceclone"
         if api_type == "chat_completions" and not voice_desc:
             voice_desc = "自然平和的语调，语速适中，咬字清晰"
         if api_type == "audio_speech" and not voice_name:
@@ -406,9 +415,10 @@ class AdminMimoTTSConvert(BaseHandler):
             return {"err": "task.running", "msg": _("已有 TTS 转换任务正在运行，请稍后再试")}
 
         # audio_speech 模式下 voice_desc 无意义，传空字符串避免混淆
-        effective_voice_desc = voice_desc if api_type == "chat_completions" else ""
+        effective_voice_desc = voice_desc if api_type in ("chat_completions", "custom") else ""
         tool.convert(int(book_id), api_key, effective_voice_desc, self.user_id(),
-                     api_url, model_name, api_type, voice_name, auth_type)
+                     api_url, model_name, api_type, voice_name, auth_type,
+                     clone_voice)
         return {"err": "ok", "msg": _("TTS 转换任务已启动，右上角可以查看进度")}
 
 
@@ -468,6 +478,7 @@ class AdminMimoTTSTest(BaseHandler):
         api_type = (data.get("api_type") or "chat_completions").strip()
         voice_name = (data.get("voice_name") or "").strip()
         auth_type = (data.get("auth_type") or "api-key").strip()
+        clone_voice = (data.get("clone_voice") or "").strip()
 
         if not api_key:
             return {"err": "params.missing", "msg": _("请提供 API Key")}
@@ -475,95 +486,152 @@ class AdminMimoTTSTest(BaseHandler):
             return {"err": "params.missing", "msg": _("请填写 API URL")}
         if not model_name:
             return {"err": "params.missing", "msg": _("请填写模型名称")}
+        if api_type == "chat_completions":
+            model_name = "mimo-v2.5-tts"
+        if clone_voice:
+            if not MimoTTSTool().get_clone_voice_path(clone_voice):
+                return {"err": "clone.not_found", "msg": _("克隆音色「%s」不存在，请重新上传") % clone_voice}
+            model_name = "mimo-v2.5-tts-voiceclone"
         if api_type == "chat_completions" and not voice_desc:
             voice_desc = "自然平和的语调，语速适中，咬字清晰"
         if api_type == "audio_speech" and not voice_name:
             voice_name = "alloy"
 
         ok, err_msg = MimoTTSTool().test_connection(
-            api_key, voice_desc, api_url, model_name, api_type, voice_name, auth_type)
+            api_key, voice_desc, api_url, model_name, api_type, voice_name, auth_type,
+            clone_voice)
         if ok:
             return {"err": "ok", "msg": _("连接成功，配置已保存")}
         return {"err": "test.failed", "msg": _("连接失败：%s") % err_msg}
 
 
-class AdminBookBarnAcceptorStatus(BaseHandler):
+class AdminMimoTTSCloneUpload(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        if not self.request.files or 'file' not in self.request.files:
+            return {"err": "params.missing", "msg": _("未上传文件")}
+
+        file_meta = self.request.files['file'][0]
+        voice_name = (self.get_body_argument("voice_name", "") or "").strip()
+        ext = os.path.splitext(file_meta['filename'])[1].lower()
+
+        tool = MimoTTSTool()
+        try:
+            name = tool.save_clone_voice(voice_name, ext, file_meta['body'])
+        except ValueError as err:
+            return {"err": "params.invalid", "msg": str(err)}
+
+        return {"err": "ok", "msg": _("克隆音色「%s」上传成功") % name, "data": {"name": name}}
+
+
+class AdminMimoTTSCloneList(BaseHandler):
     @js
     @is_admin
     def get(self):
-        return {"err": "ok", "data": BookBarnAcceptorTool().get_status()}
+        clones = MimoTTSTool().list_clone_voices()
+        return {"err": "ok", "clones": clones}
 
 
-class AdminBookBarnAcceptorToggle(BaseHandler):
+class AdminMimoTTSCloneDelete(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
-        enabled = bool(data.get("enabled", False))
+        voice_name = (data.get("voice_name") or "").strip()
+        if not voice_name:
+            return {"err": "params.missing", "msg": _("请提供克隆音色名称")}
 
-        result = BookBarnAcceptorTool().set_receiving_books(enabled)
-        if result.get("err") != "ok":
-            return result
-
-        return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
+        if MimoTTSTool().delete_clone_voice(voice_name):
+            return {"err": "ok", "msg": _("克隆音色「%s」已删除") % voice_name}
+        return {"err": "clone.not_found", "msg": _("克隆音色「%s」不存在") % voice_name}
 
 
-class AdminBookBarnAcceptorApplyToken(BaseHandler):
+class AdminMimoTTSCloneAudio(BaseHandler):
+    @is_admin
+    def get(self):
+        voice_name = self.get_argument("voice_name", "").strip()
+        path = MimoTTSTool().get_clone_voice_path(voice_name)
+        if not path:
+            self.set_status(404)
+            self.write("Clone voice not found")
+            return
+
+        mime = mimetypes.guess_type(path)[0] or "audio/wav"
+        self.set_header("Content-Type", mime)
+        self.set_header("Cache-Control", "no-store")
+        with open(path, "rb") as f:
+            self.write(f.read())
+
+
+class AdminMimoTTSPromptList(BaseHandler):
     @js
     @is_admin
-    def post(self):
-        try:
-            token = BookBarnAcceptorTool().apply_token(self.get_os())
-        except Exception as err:
-            return {"err": "params.error", "msg": _("Token申请失败: %s") % str(err)}
-        return {"err": "ok", "msg": _("Token申请成功"), "token": token}
+    def get(self):
+        prompts = MimoTTSTool().list_voice_prompts()
+        return {"err": "ok", "prompts": prompts}
 
 
-class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
+class AdminMimoTTSPromptSave(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
-        hour = data.get("hour")
+        name = (data.get("name") or "").strip()
+        desc = (data.get("desc") or "").strip()
+        if not name or not desc:
+            return {"err": "params.missing", "msg": _("请填写提示词名称和内容")}
 
         try:
-            hour = int(hour)
-        except (TypeError, ValueError):
-            return {"err": "params.missing", "msg": _("请提供有效的小时数")}
+            saved = MimoTTSTool().save_voice_prompt(name, desc)
+        except ValueError as err:
+            return {"err": "params.invalid", "msg": str(err)}
+        return {"err": "ok", "msg": _("提示词「%s」已保存") % saved, "data": {"name": saved}}
 
-        try:
-            result = BookBarnAcceptorTool().set_collection_hour(hour)
-        except ValueError:
-            return {"err": "params.invalid", "msg": _("小时数须为0-23之间的整数")}
 
-        if result.get("err") != "ok":
-            return result
+class AdminMimoTTSPromptDelete(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        name = (data.get("name") or "").strip()
+        if not name:
+            return {"err": "params.missing", "msg": _("请提供提示词名称")}
 
-        return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
+        if MimoTTSTool().delete_voice_prompt(name):
+            return {"err": "ok", "msg": _("提示词「%s」已删除") % name}
+        return {"err": "prompt.not_found", "msg": _("提示词「%s」不存在") % name}
 
 
 def routes():
     return [
-        (r"/api/toolbox/list", AdminToolList),
-        (r"/api/toolbox/rare_book_downloader", AdminRareBookDownloader),
-        (r"/api/toolbox/merge_formats/merge", AdminMergeFormatsMerge),
-        (r"/api/toolbox/review_book_language", AdminReviewBookLanguage),
-        (r"/api/toolbox/minify_pdf/upload", AdminMinifyPdfUpload),
-        (r"/api/toolbox/minify_pdf/process", AdminMinifyPdfProcess),
-        (r"/api/toolbox/minify_pdf/progress", AdminMinifyPdfProgress),
-        (r"/api/toolbox/minify_pdf/download", AdminMinifyPdfDownload),
-        (r"/api/toolbox/formats_pruning/start", AdminFormatsPruningStart),
-        (r"/api/toolbox/formats_pruning/progress", AdminFormatsPruningProgress),
-        (r"/api/toolbox/epub_fixer/fix", AdminEpubFixerFix),
-        (r"/api/toolbox/epub_split/chapters", AdminEpubSplitChapters),
-        (r"/api/toolbox/epub_split/generate", AdminEpubSplitGenerate),
-        (r"/api/toolbox/author_clean", AdminAuthorClean),
-        (r"/api/toolbox/bookbarn_acceptor/status", AdminBookBarnAcceptorStatus),
-        (r"/api/toolbox/bookbarn_acceptor/toggle", AdminBookBarnAcceptorToggle),
-        (r"/api/toolbox/bookbarn_acceptor/apply_token", AdminBookBarnAcceptorApplyToken),
-        (r"/api/toolbox/bookbarn_acceptor/set_collection_hour", AdminBookBarnAcceptorSetCollectionHour),
-        (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
-        (r"/api/toolbox/mimo_tts/progress", AdminMimoTTSProgress),
-        (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
-        (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
+                (r"/api/toolbox/list", AdminToolList),
+                (r"/api/toolbox/rare_book_downloader", AdminRareBookDownloader),
+                (r"/api/toolbox/merge_formats/merge", AdminMergeFormatsMerge),
+                (r"/api/toolbox/review_book_language", AdminReviewBookLanguage),
+                (r"/api/toolbox/minify_pdf/upload", AdminMinifyPdfUpload),
+                (r"/api/toolbox/minify_pdf/process", AdminMinifyPdfProcess),
+                (r"/api/toolbox/minify_pdf/progress", AdminMinifyPdfProgress),
+                (r"/api/toolbox/minify_pdf/download", AdminMinifyPdfDownload),
+                (r"/api/toolbox/formats_pruning/start", AdminFormatsPruningStart),
+                (r"/api/toolbox/formats_pruning/progress", AdminFormatsPruningProgress),
+                (r"/api/toolbox/epub_fixer/fix", AdminEpubFixerFix),
+                (r"/api/toolbox/epub_split/chapters", AdminEpubSplitChapters),
+                (r"/api/toolbox/epub_split/generate", AdminEpubSplitGenerate),
+                (r"/api/toolbox/author_clean", AdminAuthorClean),
+                (r"/api/toolbox/bookbarn_acceptor/status", AdminBookBarnAcceptorStatus),
+                (r"/api/toolbox/bookbarn_acceptor/toggle", AdminBookBarnAcceptorToggle),
+                (r"/api/toolbox/bookbarn_acceptor/apply_token", AdminBookBarnAcceptorApplyToken),
+                (r"/api/toolbox/bookbarn_acceptor/set_collection_hour", AdminBookBarnAcceptorSetCollectionHour),
+                (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
+                (r"/api/toolbox/mimo_tts/progress", AdminMimoTTSProgress),
+                (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
+                (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
+                (r"/api/toolbox/mimo_tts/clone/upload", AdminMimoTTSCloneUpload),
+                (r"/api/toolbox/mimo_tts/clone/list", AdminMimoTTSCloneList),
+                (r"/api/toolbox/mimo_tts/clone/delete", AdminMimoTTSCloneDelete),
+                (r"/api/toolbox/mimo_tts/clone/audio", AdminMimoTTSCloneAudio),
+                (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
+                (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
+                (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
     ]
