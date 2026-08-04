@@ -53,7 +53,7 @@ PRESET_VOICES = [
 
 
 class MimoTTSTool(BaseTool):
-    service_item_name = "TTS有声书"
+    service_item_name = "Mimo-TTS有声书"
 
     _convert_lock = threading.Lock()
     _last_task_id: Optional[int] = None
@@ -73,7 +73,7 @@ class MimoTTSTool(BaseTool):
     def info() -> dict:
         return {
             "tool_id": "mimo_tts",
-            "name": "TTS有声书",
+            "name": "Mimo-TTS有声书",
             "description": "通过 TTS API（支持 MiMo TTS / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式），目前仅支持 EPUB 格式，生成后可在线播放",
             "revision": "0.4.0",
             "author": "MyBooks",
@@ -203,6 +203,9 @@ class MimoTTSTool(BaseTool):
         chapters = []
         seen = set()
         def resolve_toc(toc_items, depth=0):
+            if depth > 1:
+                return
+            prefix = "_" * depth
             for entry in toc_items:
                 if isinstance(entry, tuple):
                     link, sub = entry
@@ -211,7 +214,7 @@ class MimoTTSTool(BaseTool):
                         title = link.title or ""
                         if href not in seen:
                             seen.add(href)
-                            chapters.append({"title": title, "href": href})
+                            chapters.append({"title": prefix + title, "href": href})
                         if sub:
                             resolve_toc(sub, depth + 1)
                 elif hasattr(entry, 'href') and entry.href:
@@ -219,7 +222,7 @@ class MimoTTSTool(BaseTool):
                     title = getattr(entry, 'title', '') or ''
                     if href not in seen:
                         seen.add(href)
-                        chapters.append({"title": title, "href": href})
+                        chapters.append({"title": prefix + title, "href": href})
 
         resolve_toc(book.toc)
 

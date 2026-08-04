@@ -1424,7 +1424,7 @@
     }
   },
   "mimoTts": {
-    "title": "TTS Audiobook",
+    "title": "Mimo-TTS Audiobook",
     "close": "Close",
     "hint": "Convert books to audiobooks via TTS API (supports MiMo Chat / OpenAI TTS compatible endpoints). Currently only EPUB format is supported. Generated audio files will appear in the book detail page.",
     "selectBook": "Select Book",
