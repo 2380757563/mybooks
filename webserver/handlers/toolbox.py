@@ -603,6 +603,61 @@ class AdminMimoTTSPromptDelete(BaseHandler):
         return {"err": "prompt.not_found", "msg": _("提示词「%s」不存在") % name}
 
 
+class AdminBookBarnAcceptorStatus(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        return {"err": "ok", "data": BookBarnAcceptorTool().get_status()}
+
+
+class AdminBookBarnAcceptorToggle(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        enabled = bool(data.get("enabled", False))
+
+        result = BookBarnAcceptorTool().set_receiving_books(enabled)
+        if result.get("err") != "ok":
+            return result
+
+        return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
+
+
+class AdminBookBarnAcceptorApplyToken(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        try:
+            token = BookBarnAcceptorTool().apply_token(self.get_os())
+        except Exception as err:
+            return {"err": "params.error", "msg": _("Token申请失败: %s") % str(err)}
+        return {"err": "ok", "msg": _("Token申请成功"), "token": token}
+
+
+class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        hour = data.get("hour")
+
+        try:
+            hour = int(hour)
+        except (TypeError, ValueError):
+            return {"err": "params.missing", "msg": _("未提供有效的小时数")}
+
+        try:
+            result = BookBarnAcceptorTool().set_collection_hour(hour)
+        except ValueError:
+            return {"err": "params.invalid", "msg": _("小时数应为0-23之间的整数")}
+
+        if result.get("err") != "ok":
+            return result
+
+        return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
+
+
 def routes():
     return [
                 (r"/api/toolbox/list", AdminToolList),
