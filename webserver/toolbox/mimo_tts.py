@@ -571,7 +571,7 @@ class MimoTTSTool(BaseTool):
                 chapter_ok = True
                 for pidx, part in enumerate(parts):
                     safe_title = self._sanitize_filename(chapter.get("title", ""), f"ch{idx+1}")
-                    suffix = f"_part{pidx}" if len(parts) > 1 else ""
+                    suffix = f"_part{pidx+1:03d}" if len(parts) > 1 else ""
                     filename = f"{idx+1:04d}_{safe_title}{suffix}.wav"
 
                     if filename in existing:
@@ -585,7 +585,7 @@ class MimoTTSTool(BaseTool):
                                                     voice_name, auth_type,
                                                     clone_voice=clone_voice)
                     except Exception as e:
-                        logging.error("[MimoTTSTool] TTS failed for chapter %d part %d: %s", idx+1, pidx, e)
+                        logging.error("[MimoTTSTool] TTS failed for chapter %d part %d: %s", idx+1, pidx+1, e)
                         failed_parts += 1
                         chapter_ok = False
                         continue
