@@ -7,6 +7,7 @@ import re
 import stat
 import threading
 import traceback
+from pathlib import Path
 from typing import Optional
 
 import ebooklib
@@ -25,12 +26,30 @@ CONF = loader.get_settings()
 AUDIO_OUTPUT_FOLDER = CONF.get("audio_output_folder", "/data/books/audios/")
 DEFAULT_CHAT_URL = "https://api.xiaomimimo.com/v1/chat/completions"
 DEFAULT_CHAT_MODEL = "mimo-v2.5-tts"
+VOICE_CLONE_MODEL = "mimo-v2.5-tts-voiceclone"
 MAX_CHUNK_CHARS = 2000
 MIN_WAV_SIZE = 44
 PBKDF2_ITER = 100000
 CONFIG_FILE = "api_config.enc"
 KEY_FILE = ".mimo_key"
 MAX_FILENAME_LEN = 120
+MAX_CLONE_SIZE = 7 * 1024 * 1024  # 文档要求 base64 <= 10MB，原始文件限 7MB
+CLONE_ALLOWED_EXT = (".mp3", ".wav")
+CLONE_DIR_NAME = "clones"
+PROMPT_FILE_NAME = "voice_prompts.json"
+MAX_PROMPT_DESC_LEN = 2000
+
+PRESET_VOICES = [
+    {"id": "mimo_default", "name": "MiMo-默认", "lang": "zh", "gender": "female", "sample": "mimo_default.wav"},
+    {"id": "冰糖", "name": "冰糖", "lang": "zh", "gender": "female", "sample": "bingtang.wav"},
+    {"id": "茉莉", "name": "茉莉", "lang": "zh", "gender": "female", "sample": "moli.wav"},
+    {"id": "苏打", "name": "苏打", "lang": "zh", "gender": "male", "sample": "souda.wav"},
+    {"id": "白桦", "name": "白桦", "lang": "zh", "gender": "male", "sample": "baihua.wav"},
+    {"id": "Mia", "name": "Mia", "lang": "en", "gender": "female", "sample": "Mia.wav"},
+    {"id": "Chloe", "name": "Chloe", "lang": "en", "gender": "female", "sample": "Chloe.wav"},
+    {"id": "Milo", "name": "Milo", "lang": "en", "gender": "male", "sample": "Milo.wav"},
+    {"id": "Dean", "name": "Dean", "lang": "en", "gender": "male", "sample": "Dean.wav"},
+]
 
 
 class MimoTTSTool(BaseTool):
@@ -55,10 +74,10 @@ class MimoTTSTool(BaseTool):
         return {
             "tool_id": "mimo_tts",
             "name": "Mimo-TTS有声书",
-            "description": "通过 TTS API（支持 MiMo Chat / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式）。",
-            "revision": "0.3.0",
+            "description": "通过 TTS API（支持 MiMo TTS / OpenAI TTS 格式）将 EPUB 书籍合成为有声书（WAV格式），目前仅支持 EPUB 格式，生成后可在线播放",
+            "revision": "0.4.0",
             "author": "黏菌",
-            "publish_date": "2026-07-24",
+            "publish_date": "2026-07-21",
         }
 
     # ── Encryption helpers ──────────────────────────────────────
@@ -149,12 +168,14 @@ class MimoTTSTool(BaseTool):
 
     def test_connection(self, api_key: str, voice_desc: str,
                         api_url: str, model_name: str, api_type: str,
-                        voice_name: str, auth_type: str) -> tuple[bool, str]:
+                        voice_name: str, auth_type: str,
+                        clone_voice: str = "") -> tuple[bool, str]:
         try:
             self._synthesize("测试语音合成。这是一个测试。",
                              api_key, voice_desc,
                              api_url, model_name, api_type,
-                             voice_name, auth_type)
+                             voice_name, auth_type,
+                             clone_voice=clone_voice)
             self.save_api_config({
                 "api_key": api_key,
                 "api_url": api_url,
@@ -163,6 +184,7 @@ class MimoTTSTool(BaseTool):
                 "voice_name": voice_name,
                 "auth_type": auth_type,
                 "voice_desc": voice_desc,
+                "clone_voice": clone_voice,
             })
             return True, ""
         except Exception as e:
@@ -260,7 +282,8 @@ class MimoTTSTool(BaseTool):
     @staticmethod
     def _synthesize(text: str, api_key: str, voice_desc: str,
                     api_url: str, model_name: str, api_type: str,
-                    voice_name: str, auth_type: str) -> bytes:
+                    voice_name: str, auth_type: str,
+                    clone_voice: str = "") -> bytes:
         headers = {"Content-Type": "application/json"}
         if auth_type == "api-key":
             headers["api-key"] = api_key
@@ -282,6 +305,15 @@ class MimoTTSTool(BaseTool):
                 raise RuntimeError(_("API 返回非音频格式: %s") % content_type)
             return resp.content
 
+        if clone_voice:
+            voice_data = MimoTTSTool().build_clone_data_uri(clone_voice)
+            if not voice_data:
+                raise RuntimeError(_("克隆音色「%s」不存在，请重新上传") % clone_voice)
+            model_name = VOICE_CLONE_MODEL
+            voice = voice_data
+        else:
+            voice = voice_name or "mimo_default"
+
         payload = {
             "model": model_name,
             "messages": [
@@ -290,7 +322,7 @@ class MimoTTSTool(BaseTool):
             ],
             "audio": {
                 "format": "wav",
-                "voice": voice_name or "mimo_default",
+                "voice": voice,
             },
         }
         resp = requests.post(api_url, headers=headers, json=payload, timeout=120)
@@ -318,6 +350,148 @@ class MimoTTSTool(BaseTool):
             title = title[:MAX_FILENAME_LEN].rsplit('_', 1)[0]
         return title or fallback
 
+    # ── Voice clone storage ────────────────────────────────────
+
+    def _clones_dir(self) -> str:
+        d = os.path.join(self.get_work_dir(""), CLONE_DIR_NAME)
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    @staticmethod
+    def _sanitize_clone_name(name: str) -> str:
+        name = re.sub(r'[^\w\u4e00-\u9fff\-]', '', name.strip()) if name else ""
+        if len(name) > 50:
+            name = name[:50]
+        return name
+
+    def save_clone_voice(self, name: str, ext: str, data: bytes,
+                         overwrite: bool = True) -> Optional[str]:
+        name = self._sanitize_clone_name(name)
+        if not name:
+            raise ValueError(_("克隆音色名称不能为空，且只能包含中英文、数字、下划线和连字符"))
+        ext = ext.lower()
+        if ext not in CLONE_ALLOWED_EXT:
+            raise ValueError(_("仅支持 MP3 / WAV 格式"))
+        if len(data) > MAX_CLONE_SIZE:
+            raise ValueError(_("音频文件过大（上限 7MB）"))
+        path = os.path.join(self._clones_dir(), f"{name}{ext}")
+        if os.path.exists(path) and not overwrite:
+            raise ValueError(_("同名克隆音色已存在：%s") % name)
+        with open(path, "wb") as f:
+            f.write(data)
+        return name
+
+    def list_clone_voices(self) -> list[dict]:
+        d = self._clones_dir()
+        clones = []
+        for fname in sorted(os.listdir(d)):
+            fpath = os.path.join(d, fname)
+            if not os.path.isfile(fpath):
+                continue
+            stem, ext = os.path.splitext(fname)
+            if ext.lower() not in CLONE_ALLOWED_EXT:
+                continue
+            st = os.stat(fpath)
+            clones.append({
+                "name": stem,
+                "ext": ext.lower().lstrip("."),
+                "size": st.st_size,
+                "mtime": st.st_mtime,
+            })
+        return clones
+
+    def get_clone_voice_path(self, name: str) -> Optional[str]:
+        name = self._sanitize_clone_name(name)
+        if not name:
+            return None
+        candidates = os.path.join(self._clones_dir(), name)
+        for ext in CLONE_ALLOWED_EXT:
+            p = candidates + ext
+            if os.path.isfile(p):
+                return p
+        return None
+
+    def delete_clone_voice(self, name: str) -> bool:
+        path = self.get_clone_voice_path(name)
+        if not path:
+            return False
+        try:
+            os.remove(path)
+            return True
+        except OSError:
+            return False
+
+    def build_clone_data_uri(self, name: str) -> Optional[str]:
+        path = self.get_clone_voice_path(name)
+        if not path:
+            return None
+        ext = Path(path).suffix.lower()
+        mime = "audio/mpeg" if ext == ".mp3" else "audio/wav"
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+        return f"data:{mime};base64,{b64}"
+
+    # ── Voice prompt library ───────────────────────────────────
+
+    def _prompts_path(self) -> str:
+        return os.path.join(self.get_work_dir(""), PROMPT_FILE_NAME)
+
+    def _load_prompts(self) -> dict:
+        path = self._prompts_path()
+        if not os.path.isfile(path):
+            return {}
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _save_prompts(self, data: dict) -> None:
+        path = self._prompts_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+
+    def list_voice_prompts(self) -> list[dict]:
+        data = self._load_prompts()
+        prompts = []
+        for name, desc in data.items():
+            if isinstance(desc, str) and desc.strip():
+                prompts.append({"name": name, "desc": desc})
+        prompts.sort(key=lambda x: x["name"].lower())
+        return prompts
+
+    def save_voice_prompt(self, name: str, desc: str,
+                          overwrite: bool = True) -> str:
+        name = self._sanitize_clone_name(name)
+        if not name:
+            raise ValueError(_("提示词名称不能为空，且只能包含中英文、数字、下划线和连字符"))
+        desc = (desc or "").strip()
+        if not desc:
+            raise ValueError(_("提示词内容不能为空"))
+        if len(desc) > MAX_PROMPT_DESC_LEN:
+            raise ValueError(_("提示词内容过长（上限 %d 字）") % MAX_PROMPT_DESC_LEN)
+        data = self._load_prompts()
+        if name in data and not overwrite:
+            raise ValueError(_("同名提示词已存在：%s") % name)
+        data[name] = desc
+        self._save_prompts(data)
+        return name
+
+    def delete_voice_prompt(self, name: str) -> bool:
+        name = self._sanitize_clone_name(name)
+        if not name:
+            return False
+        data = self._load_prompts()
+        if name not in data:
+            return False
+        del data[name]
+        self._save_prompts(data)
+        return True
+
     # ── Convert (with resume) ───────────────────────────────────
 
     @AsyncService.register_service
@@ -326,7 +500,8 @@ class MimoTTSTool(BaseTool):
                 model_name: str = DEFAULT_CHAT_MODEL,
                 api_type: str = "chat_completions",
                 voice_name: str = "",
-                auth_type: str = "api-key") -> None:
+                auth_type: str = "api-key",
+                clone_voice: str = "") -> None:
         if not MimoTTSTool._convert_lock.acquire(blocking=False):
             logging.warning("[MimoTTSTool] Already running, skipping convert for book_id=%d", book_id)
             return
@@ -374,6 +549,7 @@ class MimoTTSTool(BaseTool):
             except Exception as e:
                 logging.error(f"[MimoTTSTool]Failed to save cover image for book {book_id}: {e}")
 
+
             existing = set()
             if os.path.isdir(output_dir):
                 for fname in os.listdir(output_dir):
@@ -392,9 +568,10 @@ class MimoTTSTool(BaseTool):
                     continue
 
                 parts = self._split_text(text)
+                chapter_ok = True
                 for pidx, part in enumerate(parts):
                     safe_title = self._sanitize_filename(chapter.get("title", ""), f"ch{idx+1}")
-                    suffix = f"_part{pidx}" if len(parts) > 1 else ""
+                    suffix = f"_part{pidx+1:03d}" if len(parts) > 1 else ""
                     filename = f"{idx+1:04d}_{safe_title}{suffix}.wav"
 
                     if filename in existing:
@@ -405,10 +582,12 @@ class MimoTTSTool(BaseTool):
                     try:
                         wav_data = self._synthesize(part, api_key, voice_desc,
                                                     api_url, model_name, api_type,
-                                                    voice_name, auth_type)
+                                                    voice_name, auth_type,
+                                                    clone_voice=clone_voice)
                     except Exception as e:
-                        logging.error("[MimoTTSTool] TTS failed for chapter %d part %d: %s", idx+1, pidx, e)
+                        logging.error("[MimoTTSTool] TTS failed for chapter %d part %d: %s", idx+1, pidx+1, e)
                         failed_parts += 1
+                        chapter_ok = False
                         continue
 
                     filepath = os.path.join(output_dir, filename)
