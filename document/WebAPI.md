@@ -564,7 +564,91 @@ sys中为基础系统信息，title为网站标题, books为在库书籍数量�
 }
 ```
 
-### 2.10 获取社交网站图标
+### 2.10 首页阅读统计
+
+- **路径**：`/api/user/reading_stats`
+- **方法**：GET
+- **认证**：需要登录
+- **参数**：
+  - `uid` (query, 可选，仅管理员可用): 指定要查看的用户ID。普通用户传此参数会返回 `permission denied`；不传则默认查询当前登录用户自己的统计数据
+- **说明**：
+  - 该接口是首页“阅读统计”Banner 的数据源（详见 `document/Reading_Dashboard_Design.md`）。功能受配置项 `ENABLE_HOMEPAGE_READING_STATS` 控制（默认开启），关闭时接口仍返回 200，但仅含 `enabled: false`，不含其余字段
+  - `weekly` 中每周的起止按自然周（周一为一周起点）划分，历史（昨天及以前）数据按用户读取每日缓存文件聚合得出、每天最多重建一次；当天（今天）的数据始终来自实时查询，不做缓存
+  - `totals` 中的三个字段是账号维度的累计计数器（存储在 `Reader` 表上），不受 `weekly` 时间窗口限制
+  - `book_status` 为实时查询结果，不做缓存
+- **响应示例（功能开启，正常返回）**：
+
+```json
+{
+  "err": "ok",
+  "enabled": true,
+  "totals": {
+    "total_reading_seconds": 123456,
+    "download_count": 12,
+    "push_count": 3
+  },
+  "weekly": [
+    { "week_start": "2026-06-15", "reading_seconds": 5400, "download_count": 1, "push_count": 0 },
+    { "week_start": "2026-06-22", "reading_seconds": 3200, "download_count": 0, "push_count": 2 },
+    { "week_start": "2026-06-29", "reading_seconds": 0,    "download_count": 0, "push_count": 0 },
+    { "week_start": "2026-07-06", "reading_seconds": 7100, "download_count": 2, "push_count": 0 },
+    { "week_start": "2026-07-13", "reading_seconds": 4500, "download_count": 0, "push_count": 1 },
+    { "week_start": "2026-07-20", "reading_seconds": 6300, "download_count": 1, "push_count": 0 },
+    { "week_start": "2026-07-27", "reading_seconds": 2900, "download_count": 0, "push_count": 0 },
+    { "week_start": "2026-08-03", "reading_seconds": 1200, "download_count": 0, "push_count": 0 }
+  ],
+  "book_status": {
+    "reading": 3,
+    "to_read": 12,
+    "finished": 27
+  }
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `err` | string | 固定为 `"ok"`（异常/无权限时见下方错误响应） |
+| `enabled` | boolean | 阅读统计功能总开关（`ENABLE_HOMEPAGE_READING_STATS`）当前是否启用。为 `false` 时，响应中**不包含** `totals`/`weekly`/`book_status` 字段 |
+| `totals` | object | 账号累计统计（读取自 `Reader` 表对应字段，与统计周期无关） |
+| `totals.total_reading_seconds` | integer | 累计在线阅读时长，单位：秒 |
+| `totals.download_count` | integer | 累计下载次数 |
+| `totals.push_count` | integer | 累计推送次数（推送到设备/邮箱）。注意：该字段是后续版本新增的，历史数据未回填，仅统计功能上线后产生的推送 |
+| `weekly` | array | 最近 8 个自然周的统计数据，按周一为起点、时间正序排列（最早的一周在前，最后一项为本周至今的数据） |
+| `weekly[].week_start` | string (`YYYY-MM-DD`) | 该周的起始日期（周一） |
+| `weekly[].reading_seconds` | integer | 该周阅读时长，单位：秒 |
+| `weekly[].download_count` | integer | 该周下载次数 |
+| `weekly[].push_count` | integer | 该周推送次数 |
+| `book_status` | object | 当前图书状态分布（基于阅读状态表实时统计，不含缓存） |
+| `book_status.reading` | integer | 「在读」图书数量 |
+| `book_status.to_read` | integer | 「想读」图书数量（已标记 wants 但尚未开始/完成阅读） |
+| `book_status.finished` | integer | 「已读完」图书数量 |
+
+- **响应示例（功能关闭）**：
+
+```json
+{
+  "err": "ok",
+  "enabled": false
+}
+```
+
+- **错误响应示例**：
+
+```json
+{ "err": "failed", "msg": "permission denied" }
+```
+
+```json
+{ "err": "failed", "msg": "user not found" }
+```
+
+```json
+{ "err": "user.need_login", "msg": "请先登录" }
+```
+
+### 2.11 获取社交网站图标
 
 - **路径**：`/api/friends/favicon/<filename>`
 - **方法**：GET
