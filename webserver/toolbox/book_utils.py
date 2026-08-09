@@ -28,7 +28,7 @@ def get_book_file(tool, book_id: int, fmt: str) -> str:
     :param book_id: Calibre 书籍 ID。
     :param fmt:     大写格式名，如 ``"TXT"`` / ``"EPUB"``。
     :return: 文件绝对路径。
-    :raises RuntimeError: 书籍不存在 / 无该格式 / 文件缺失。
+    :raises RuntimeError: 书籍不存在 / 无该格式 / 文件缺失 / 路径不是文件 / 无法读取。
     """
     books = tool.db.get_data_as_dict(ids=[book_id])
     if not books:
@@ -39,6 +39,15 @@ def get_book_file(tool, book_id: int, fmt: str) -> str:
     path = tool.db.format_abspath(book_id, fmt, index_is_id=True)
     if not path or not os.path.exists(path):
         raise RuntimeError(_("找不到 %s 文件，可能已被移除") % fmt)
+    if not os.path.isfile(path):
+        # 目录 / 特殊设备等非普通文件：给出明确提示而非 IsADirectoryError 堆栈
+        raise RuntimeError(_("%s 文件路径异常（不是普通文件），可能已被破坏") % fmt)
+    try:
+        # 提前验证可读性（权限 / 独占锁定 / 已删除句柄等），转成友好错误
+        with open(path, "rb") as f:
+            f.read(1)
+    except (PermissionError, OSError) as err:
+        raise RuntimeError(_("无法读取 %s 文件：%s") % (fmt, err)) from err
     return path
 
 
