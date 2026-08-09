@@ -30,7 +30,7 @@ from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.toolbox.base_tool import BaseTool
 from webserver.toolbox.chinese_converter.epub_converter import convert_epub, convert_txt_file
-from webserver.toolbox.chinese_converter.opencc_engine import OpenCC
+from webserver.toolbox.chinese_converter.opencc_engine import DIRECTION_LABELS, OpenCC
 
 # 支持的方向（与 opencc 配置一致）
 DIRECTIONS = ("t2s", "tw2s", "tw2sp", "s2t", "s2tw", "s2twp", "t2tw", "tw2t")
@@ -244,9 +244,10 @@ class ChineseConverterTool(BaseTool):
             mi.author_sort = None  # 名字已转换，排序键由 calibre 按新名字重算
         mi.languages = [DIRECTION_LANG.get(direction, "zh")]
         mi.uuid = None  # 新书应使用独立 UUID，避免与原书冲突
-        # calibre 的 add_books 仅通过 cover_data 写入封面，必须显式填充
+        # calibre 的 add_books 仅通过 cover_data 写入封面，必须显式填充；
+        # 格式传 "jpeg"（与 epub_split 一致，fmt 为 None 时部分 calibre 版本不认）
         if cover_bytes:
-            mi.cover_data = (None, cover_bytes)
+            mi.cover_data = ("jpeg", cover_bytes)
 
         new_book_id = self.db.import_book(mi, [out_path])
         if new_book_id is None:
@@ -278,6 +279,8 @@ class ChineseConverterTool(BaseTool):
             except Exception as err:
                 logging.warning("[ChineseConverterTool] Failed to copy %s to new book_id=%d: %s",
                                 col, new_book_id, err)
+
+        self.cleanup_work_dir(os.path.dirname(out_path))
 
         try:
             os.remove(out_path)
@@ -317,15 +320,7 @@ class ChineseConverterTool(BaseTool):
 
     @staticmethod
     def _direction_label(direction: str) -> str:
-        labels = {
-            "t2s": "繁体→简体",
-            "tw2s": "台湾繁体→简体",
-            "s2t": "简体→繁体",
-            "s2tw": "简体→台湾繁体",
-            "t2tw": "繁体→台湾繁体",
-            "tw2t": "台湾繁体→繁体",
-        }
-        return labels.get(direction, direction)
+        return DIRECTION_LABELS.get(direction, direction)
 
 
 if __name__ == "__main__":

@@ -102,31 +102,62 @@ def convert_epub(epub_path, out_path, converter, convert_metadata=True, progress
         progress_cb(100, "packing")
 
 
+def _decode_entry(data: bytes):
+    """解码文档条目：UTF-8 优先，失败时用 :func:`detect_encoding` 兜底。
+
+    :return: (text, encoding)，encoding 供写回时保持原编码。
+    """
+    try:
+        return data.decode("utf-8"), "utf-8"
+    except UnicodeDecodeError:
+        enc = detect_encoding(data)
+        return data.decode(enc, errors="replace"), enc
+
+
+def _encode_entry(text: str, enc: str) -> bytes:
+    """按原编码写回；原编码无法表示转换结果（如繁→简后简体字 BIG5 编不了）
+    时降级 UTF-8，并同步改写 XML 声明（如有），避免阅读器按声明解码出错。"""
+    if enc in ("utf-8", "utf-8-sig"):
+        return text.encode("utf-8")
+    try:
+        return text.encode(enc)
+    except UnicodeEncodeError:
+        return _set_xml_encoding(text, "utf-8").encode("utf-8")
+
+
+def _set_xml_encoding(text: str, enc: str) -> str:
+    """改写 XML 声明的 encoding（仅在声明存在时生效）。"""
+    return re.sub(
+        r'(<\?xml[^>]*encoding\s*=\s*")[^"]+(")',
+        r"\g<1>%s\2" % enc, text, count=1, flags=re.IGNORECASE,
+    )
+
+
 def _convert_html_doc(data, converter):
     """转换单个 HTML/XHTML 文档的所有文本节点（CDATA 段原样保留）。"""
     if not data.strip():
         return data
-    text = data.decode("utf-8", errors="replace")
+    text, enc = _decode_entry(data)
     text, cdata_parts = _extract_cdata(text)
     soup = BeautifulSoup(text, "html.parser")
     _convert_text_nodes(soup, converter)
     html = soup.encode("utf-8").decode("utf-8")
     html = _restore_cdata(html, cdata_parts)
-    return html.encode("utf-8")
+    return _encode_entry(html, enc)
 
 
 def _convert_xml_doc(data, converter):
     """转换 OPF/NCX 中的标题类文本（仅文本节点，不动属性）。"""
     if not data.strip():
         return data
-    text = data.decode("utf-8", errors="replace")
+    text, enc = _decode_entry(data)
     soup = BeautifulSoup(text, "xml")
     if soup.find() is None:
         # 不是合法 XML，原样返回
         return data
     for node in soup.find_all(string=True):
         node.replace_with(converter(str(node)))
-    return soup.encode("utf-8")
+    return _encode_entry(soup.encode("utf-8").decode("utf-8"), enc)
 
 
 def _convert_text_nodes(soup, converter):
@@ -167,8 +198,23 @@ def convert_txt_file(src_path, out_path, converter):
     return encoding
 
 
+# 高频简体独有字形（BIG5 中不存在这些简体字形，用于区分 GBK 简体与 BIG5 繁体；
+# 只收录确定无歧义的字，避免繁体文本误判，如"干"等共用字形不入列）
+_SIMPLE_ONLY_CHARS = frozenset(
+    "这为说时从们发头国门长经还样处对进级红绿简复书语话认识认真"
+    "体纸间题问闻队际阳阴险"
+    "辆马鱼鸟贝见亲观览兴举学党习乡归开闭"
+    "几尔东乐"
+)
+
+
 def detect_encoding(data: bytes) -> str:
-    """探测文本编码：UTF-8（含 BOM）→ GB18030 → UTF-8 兜底。"""
+    """探测文本编码：UTF-8（含 BOM）→ GB18030 / BIG5 择一 → UTF-8 兜底。
+
+    GB18030 与 BIG5 都能严格解码大部分 CJK 字节流，先用高频简体独有字形
+    判断是否为简体文本（简体 GBK），否则按 BIG5 解读（繁体书）；仅当
+    BIG5 也无法严格解码时才回落到 GB18030。
+    """
     if data.startswith(b"\xef\xbb\xbf"):
         return "utf-8-sig"
     try:
@@ -177,7 +223,18 @@ def detect_encoding(data: bytes) -> str:
     except UnicodeDecodeError:
         pass
     try:
-        data.decode("gb18030")
-        return "gb18030"
+        text = data.decode("gb18030")
     except UnicodeDecodeError:
-        return "utf-8"
+        # GB18030 都解不了：试 BIG5，仍失败则 UTF-8 兜底
+        try:
+            data.decode("big5")
+            return "big5"
+        except UnicodeDecodeError:
+            return "utf-8"
+    if any(ch in _SIMPLE_ONLY_CHARS for ch in text):
+        return "gb18030"
+    try:
+        data.decode("big5")
+        return "big5"
+    except UnicodeDecodeError:
+        return "gb18030"

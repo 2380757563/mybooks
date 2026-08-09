@@ -43,6 +43,18 @@ DIRECTIONS = ("hk2s", "hk2sp", "hk2t", "jp2t", "s2hk", "s2hkp", "s2t", "s2tw",
 # 本工具实际内置的字典/配置（仅中文繁简相关）
 BUILTIN_DIRECTIONS = ("t2s", "tw2s", "tw2sp", "s2t", "s2tw", "s2twp", "t2tw", "tw2t")
 
+# 方向 → 展示文案（成功消息等场景使用，与 8 个内置方向一一对应）
+DIRECTION_LABELS = {
+    "t2s": "繁体→简体",
+    "tw2s": "台湾繁体→简体",
+    "tw2sp": "台湾繁体（含台湾用词）→简体",
+    "s2t": "简体→繁体",
+    "s2tw": "简体→台湾繁体",
+    "s2twp": "简体→台湾繁体（含台湾用词）",
+    "t2tw": "繁体→台湾繁体",
+    "tw2t": "台湾繁体→繁体",
+}
+
 
 class OpenCC:
     """OpenCC 纯 Python 实现（无第三方依赖）。

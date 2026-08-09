@@ -240,6 +240,44 @@ def test_html_cdata_preserved():
     assert "MYBOOKS_CDATA" not in out
 
 
+def test_html_gbk_entry_roundtrip():
+    # 非 UTF-8 条目（GB18030 繁体）：解码兜底 + 原编码写回，不产生替换符
+    html = (
+        '<?xml version="1.0" encoding="gbk"?>\n'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><body>'
+        '<p>作為一個發展中的國家，電腦產業蓬勃發展。</p>'
+        '</body></html>'
+    ).encode("gb18030")
+    oc = OpenCC("t2s")
+    out = epub_converter._convert_html_doc(html, oc.convert)
+    text = out.decode("gb18030")
+    assert "作为一个发展中的国家，电脑产业蓬勃发展。" in text
+    assert "\ufffd" not in text
+
+
+def test_html_big5_entry_falls_back_utf8():
+    # BIG5 繁体条目繁→简后简体字 BIG5 无法表示：降级 UTF-8 并同步 XML 声明
+    html = (
+        '<?xml version="1.0" encoding="big5"?>\n'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><body>'
+        '<p>電腦產業蓬勃發展。</p>'
+        '</body></html>'
+    ).encode("big5")
+    oc = OpenCC("t2s")
+    out = epub_converter._convert_html_doc(html, oc.convert)
+    text = out.decode("utf-8")
+    assert "电脑产业蓬勃发展。" in text
+    assert 'encoding="utf-8"' in text
+    assert "big5" not in text.split("?>")[0]
+
+
+def test_direction_label_new_directions():
+    from webserver.toolbox.chinese_converter.opencc_engine import DIRECTION_LABELS  # noqa: E402
+    assert DIRECTION_LABELS["s2twp"] == "简体→台湾繁体（含台湾用词）"
+    assert DIRECTION_LABELS["tw2sp"] == "台湾繁体（含台湾用词）→简体"
+    assert len(DIRECTION_LABELS) == 8
+
+
 # ── TXT 测试 ──────────────────────────────────────────────────
 
 def test_txt_utf8_conversion():
@@ -263,15 +301,31 @@ def test_txt_gb18030_detection():
             f.write("作為一個發展中的國家。".encode("gb18030"))
         oc = OpenCC("t2s")
         enc = epub_converter.convert_txt_file(src, out, oc.convert)
-        assert enc == "gb18030"
+        # 繁体文本同时满足 BIG5/GB18030 严格解码，big5 优先（两者解码结果一致）
+        assert enc in ("big5", "gb18030")
         with open(out, encoding="utf-8") as f:
             assert f.read() == "作为一个发展中的国家。"
+
+
+def test_txt_big5_detection():
+    # 繁体 BIG5 TXT：检测为 big5 且转换正确（原实现按 GB18030 硬解成乱码）
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "in.txt")
+        out = os.path.join(tmp, "out.txt")
+        with open(src, "wb") as f:
+            f.write("作為一個發展中的國家，電腦產業蓬勃發展。".encode("big5"))
+        oc = OpenCC("t2s")
+        enc = epub_converter.convert_txt_file(src, out, oc.convert)
+        assert enc == "big5"
+        with open(out, encoding="utf-8") as f:
+            assert f.read() == "作为一个发展中的国家，电脑产业蓬勃发展。"
 
 
 def test_detect_encoding():
     assert epub_converter.detect_encoding("你好".encode("utf-8")) == "utf-8"
     assert epub_converter.detect_encoding(b"\xef\xbb\xbf" + "你好".encode("utf-8")) == "utf-8-sig"
-    assert epub_converter.detect_encoding("繁體中文".encode("gb18030")) == "gb18030"
+    assert epub_converter.detect_encoding("繁體中文".encode("gb18030")) == "big5"
+    assert epub_converter.detect_encoding("简体中文".encode("gb18030")) == "gb18030"
 
 
 if __name__ == "__main__":
