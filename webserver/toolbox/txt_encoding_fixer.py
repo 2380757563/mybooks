@@ -129,6 +129,10 @@ class TxtEncodingFixerTool(BaseTool):
             progress_callback(40)
 
             text, report = encoding_detect.decode_with_report(data)
+            if report["unrecoverable"]:
+                error_message = _("文件疑似多重误读乱码（反转循环），无法自动修复")
+                logging.error("[TxtEncodingFixerTool] Unrecoverable mojibake cycle for book_id=%d", book_id)
+                return
             if report["garbage"] and not report["mojibake"]:
                 error_message = _("文件疑似二进制或混用编码，无法安全修复（编码：%s）") % report["encoding"]
                 logging.error("[TxtEncodingFixerTool] Garbage content for book_id=%d: %s", book_id, report["encoding"])
