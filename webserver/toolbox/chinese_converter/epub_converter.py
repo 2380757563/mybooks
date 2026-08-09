@@ -116,13 +116,16 @@ def _decode_entry(data: bytes):
 
 def _encode_entry(text: str, enc: str) -> bytes:
     """按原编码写回；原编码无法表示转换结果（如繁→简后简体字 BIG5 编不了）
-    时降级 UTF-8，并同步改写 XML 声明（如有），避免阅读器按声明解码出错。"""
+    时降级 UTF-8；无论哪种路径都同步改写 XML 声明（如有），避免阅读器按
+    声明解码出错（BeautifulSoup 序列化会把声明改成 utf-8，原编码写回时
+    必须改回）。"""
     if enc in ("utf-8", "utf-8-sig"):
         return text.encode("utf-8")
     try:
-        return text.encode(enc)
+        text.encode(enc)
     except UnicodeEncodeError:
         return _set_xml_encoding(text, "utf-8").encode("utf-8")
+    return _set_xml_encoding(text, enc).encode(enc)
 
 
 def _set_xml_encoding(text: str, enc: str) -> str:
@@ -184,9 +187,9 @@ def _write_epub(out_path, entries, mimetype_data):
 
 
 def convert_txt_file(src_path, out_path, converter):
-    """转换 TXT 文件；编码自动探测（UTF-8 → GB18030），输出统一 UTF-8。
+    """转换 TXT 文件；编码自动探测（UTF-8 → GB18030 / BIG5），输出统一 UTF-8。
 
-    :return: 检测到的源编码（如 'utf-8' / 'gb18030'）
+    :return: 检测到的源编码（如 'utf-8' / 'gb18030' / 'big5'）
     """
     with open(src_path, "rb") as f:
         data = f.read()

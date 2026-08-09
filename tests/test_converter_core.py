@@ -241,7 +241,8 @@ def test_html_cdata_preserved():
 
 
 def test_html_gbk_entry_roundtrip():
-    # 非 UTF-8 条目（GB18030 繁体）：解码兜底 + 原编码写回，不产生替换符
+    # 非 UTF-8 条目（GB18030 繁体）：解码兜底 + 原编码写回，不产生替换符，
+    # XML 声明同步为实际写回编码（bs4 序列化会把声明改成 utf-8）
     html = (
         '<?xml version="1.0" encoding="gbk"?>\n'
         '<html xmlns="http://www.w3.org/1999/xhtml"><body>'
@@ -253,6 +254,7 @@ def test_html_gbk_entry_roundtrip():
     text = out.decode("gb18030")
     assert "作为一个发展中的国家，电脑产业蓬勃发展。" in text
     assert "\ufffd" not in text
+    assert 'encoding="gb18030"' in text.split("?>")[0]
 
 
 def test_html_big5_entry_falls_back_utf8():
