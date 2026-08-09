@@ -99,6 +99,16 @@
 
             <!-- Options -->
             <v-switch
+              v-model="useA5"
+              :label="$t('chineseConverter.useA5')"
+              :disabled="!a5Enabled"
+              :hint="a5Enabled ? $t('chineseConverter.useA5Hint') : $t('chineseConverter.useA5DisabledHint')"
+              persistent-hint
+              color="primary"
+              class="mt-0"
+            />
+
+            <v-switch
               v-model="convertTitle"
               :label="$t('chineseConverter.convertTitle')"
               :hint="$t('chineseConverter.convertTitleHint')"
@@ -176,6 +186,7 @@ export default {
     selected: null,
 
     direction: 't2s',
+    useA5: true,
     convertTitle: true,
     mode: 'book',
     backup: false,
@@ -192,8 +203,10 @@ export default {
       return [
         { value: 't2s', label: this.$t('chineseConverter.dirT2S') },
         { value: 'tw2s', label: this.$t('chineseConverter.dirTW2S') },
+        { value: 'tw2sp', label: this.$t('chineseConverter.dirTW2SP') },
         { value: 's2t', label: this.$t('chineseConverter.dirS2T') },
         { value: 's2tw', label: this.$t('chineseConverter.dirS2TW') },
+        { value: 's2twp', label: this.$t('chineseConverter.dirS2TWP') },
         { value: 't2tw', label: this.$t('chineseConverter.dirT2TW') },
         { value: 'tw2t', label: this.$t('chineseConverter.dirTW2T') },
       ];
@@ -203,6 +216,10 @@ export default {
         this.selected &&
         (this.selected.files || []).some((f) => ['EPUB', 'TXT'].indexOf(f.format) >= 0)
       );
+    },
+    // 增强词表仅对繁体→简体方向生效
+    a5Enabled() {
+      return ['t2s', 'tw2s'].indexOf(this.direction) >= 0;
     },
   },
   created() {
@@ -303,6 +320,7 @@ export default {
             book_id: this.selected.id,
             direction: this.direction,
             mode: this.mode,
+            use_a5: this.useA5,
             convert_title: this.convertTitle,
             backup: this.backup,
           }),

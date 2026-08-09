@@ -17,6 +17,8 @@ if _ROOT not in sys.path:
 from webserver.toolbox.chinese_converter import epub_converter  # noqa: E402
 from webserver.toolbox.chinese_converter.opencc_engine import OpenCC  # noqa: E402
 
+A5_PATH = os.path.join(_ROOT, "webserver", "toolbox", "chinese_converter", "a5_phrases.txt")
+
 # ── 引擎测试 ─────────────────────────────────────────────────
 
 def test_t2s_basic():
@@ -55,11 +57,50 @@ def test_s2tw():
     assert oc.convert("作为发展中的国家。") == "作為發展中的國家。"
 
 
+def test_s2twp_taiwan_phrases():
+    # s2twp：简→台繁 + 台湾用词（TWPhrases，官方 OpenCC 数据）
+    oc = OpenCC("s2twp")
+    assert oc.convert("软件产业蓬勃发展。") == "軟體產業蓬勃發展。"
+    assert oc.convert("鼠标") == "滑鼠"
+    assert oc.convert("网络") == "網路"
+    assert oc.convert("视频") == "影片"
+
+
+def test_tw2sp_taiwan_phrases():
+    # tw2sp：台繁（含台湾用词）→ 简
+    oc = OpenCC("tw2sp")
+    assert oc.convert("臺灣的軟體產業蓬勃發展。") == "台湾的软件产业蓬勃发展。"
+    assert oc.convert("滑鼠") == "鼠标"
+    assert oc.convert("網路") == "网络"
+    assert oc.convert("影片") == "视频"
+
+
+def test_s2twp_without_phrases_is_s2tw():
+    # 对照：s2tw（不含用词）不转 软件→軟體（仅字级 软件→軟件）
+    oc = OpenCC("s2tw")
+    assert oc.convert("软件") == "軟件"
+
+
 def test_t2tw_and_tw2t_work():
     oc1 = OpenCC("t2tw")
     assert "體驗" in oc1.convert("這個軟件的用戶體驗很好。")
     oc2 = OpenCC("tw2t")
     assert "體驗" in oc2.convert("這個軟體的用戶體驗很好。")
+
+
+def test_a5_enhancement():
+    # 不带增强词表：幹麼 → 干么（OpenCC 默认）
+    plain = OpenCC("t2s")
+    assert plain.convert("幹麼這樣？") == "干么这样？"
+    # 带增强词表：幹麼 → 干嘛（a5 个人修正词条优先）
+    enhanced = OpenCC("t2s", extra_dicts=[A5_PATH])
+    assert enhanced.convert("幹麼這樣？") == "干嘛这样？"
+
+
+def test_a5_ignored_for_s2t():
+    # 增强词表是繁→简词条，注入 s2t 不应干扰（键为繁体，输入为简体不会命中）
+    oc = OpenCC("s2t", extra_dicts=[A5_PATH])
+    assert oc.convert("软件产业") == "軟件產業"
 
 
 def test_invalid_direction_raises():

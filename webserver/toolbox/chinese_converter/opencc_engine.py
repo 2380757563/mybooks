@@ -41,13 +41,14 @@ DICT_DIR = os.path.join(_PKG_DIR, "dictionary")
 DIRECTIONS = ("hk2s", "hk2sp", "hk2t", "jp2t", "s2hk", "s2hkp", "s2t", "s2tw",
               "s2twp", "t2hk", "t2jp", "t2s", "t2tw", "tw2s", "tw2sp", "tw2t")
 # 本工具实际内置的字典/配置（仅中文繁简相关）
-BUILTIN_DIRECTIONS = ("t2s", "tw2s", "s2t", "s2tw", "t2tw", "tw2t")
+BUILTIN_DIRECTIONS = ("t2s", "tw2s", "tw2sp", "s2t", "s2tw", "s2twp", "t2tw", "tw2t")
 
 
 class OpenCC:
     """OpenCC 纯 Python 实现（无第三方依赖）。
 
-    :param conversion: 转换方向，如 't2s' / 's2t' / 'tw2s' / 's2tw' / 't2tw' / 'tw2t'
+    :param conversion: 转换方向，如 't2s' / 's2t' / 'tw2s' / 's2tw' / 'tw2sp' /
+        's2twp' / 't2tw' / 'tw2t'
     :param extra_dicts: 可选，附加字典的绝对路径列表；每个字典按
         OpenCC 字典格式（``key\\tvalue``）组织，会被注入各转换链
         group 的最前位置（优先匹配，同名键覆盖默认词表）。

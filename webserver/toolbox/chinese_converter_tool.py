@@ -3,6 +3,7 @@
 
 对书库中的书籍（EPUB / TXT）执行简体↔繁体中文转换：
 - 引擎：移植自 opencc-python（Apache 2.0），字典数据来自 OpenCC（Apache 2.0）
+- 增强词表：a5566123s/Calibre-BIG5toGBK 个人修正版（繁体→简体，可选项）
 - EPUB 采用 zip 条目级无损处理（仅转换正文 HTML 与 OPF/NCX 标题文本，
   样式、图片、字体等原样保留）；TXT 自动探测编码后转换。
 - 输出方式：另存为新书入库（默认，保留原书，完整继承原书元数据）或替换原书（可选备份）。
@@ -32,20 +33,28 @@ from webserver.toolbox.chinese_converter.epub_converter import convert_epub, con
 from webserver.toolbox.chinese_converter.opencc_engine import OpenCC
 
 # 支持的方向（与 opencc 配置一致）
-DIRECTIONS = ("t2s", "tw2s", "s2t", "s2tw", "t2tw", "tw2t")
+DIRECTIONS = ("t2s", "tw2s", "tw2sp", "s2t", "s2tw", "s2twp", "t2tw", "tw2t")
 
 # 方向 → 目标语言代码（calibre 语言码：zh=简体，zht=繁体）
 DIRECTION_LANG = {
     "t2s": "zh",
     "tw2s": "zh",
+    "tw2sp": "zh",
     "s2t": "zht",
     "s2tw": "zht",
+    "s2twp": "zht",
     "t2tw": "zht",
     "tw2t": "zht",
 }
 
+# 增强词表仅对繁体→简体方向生效
+A5_DIRECTIONS = ("t2s", "tw2s")
+
 # 另存为新书时的标题后缀（入库标题，固定文案）
 NEW_BOOK_SUFFIX = {"zh": "（简体版）", "zht": "（繁體版）"}
+
+A5_PHRASES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "chinese_converter", "a5_phrases.txt")
 
 
 class ChineseConverterTool(BaseTool):
@@ -72,7 +81,7 @@ class ChineseConverterTool(BaseTool):
         return {
             "tool_id": "chinese_converter",
             "name": "繁简转换",
-            "description": "对书库中的书籍执行简体↔繁体中文转换（支持 EPUB/TXT，6 种转换方向），"
+            "description": "对书库中的书籍执行简体↔繁体中文转换（支持 EPUB/TXT，8 种转换方向，可选增强词表），"
                            "可另存为新书（完整继承原书元数据）或替换原书（可选备份）",
             "revision": "0.1.0",
             "author": "黏菌",
@@ -81,21 +90,24 @@ class ChineseConverterTool(BaseTool):
 
     # ── 引擎构造 ────────────────────────────────────────────
 
-    def _build_engine(self, direction: str) -> OpenCC:
+    def _build_engine(self, direction: str, use_a5: bool) -> OpenCC:
         if direction not in DIRECTIONS:
             raise ValueError(_("不支持的转换方向：%s") % direction)
-        return OpenCC(direction)
+        extra = [A5_PHRASES_FILE] if (use_a5 and direction in A5_DIRECTIONS) else []
+        return OpenCC(direction, extra_dicts=extra)
 
     # ── 转换（后台服务）─────────────────────────────────────
 
     @AsyncService.register_service
     def convert(self, book_id: int, direction: str, mode: str,
-                convert_title: bool, backup: bool, user_id: int) -> None:
+                use_a5: bool, convert_title: bool, backup: bool,
+                user_id: int) -> None:
         """执行繁简转换，通过 register_service 在后台线程中运行。
 
         :param book_id:       Calibre 书籍 ID
-        :param direction:     转换方向（t2s/tw2s/s2t/s2tw/t2tw/tw2t）
+        :param direction:     转换方向（t2s/tw2s/tw2sp/s2t/s2tw/s2twp/t2tw/tw2t）
         :param mode:          "book"=另存为新书（默认），"replace"=替换原书
+        :param use_a5:        是否启用增强词表（仅繁→简方向生效）
         :param convert_title: 是否转换书名/目录等元数据文本
         :param backup:        替换模式下是否备份原文件
         :param user_id:       操作用户 ID（记录日志用）
@@ -140,7 +152,7 @@ class ChineseConverterTool(BaseTool):
             work_dir = self.get_work_dir(str(book_id))
             out_path = os.path.join(work_dir, "converted." + fmt.lower())
 
-            engine = self._build_engine(direction)
+            engine = self._build_engine(direction, use_a5)
 
             def progress_cb(percent, stage):
                 # 转换阶段占比 5%~90%
@@ -319,14 +331,15 @@ class ChineseConverterTool(BaseTool):
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) != 3:
-        print("Usage: python -m webserver.toolbox.chinese_converter_tool <direction> <epub|txt_path>")
+    if len(sys.argv) not in (3, 4):
+        print("Usage: python -m webserver.toolbox.chinese_converter_tool <direction> <epub|txt_path> [--a5]")
         sys.exit(1)
 
     direction = sys.argv[1]
     path = sys.argv[2]
+    use_a5 = "--a5" in sys.argv[3:]
     out = os.path.splitext(path)[0] + ".converted" + os.path.splitext(path)[1]
-    engine = ChineseConverterTool()._build_engine(direction)
+    engine = ChineseConverterTool()._build_engine(direction, use_a5)
     if path.lower().endswith(".txt"):
         convert_txt_file(path, out, engine.convert)
     else:
