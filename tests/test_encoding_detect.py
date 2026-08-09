@@ -64,6 +64,7 @@ class TestDetectBasic(unittest.TestCase):
         r = detect_encoding(b"")
         self.assertEqual(r["encoding"], "utf-8")
         self.assertEqual(r["confidence"], 0.0)
+        self.assertFalse(r["garbage"])  # 空文件不是垃圾，绝不报错拒绝
 
     def test_str_input_guard(self):
         # str 输入自动按 UTF-8 编码，不应抛 TypeError
@@ -138,6 +139,71 @@ class TestMojibake(unittest.TestCase):
         self.assertFalse(r["mojibake"])
 
 
+class TestIdempotency(unittest.TestCase):
+    """幂等性：正常 UTF-8 中文必须原样输出，绝不能反转成乱码。
+
+    UTF-8 中文的字节组合（如 E4 BD A0）在 GBK 字典中可能恰好合法，
+    反转候选必须无法胜过 UTF-8 直解（常用字保护 + 总分打平直解优先）。
+    """
+
+    def _assert_idempotent(self, text):
+        data = text.encode("utf-8")
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "utf-8", r["reasons"])
+        self.assertFalse(r["mojibake"], r["reasons"])
+        self.assertFalse(r["garbage"])
+        out, _ = fix_to_utf8(data)
+        self.assertEqual(out.decode("utf-8"), text)
+
+    def test_utf8_ni_hao_shi_jie(self):
+        # 你好世界 UTF-8（E4 BD A0 E5 A5 BD 在 GBK 中全合法）
+        self._assert_idempotent("你好世界")
+
+    def test_utf8_mixed_ascii_chinese(self):
+        self._assert_idempotent("The quick brown fox 跳过了 lazy dog，12345。")
+
+    def test_utf8_novel_paragraph(self):
+        # 简体小说段落
+        self._assert_idempotent(
+            "第一章　序章\n夜色渐深，他站在窗前，望着远处灯火阑珊的城市。"
+            "这一去，不知何时才能回来。")
+        # 繁体小说段落
+        self._assert_idempotent(
+            "第一章　序章\n夜色漸深，他站在窗前，望著遠處燈火闌珊的城市。"
+            "這一去，不知何時才能回來。")
+
+    def test_utf8_long_text(self):
+        self._assert_idempotent(
+            "人工智能的发展历程，包括机器学习与深度学习。" * 50
+            + "这是对幂等性的长文回归验证。" * 30)
+
+
+class TestSamplingBoundary(unittest.TestCase):
+    """采样边界：多字节字符横跨 2MB 采样边界时检测不得失败或损坏。"""
+
+    def test_utf8_emoji_across_boundary(self):
+        line = ("人工智能的发展历程" * 100000).encode("utf-8")  # 27 字节/行
+        head = line[:27 * 77672] + b"abcdef"  # 2097150 字节，完整合法
+        data = head + "😊".encode("utf-8") + "后续内容".encode("utf-8")
+        self.assertGreater(len(data), 2 * 1024 * 1024)
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "utf-8")
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, data.decode("utf-8"))
+
+    def test_gb18030_4byte_across_boundary(self):
+        line = ("人工智能的发展历程" * 200000).encode("gb18030")  # 18 字节/行
+        head = line[:2097150]  # 完整合法
+        data = head + "𠀀".encode("gb18030") + "GBK内容".encode("gb18030")
+        self.assertGreater(len(data), 2 * 1024 * 1024)
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "gb18030")
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(data)
+        self.assertIn("𠀀", text)
+
+
 class TestRobustness(unittest.TestCase):
     """真实世界的边界输入。"""
 
@@ -177,6 +243,26 @@ class TestRobustness(unittest.TestCase):
         r = detect_encoding(big)
         self.assertEqual(r["encoding"], "utf-8")
         self.assertFalse(r["garbage"])
+
+    def test_single_long_line_no_newline(self):
+        # 超长单行（>2MB、无换行符）：检测不依赖 \n 统计
+        line = ("ACGT" * 400000 + "中间中文段落" + "TGC" * 400000).encode("utf-8")
+        self.assertGreater(len(line), 2 * 1024 * 1024)
+        self.assertNotIn(b"\n", line)
+        r = detect_encoding(line)
+        self.assertEqual(r["encoding"], "utf-8")
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(line)
+        self.assertIn("中间中文段落", text)
+
+    def test_nul_byte_utf8(self):
+        # NUL 混入：判垃圾拒绝（不静默截断 NUL 之后的内容）
+        r = detect_encoding("你好\x00世界".encode("utf-8"))
+        self.assertTrue(r["garbage"])
+
+    def test_nul_byte_gb18030(self):
+        r = detect_encoding("你好\x00世界".encode("gb18030"))
+        self.assertTrue(r["garbage"])
 
 
 if __name__ == "__main__":
