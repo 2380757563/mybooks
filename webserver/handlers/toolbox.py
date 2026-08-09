@@ -19,6 +19,7 @@ from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
+from webserver.toolbox.text_replace import TextReplaceTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -657,6 +658,117 @@ class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
 
         return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
 
+
+class AdminTextReplacePreview(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        pattern = (data.get("pattern") or "").strip()
+        replacement = data.get("replacement") or ""
+        use_regex = bool(data.get("use_regex", False))
+
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+
+        try:
+            result = TextReplaceTool().preview(int(book_id), pattern, replacement, use_regex)
+        except RuntimeError as err:
+            return {"err": "text_replace.preview_failed", "msg": str(err)}
+
+        return {"err": "ok", "data": result}
+
+class AdminTextReplaceRun(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        pattern = (data.get("pattern") or "").strip()
+        replacement = data.get("replacement") or ""
+        use_regex = bool(data.get("use_regex", False))
+        suffix = (data.get("suffix") or "").strip()
+
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        if not pattern:
+            return {"err": "params.missing", "msg": _("查找内容不能为空")}
+
+        tool = TextReplaceTool()
+        if tool.is_running():
+            return {"err": "task.running", "msg": _("已有正文替换任务正在执行，请稍后再试")}
+
+        tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id())
+        return {"err": "ok", "msg": _("正文替换任务已启动，注意查看消息通知中的处理结果")}
+
+class AdminTextReplaceProgress(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        task = TextReplaceTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动正文替换任务")}
+
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "stage": progress_data.get("stage", ""),
+        }
+
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
+
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("正文替换任务已完成"), "data": result}
+
+        return {"err": "ok", "data": result}
+
+def routes():
+    return [
+                (r"/api/toolbox/list", AdminToolList),
+                (r"/api/toolbox/rare_book_downloader", AdminRareBookDownloader),
+                (r"/api/toolbox/merge_formats/merge", AdminMergeFormatsMerge),
+                (r"/api/toolbox/review_book_language", AdminReviewBookLanguage),
+                (r"/api/toolbox/minify_pdf/upload", AdminMinifyPdfUpload),
+                (r"/api/toolbox/minify_pdf/process", AdminMinifyPdfProcess),
+                (r"/api/toolbox/minify_pdf/progress", AdminMinifyPdfProgress),
+                (r"/api/toolbox/minify_pdf/download", AdminMinifyPdfDownload),
+                (r"/api/toolbox/formats_pruning/start", AdminFormatsPruningStart),
+                (r"/api/toolbox/formats_pruning/progress", AdminFormatsPruningProgress),
+                (r"/api/toolbox/epub_fixer/fix", AdminEpubFixerFix),
+                (r"/api/toolbox/epub_split/chapters", AdminEpubSplitChapters),
+                (r"/api/toolbox/epub_split/generate", AdminEpubSplitGenerate),
+                (r"/api/toolbox/author_clean", AdminAuthorClean),
+                (r"/api/toolbox/bookbarn_acceptor/status", AdminBookBarnAcceptorStatus),
+                (r"/api/toolbox/bookbarn_acceptor/toggle", AdminBookBarnAcceptorToggle),
+                (r"/api/toolbox/bookbarn_acceptor/apply_token", AdminBookBarnAcceptorApplyToken),
+                (r"/api/toolbox/bookbarn_acceptor/set_collection_hour", AdminBookBarnAcceptorSetCollectionHour),
+                (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
+                (r"/api/toolbox/mimo_tts/progress", AdminMimoTTSProgress),
+                (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
+                (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
+                (r"/api/toolbox/mimo_tts/clone/upload", AdminMimoTTSCloneUpload),
+                (r"/api/toolbox/mimo_tts/clone/list", AdminMimoTTSCloneList),
+                (r"/api/toolbox/mimo_tts/clone/delete", AdminMimoTTSCloneDelete),
+                (r"/api/toolbox/mimo_tts/clone/audio", AdminMimoTTSCloneAudio),
+                (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
+                (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
+                (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
+                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
+                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
+                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
+                (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
+                (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
+                (r"/api/toolbox/txt_encoding_fixer/analyze", AdminTxtEncodingFixerAnalyze),
+                (r"/api/toolbox/txt_encoding_fixer/fix", AdminTxtEncodingFixerFix),
+                (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
+                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
+                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
+                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
+    ]
 
 def routes():
     return [
