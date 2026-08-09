@@ -1500,5 +1500,29 @@
     "noResults": "未找到相关书籍",
     "noEpub": "所选书籍没有 EPUB 格式",
     "audioOpen": "打开有声书"
+  },
+  "txtEncodingFixer": {
+    "title": "TXT编码修复",
+    "close": "关闭",
+    "hint": "检测书籍 TXT 文件的编码（BOM / 候选打分 / chardet / 乱码反转恢复），修复为 UTF-8 并另存为新书，原书文件零改动。",
+    "selectBook": "搜索并选择书籍",
+    "noResults": "未找到相关书籍",
+    "analyzeBtn": "分析编码",
+    "reportTitle": "检测报告",
+    "confidence": "置信度",
+    "mojibakeYes": "检测到乱码（已反转恢复）",
+    "mojibakeNo": "未检测到乱码",
+    "garbageAlert": "文件疑似二进制或混用编码，修复可能不安全。",
+    "reasons": "检测依据",
+    "previewTitle": "修复后预览（前 500 字）",
+    "previewEmpty": "（空）",
+    "fixBtn": "执行修复并生成新书",
+    "fixStarted": "修复任务已启动，注意查看消息通知中的处理结果",
+    "fixCompleted": "修复完成，已生成新书，原书保持不变",
+    "fixFailed": "修复失败",
+    "progressReading": "正在读取文件…",
+    "progressDetecting": "正在检测编码…",
+    "progressSaving": "正在保存新书…",
+    "progressCompleted": "已完成"
   }
 }

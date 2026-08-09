@@ -1498,5 +1498,29 @@
     "noResults": "No books found",
     "noEpub": "The selected book has no EPUB format",
     "audioOpen": "Open Audio"
+  },
+  "txtEncodingFixer": {
+    "title": "TXT Encoding Fixer",
+    "close": "Close",
+    "hint": "Detect the encoding of a TXT book (BOM / candidate scoring / chardet / mojibake recovery), fix it to UTF-8 and save as a new book. The original file is never modified.",
+    "selectBook": "Search and select a book",
+    "noResults": "No books found",
+    "analyzeBtn": "Analyze encoding",
+    "reportTitle": "Detection report",
+    "confidence": "Confidence",
+    "mojibakeYes": "Mojibake detected (recovered)",
+    "mojibakeNo": "No mojibake detected",
+    "garbageAlert": "The content looks like binary data or mixed encodings; fixing it may not be safe.",
+    "reasons": "Detection basis",
+    "previewTitle": "Preview after fix (first 500 chars)",
+    "previewEmpty": "(empty)",
+    "fixBtn": "Fix and save as new book",
+    "fixStarted": "Fix task started. Check the message notifications for the result.",
+    "fixCompleted": "Fix completed, new book created. The original book is unchanged.",
+    "fixFailed": "Fix failed",
+    "progressReading": "Reading file...",
+    "progressDetecting": "Detecting encoding...",
+    "progressSaving": "Saving new book...",
+    "progressCompleted": "Completed"
   }
 }

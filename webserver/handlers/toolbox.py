@@ -19,6 +19,7 @@ from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
+from webserver.toolbox.txt_encoding_fixer import TxtEncodingFixerTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -658,6 +659,63 @@ class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
         return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
 
 
+class AdminTxtEncodingFixerAnalyze(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+
+        try:
+            report = TxtEncodingFixerTool().analyze(int(book_id))
+        except RuntimeError as err:
+            return {"err": "txt_encoding_fixer.analyze_failed", "msg": str(err)}
+
+        return {"err": "ok", "data": report}
+
+class AdminTxtEncodingFixerFix(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+
+        tool = TxtEncodingFixerTool()
+        if tool.is_running():
+            return {"err": "task.running", "msg": _("已有 TXT 编码修复任务正在执行，请稍后再试")}
+
+        tool.fix(int(book_id), self.user_id())
+        return {"err": "ok", "msg": _("TXT 编码修复任务已启动，注意查看消息通知中的处理结果")}
+
+class AdminTxtEncodingFixerProgress(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        task = TxtEncodingFixerTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动 TXT 编码修复任务")}
+
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "stage": progress_data.get("stage", ""),
+        }
+
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
+
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("TXT 编码修复任务已完成"), "data": result}
+
+        return {"err": "ok", "data": result}
+
+
 def routes():
     return [
                 (r"/api/toolbox/list", AdminToolList),
@@ -689,4 +747,7 @@ def routes():
                 (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
                 (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
                 (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
+                (r"/api/toolbox/txt_encoding_fixer/analyze", AdminTxtEncodingFixerAnalyze),
+                (r"/api/toolbox/txt_encoding_fixer/fix", AdminTxtEncodingFixerFix),
+                (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
     ]
