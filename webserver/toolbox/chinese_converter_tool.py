@@ -320,7 +320,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 3:
-        print("Usage: python -m webserver.toolbox.chinese_converter <direction> <epub|txt_path>")
+        print("Usage: python -m webserver.toolbox.chinese_converter_tool <direction> <epub|txt_path>")
         sys.exit(1)
 
     direction = sys.argv[1]
