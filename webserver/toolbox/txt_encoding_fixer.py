@@ -26,6 +26,7 @@ from . import book_utils
 from . import encoding_detect
 
 PREVIEW_CHARS = 500  # analyze 报告中的修复预览长度
+ANALYZE_LIMIT = 2 * 1024 * 1024  # analyze 检测读取上限（编码检测取前缀即可，防大文件阻塞请求线程）
 
 
 class TxtEncodingFixerTool(BaseTool):
@@ -70,7 +71,7 @@ class TxtEncodingFixerTool(BaseTool):
         """
         txt_path = book_utils.get_book_file(self, book_id, "TXT")
         with open(txt_path, "rb") as f:
-            data = f.read()
+            data = f.read(ANALYZE_LIMIT)
 
         text, report = encoding_detect.decode_with_report(data)
         report["preview"] = text[:PREVIEW_CHARS]
