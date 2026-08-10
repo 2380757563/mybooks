@@ -242,8 +242,7 @@ class ChineseConverterTool(BaseTool):
         评论、语言、封面、自定义列等），返回新书 book_id。"""
         # get_metadata 每次返回全新对象，可直接原地修改（勿 deepcopy，
         # 其内部挂有指向 Cache 的代理，深拷贝不安全）
-        mi = self.db.get_metadata(book_id, index_is_id=True, get_cover=True)
-        cover_bytes = getattr(mi, "cover", None)
+        mi = self.db.get_metadata(book_id, index_is_id=True, get_cover=True, cover_as_data=True)
 
         suffix = NEW_BOOK_SUFFIX.get(DIRECTION_LANG.get(direction, "zh"), "（新版本）")
         title = (mi.title or "Unknown").strip()
@@ -256,10 +255,6 @@ class ChineseConverterTool(BaseTool):
             mi.author_sort = None  # 名字已转换，排序键由 calibre 按新名字重算
         mi.languages = [DIRECTION_LANG.get(direction, "zh")]
         mi.uuid = None  # 新书应使用独立 UUID，避免与原书冲突
-        # calibre 的 add_books 仅通过 cover_data 写入封面，必须显式填充；
-        # 格式传 "jpeg"（与 epub_split 一致，fmt 为 None 时部分 calibre 版本不认）
-        if cover_bytes:
-            mi.cover_data = ("jpeg", cover_bytes)
 
         new_book_id = self.db.import_book(mi, [out_path])
         if new_book_id is None:

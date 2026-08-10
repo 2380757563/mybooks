@@ -21,7 +21,7 @@ from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
 from webserver.toolbox.text_replace import TextReplaceTool
 from webserver.toolbox.txt_encoding_fixer import TxtEncodingFixerTool
-from webserver.toolbox.chinese_converter_tool import ChineseConverterTool
+from webserver.toolbox.chinese_converter_tool import ChineseConverterTool, DIRECTIONS
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -622,11 +622,12 @@ class AdminChineseConverterConvert(BaseHandler):
         direction = (data.get("direction") or "t2s").strip()
         mode = (data.get("mode") or "book").strip()
         convert_title = bool(data.get("convert_title", True))
+        use_a5 = bool(data.get("use_a5", False))
         backup = bool(data.get("backup", False))
 
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-        if direction not in ChineseConverterTool.DIRECTIONS:
+        if direction not in DIRECTIONS:
             return {"err": "params.direction.invalid", "msg": _("不支持的转换方向")}
         if mode not in ("book", "replace"):
             return {"err": "params.mode.invalid", "msg": _("无效的输出方式")}
@@ -635,7 +636,7 @@ class AdminChineseConverterConvert(BaseHandler):
         if tool.is_running():
             return {"err": "task.running", "msg": _("已有繁简转换任务正在运行，请稍后再试")}
 
-        tool.convert(int(book_id), direction, mode, convert_title, backup, self.user_id())
+        tool.convert(int(book_id), direction, mode, use_a5, convert_title, backup, self.user_id())
         return {"err": "ok", "msg": _("繁简转换任务已启动，右上角可以查看进度")}
 
 
@@ -770,7 +771,7 @@ class AdminTxtEncodingFixerProgress(BaseHandler):
 
         return {"err": "ok", "data": result}
 
-      
+
 class AdminTextReplacePreview(BaseHandler):
     @js
     @is_admin

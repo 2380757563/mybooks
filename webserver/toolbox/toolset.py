@@ -105,6 +105,9 @@ class ToolSet:
 
         ToolSet.register(MergeFormatsTool.info())
         ToolSet.register(ReviewBookLanguageTool.info())
+        ToolSet.register(TextReplaceTool.info())
+        ToolSet.register(TxtEncodingFixerTool.info())
+        ToolSet.register(ChineseConverterTool.info())
         ToolSet.register(MinifyPdfTool.info())
         ToolSet.register(TextProcessor.info())
         ToolSet.register(FormatsPruningTool.info())
@@ -114,9 +117,6 @@ class ToolSet:
         ToolSet.register(MimoTTSTool.info())
         ToolSet.register(RareBookDownloader.info())
         ToolSet.register(BookBarnAcceptorTool.info())
-        ToolSet.register(TextReplaceTool.info())
-        ToolSet.register(TxtEncodingFixerTool.info())
-        ToolSet.register(ChineseConverterTool.info())
 
         MinifyPdfTool.cleanup_old_files()
 
