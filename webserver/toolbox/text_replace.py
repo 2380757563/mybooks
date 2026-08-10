@@ -203,13 +203,16 @@ class TextReplaceTool(BaseTool):
             )
             return
 
-        task_id = self.create_task(progress_data={"status": "starting", "book_id": book_id})
-        TextReplaceTool._last_task_id = task_id
-        progress_callback = self.make_progress_callback(task_id)
+        # create_task 等全部放入 try：若中途抛异常，finally 仍会释放锁
+        task_id = None
         error_message = None
         book_title = "Unknown"
 
         try:
+            task_id = self.create_task(progress_data={"status": "starting", "book_id": book_id})
+            TextReplaceTool._last_task_id = task_id
+            progress_callback = self.make_progress_callback(task_id)
+
             apply_fn, regex_error = self._compile(pattern, replacement, use_regex)
             if apply_fn is None:
                 error_message = regex_error
@@ -267,9 +270,11 @@ class TextReplaceTool(BaseTool):
             logging.error("[TextReplaceTool] Unexpected error for book_id=%d: %s", book_id, err)
             logging.error(traceback.format_exc())
         finally:
-            self.complete_task(task_id, error_message=error_message)
-            if error_message is None:
-                self.update_task_progress(task_id, 100, {"status": "completed", "book_id": book_id})
+            # create_task 失败时 task_id 为 None，跳过任务收尾（锁仍必须释放）
+            if task_id is not None:
+                self.complete_task(task_id, error_message=error_message)
+                if error_message is None:
+                    self.update_task_progress(task_id, 100, {"status": "completed", "book_id": book_id})
             TextReplaceTool._run_lock.release()
 
     # ------------------------------------------------------------ 内部实现
@@ -300,7 +305,8 @@ class TextReplaceTool(BaseTool):
             return "TXT", [text]
         if "EPUB" in fmts:
             epub_path = book_utils.get_book_file(self, book_id, "EPUB")
-            entries = _read_zip_entries(epub_path)
+            # 预览只读正文条目，避免图片/字体等全量读入内存
+            entries = _read_text_entries(epub_path)
             texts = [_decode_entry(entries[name])[0] for name in _find_text_entries(entries)]
             return "EPUB", texts
         raise RuntimeError(_("该书籍没有 TXT 或 EPUB 格式，无法执行替换"))
@@ -338,13 +344,39 @@ class TextReplaceTool(BaseTool):
 
 
 def _read_zip_entries(path: str) -> dict:
-    """读取 zip 全部条目（跳过目录项），返回 {name: bytes}。"""
+    """读取 zip 全部条目（跳过目录项），返回 {name: bytes}。
+
+    仅在需要写回全部条目（run 替换）时使用；预览请用 :func:`_read_text_entries`。
+    """
     entries = {}
     with zipfile.ZipFile(path, "r") as zf:
         for info in zf.infolist():
             if info.is_dir():
                 continue
             entries[info.filename] = zf.read(info.filename)
+    return entries
+
+
+def _read_text_entries(path: str) -> dict:
+    """仅读取正文相关条目（container / OPF / xhtml 文本条目），
+    避免将图片、字体等非文本条目全量读入内存（预览场景）。"""
+    entries = {}
+    with zipfile.ZipFile(path, "r") as zf:
+        all_names = [i.filename for i in zf.infolist() if not i.is_dir()]
+        container_name = "META-INF/container.xml"
+        if container_name in all_names:
+            entries[container_name] = zf.read(container_name)
+        opf_path = _opf_path_from_container(
+            entries.get(container_name, b"").decode("utf-8", errors="replace"))
+        if opf_path and opf_path in all_names:
+            entries[opf_path] = zf.read(opf_path)
+            # 正文条目尚未读入，用"名字视图"（空字节占位）让 manifest 定位可命中；
+            # 已读入的 container/opf 保留真实内容
+            view = dict(entries)
+            view.update({n: b"" for n in all_names if n not in entries})
+            for name in _find_text_entries(view):
+                if name in all_names:
+                    entries[name] = zf.read(name)
     return entries
 
 

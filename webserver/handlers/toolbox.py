@@ -679,6 +679,7 @@ class AdminTextReplacePreview(BaseHandler):
 
         return {"err": "ok", "data": result}
 
+
 class AdminTextReplaceRun(BaseHandler):
     @js
     @is_admin
@@ -701,6 +702,7 @@ class AdminTextReplaceRun(BaseHandler):
 
         tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id())
         return {"err": "ok", "msg": _("正文替换任务已启动，注意查看消息通知中的处理结果")}
+
 
 class AdminTextReplaceProgress(BaseHandler):
     @js
@@ -726,49 +728,6 @@ class AdminTextReplaceProgress(BaseHandler):
 
         return {"err": "ok", "data": result}
 
-def routes():
-    return [
-                (r"/api/toolbox/list", AdminToolList),
-                (r"/api/toolbox/rare_book_downloader", AdminRareBookDownloader),
-                (r"/api/toolbox/merge_formats/merge", AdminMergeFormatsMerge),
-                (r"/api/toolbox/review_book_language", AdminReviewBookLanguage),
-                (r"/api/toolbox/minify_pdf/upload", AdminMinifyPdfUpload),
-                (r"/api/toolbox/minify_pdf/process", AdminMinifyPdfProcess),
-                (r"/api/toolbox/minify_pdf/progress", AdminMinifyPdfProgress),
-                (r"/api/toolbox/minify_pdf/download", AdminMinifyPdfDownload),
-                (r"/api/toolbox/formats_pruning/start", AdminFormatsPruningStart),
-                (r"/api/toolbox/formats_pruning/progress", AdminFormatsPruningProgress),
-                (r"/api/toolbox/epub_fixer/fix", AdminEpubFixerFix),
-                (r"/api/toolbox/epub_split/chapters", AdminEpubSplitChapters),
-                (r"/api/toolbox/epub_split/generate", AdminEpubSplitGenerate),
-                (r"/api/toolbox/author_clean", AdminAuthorClean),
-                (r"/api/toolbox/bookbarn_acceptor/status", AdminBookBarnAcceptorStatus),
-                (r"/api/toolbox/bookbarn_acceptor/toggle", AdminBookBarnAcceptorToggle),
-                (r"/api/toolbox/bookbarn_acceptor/apply_token", AdminBookBarnAcceptorApplyToken),
-                (r"/api/toolbox/bookbarn_acceptor/set_collection_hour", AdminBookBarnAcceptorSetCollectionHour),
-                (r"/api/toolbox/mimo_tts/convert", AdminMimoTTSConvert),
-                (r"/api/toolbox/mimo_tts/progress", AdminMimoTTSProgress),
-                (r"/api/toolbox/mimo_tts/config", AdminMimoTTSConfig),
-                (r"/api/toolbox/mimo_tts/test", AdminMimoTTSTest),
-                (r"/api/toolbox/mimo_tts/clone/upload", AdminMimoTTSCloneUpload),
-                (r"/api/toolbox/mimo_tts/clone/list", AdminMimoTTSCloneList),
-                (r"/api/toolbox/mimo_tts/clone/delete", AdminMimoTTSCloneDelete),
-                (r"/api/toolbox/mimo_tts/clone/audio", AdminMimoTTSCloneAudio),
-                (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
-                (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
-                (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
-                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
-                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
-                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
-                (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
-                (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
-                (r"/api/toolbox/txt_encoding_fixer/analyze", AdminTxtEncodingFixerAnalyze),
-                (r"/api/toolbox/txt_encoding_fixer/fix", AdminTxtEncodingFixerFix),
-                (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
-                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
-                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
-                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
-    ]
 
 def routes():
     return [
@@ -801,4 +760,7 @@ def routes():
                 (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
                 (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
                 (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
+                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
+                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
+                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
     ]

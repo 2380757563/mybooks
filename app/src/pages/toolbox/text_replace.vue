@@ -269,7 +269,15 @@ export default {
     this.stopPolling();
   },
   methods: {
+    searchDebounce: null,
     async search() {
+      // 防抖：连按回车/快速输入时只发最后一个请求
+      clearTimeout(this.searchDebounce);
+      this.searchDebounce = setTimeout(() => {
+        this.doSearch();
+      }, 300);
+    },
+    async doSearch() {
       const q = (this.query || '').trim();
       if (!q) return;
       this.searching = true;

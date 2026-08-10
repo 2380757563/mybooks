@@ -94,6 +94,7 @@ from webserver.toolbox.text_replace import (  # noqa: E402
     _encode_entry,
     _find_text_entries,
     _read_zip_entries,
+    _read_text_entries,
     _write_zip,
 )
 
@@ -233,6 +234,20 @@ class TestEpubReplace(unittest.TestCase):
             entries = _read_zip_entries(tmp)
             names = _find_text_entries(entries)
             self.assertEqual(sorted(names), ["OEBPS/ch1.xhtml", "OEBPS/ch2.xhtml"])
+        finally:
+            os.remove(tmp)
+
+    def test_read_text_entries_only_text(self):
+        # 预览只读正文相关条目，不读取图片/字体等非文本条目
+        tmp = os.path.join(TESTS_DIR, "_tmp.epub")
+        build_mini_epub(tmp)
+        try:
+            entries = _read_text_entries(tmp)
+            self.assertIn("META-INF/container.xml", entries)
+            self.assertIn("OEBPS/content.opf", entries)
+            self.assertIn("OEBPS/ch1.xhtml", entries)
+            self.assertIn("OEBPS/ch2.xhtml", entries)
+            self.assertNotIn("OEBPS/style.css", entries)  # 非文本条目不读
         finally:
             os.remove(tmp)
 
