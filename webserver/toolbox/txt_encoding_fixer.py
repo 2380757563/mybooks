@@ -92,16 +92,21 @@ class TxtEncodingFixerTool(BaseTool):
             )
             return
 
-        task_id = self.create_task(progress_data={"status": "starting", "book_id": book_id})
-        TxtEncodingFixerTool._last_task_id = task_id
-        progress_callback = self.make_progress_callback(task_id)
+        # create_task 等全部放入 try：若中途抛异常，finally 仍会释放锁，
+        # 避免锁永久泄漏导致工具不可用（需重启服务才能恢复）
+        task_id = None
         error_message = None
         book_title = "Unknown"
 
         try:
+            task_id = self.create_task(progress_data={"status": "starting", "book_id": book_id})
+            TxtEncodingFixerTool._last_task_id = task_id
+            progress_callback = self.make_progress_callback(task_id)
+
             books = self.db.get_data_as_dict(ids=[book_id])
             if not books:
                 error_message = _("书籍不存在：ID=%d") % book_id
+                self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
                 logging.error("[TxtEncodingFixerTool] Book not found: ID=%d [uid:%d]", book_id, user_id)
                 return
 
@@ -110,12 +115,14 @@ class TxtEncodingFixerTool(BaseTool):
             fmts = [f.upper() for f in (book.get("available_formats") or [])]
             if "TXT" not in fmts:
                 error_message = _("该书籍没有 TXT 格式，无法执行修复")
+                self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
                 logging.error("[TxtEncodingFixerTool] No TXT format for book_id=%d [uid:%d]", book_id, user_id)
                 return
 
             txt_path = self.db.format_abspath(book_id, "TXT", index_is_id=True)
             if not txt_path or not os.path.exists(txt_path):
                 error_message = _("找不到 TXT 文件，可能已被移除")
+                self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
                 logging.error("[TxtEncodingFixerTool] TXT file missing for book_id=%d [uid:%d]", book_id, user_id)
                 return
 
@@ -131,10 +138,12 @@ class TxtEncodingFixerTool(BaseTool):
             text, report = encoding_detect.decode_with_report(data)
             if report["unrecoverable"]:
                 error_message = _("文件疑似多重误读乱码（反转循环），无法自动修复")
+                self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
                 logging.error("[TxtEncodingFixerTool] Unrecoverable mojibake cycle for book_id=%d", book_id)
                 return
             if report["garbage"] and not report["mojibake"]:
                 error_message = _("文件疑似二进制或混用编码，无法安全修复（编码：%s）") % report["encoding"]
+                self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
                 logging.error("[TxtEncodingFixerTool] Garbage content for book_id=%d: %s", book_id, report["encoding"])
                 return
 
@@ -166,7 +175,9 @@ class TxtEncodingFixerTool(BaseTool):
             logging.error("[TxtEncodingFixerTool] Unexpected error for book_id=%d: %s", book_id, err)
             logging.error(traceback.format_exc())
         finally:
-            self.complete_task(task_id, error_message=error_message)
-            if error_message is None:
-                self.update_task_progress(task_id, 100, {"status": "completed", "book_id": book_id})
+            # create_task 失败时 task_id 为 None，跳过任务收尾（锁仍必须释放）
+            if task_id is not None:
+                self.complete_task(task_id, error_message=error_message)
+                if error_message is None:
+                    self.update_task_progress(task_id, 100, {"status": "completed", "book_id": book_id})
             TxtEncodingFixerTool._fix_lock.release()
