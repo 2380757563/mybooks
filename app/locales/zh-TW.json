@@ -1499,6 +1499,31 @@
     "noEpub": "所選書籍沒有 EPUB 格式",
     "audioOpen": "打開有聲書"
   },
+  "txtEncodingFixer": {
+    "title": "TXT編碼修復",
+    "close": "關閉",
+    "hint": "偵測書籍 TXT 檔案的編碼（BOM / 候選打分 / chardet / 亂碼反轉恢復），修復為 UTF-8 並另存為新書，原書檔案零改動。",
+    "selectBook": "搜尋並選擇書籍",
+    "noResults": "找不到相關書籍",
+    "analyzeBtn": "分析編碼",
+    "reportTitle": "偵測報告",
+    "confidence": "信賴度",
+    "mojibakeYes": "偵測到亂碼（已反轉恢復）",
+    "mojibakeNo": "未偵測到亂碼",
+    "garbageAlert": "檔案疑似二進位或混用編碼，修復可能不安全。",
+    "reasons": "偵測依據",
+    "previewTitle": "修復後預覽（前 500 字）",
+    "previewEmpty": "（空）",
+    "fixBtn": "執行修復並生成新書",
+    "fixStarted": "修復任務已啟動，請查看訊息通知中的處理結果",
+    "fixCompleted": "修復完成，已生成新書，原書保持不變",
+    "fixFailed": "修復失敗",
+    "progressReading": "正在讀取檔案…",
+    "progressDetecting": "正在偵測編碼…",
+    "progressSaving": "正在儲存新書…",
+    "progressCompleted": "已完成"
+  }
+}
   "chineseConverter": {
     "title": "繁簡轉換",
     "close": "關閉",
