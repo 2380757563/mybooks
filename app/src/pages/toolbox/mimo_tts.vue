@@ -81,7 +81,7 @@
               v-model="apiType"
               :label="$t('mimoTts.apiType')"
               :items="apiTypeOptions"
-              item-title="label"
+              item-text="label"
               item-value="value"
               outlined
               dense
@@ -120,7 +120,7 @@
               v-model="authType"
               :label="$t('mimoTts.authType')"
               :items="authTypeOptions"
-              item-title="label"
+              item-text="label"
               item-value="value"
               outlined
               dense
@@ -153,7 +153,7 @@
                   v-model="presetVoiceId"
                   :label="$t('mimoTts.voicePresetSelect')"
                   :items="presetVoiceOptions"
-                  item-title="name"
+                  item-text="name"
                   item-value="id"
                   outlined
                   dense
@@ -320,7 +320,7 @@
                 v-model="voiceName"
                 :label="$t('mimoTts.voiceName')"
                 :items="speechVoiceOptions"
-                item-title="label"
+                item-text="label"
                 item-value="value"
                 outlined
                 dense
@@ -335,7 +335,7 @@
                 v-model="voiceType"
                 :label="$t('mimoTts.voiceLabel')"
                 :items="voiceOptions"
-                item-title="label"
+                item-text="label"
                 item-value="value"
                 outlined
                 dense
@@ -368,7 +368,7 @@
               >{{ resultMsg }}</v-alert>
             </transition>
 
-            <div class="d-flex justify-center flex-wrap ga-3">
+            <div class="d-flex justify-center flex-wrap mt-btn-row">
               <v-btn
                 color="secondary"
                 variant="outlined"

@@ -40,6 +40,10 @@ MAX_FREE_AUDIO_FILES = 6
 AUDIO_CACHE_EXPIRE_SECONDS = 300  # 5 minutes
 
 
+def natural_sort_key(filename):
+    return [int(chunk) if chunk.isdigit() else chunk.lower() for chunk in re.split(r"(\d+)", filename)]
+
+
 class AudioBooksCache:
     """音频书籍目录缓存工具类"""
 
@@ -185,7 +189,7 @@ class AudioUtils:
                 }
 
         file_urls = []
-        for file in sorted(audio_files):
+        for file in sorted(audio_files, key=natural_sort_key):
             file_path = os.path.join(audio_dir, file)
             file_size = os.path.getsize(file_path)
             if file_size <= 1024:  # Ignore files smaller than 1K
@@ -302,7 +306,7 @@ class AudioDetail(BaseHandler):
 
                     # Generate download URLs for audio files
                     file_urls = []
-                    for file in sorted(audio_files):
+                    for file in sorted(audio_files, key=natural_sort_key):
                         if file.find(SKIP_AUDIO_FILE_PREFIX) > 0:
                             continue
 
@@ -1001,7 +1005,7 @@ class AudioCollection(BaseHandler):
             if not os.path.exists(zip_path):
                 try:
                     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-                        for audio_file in sorted(audio_files):
+                        for audio_file in sorted(audio_files, key=natural_sort_key):
                             if audio_file.find(SKIP_AUDIO_FILE_PREFIX) > 0:
                                 continue
                             file_path = os.path.join(audio_dir, audio_file)
