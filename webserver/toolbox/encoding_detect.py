@@ -286,10 +286,27 @@ def _analyze(data):
             options.append((real, rt, True, mid, real, cand_enc))
         cycle_any = cycle_any or cycle
 
-    # 统一评分 = 可读性 + 常用字加成（后者识别"字形全合法"的语义级乱码）；
-    # 总分打平时直解优先（保守，避免把"反转循环中间态"当作恢复结果）
-    enc, text, mojibake, mid_enc, real_enc, cand_enc = max(
-        options, key=lambda o: (_score_total(o[1]), 1 if not o[2] else 0))
+    # 方案选择：受保护门槛——若 UTF-8 直解可信（readability >= 60），说明文件
+    # 是"无辜的正常 UTF-8"，非 UTF-8 方案（其他编码直解 / 反转）必须显著胜出
+    # （total 超出 +10）才可采纳，防僻字/低熵文本被误判为 GBK/BIG5 乱码；
+    # 若 UTF-8 直解不可信（误读文本可读性差，如锟斤拷场景），则正常竞争不设门槛。
+    # 总分打平时直解优先（保守）。
+    utf8_direct = next((o for o in options if o[0] == "utf-8" and not o[2]), None)
+    if utf8_direct is not None and _readability_score(utf8_direct[1]) >= 60:
+        floor = _score_total(utf8_direct[1]) + 10.0
+
+        def _eff(o):
+            if o[0] == "utf-8" and not o[2]:
+                return _score_total(o[1])
+            t = _score_total(o[1])
+            # 非 UTF-8 方案：总分未显著超过 UTF-8 直解（+10）即视为无效
+            return t if t >= floor else -1.0
+
+        enc, text, mojibake, mid_enc, real_enc, cand_enc = max(
+            options, key=lambda o: (_eff(o), 1 if not o[2] else 0))
+    else:
+        enc, text, mojibake, mid_enc, real_enc, cand_enc = max(
+            options, key=lambda o: (_score_total(o[1]), 1 if not o[2] else 0))
     score = _readability_score(text)
     reasons.append("候选解码：%s（可读性 %.0f/100）" % (cand_enc, score))
     if mojibake:
