@@ -242,7 +242,7 @@
                 <v-toolbar flat dense>
                     <!-- download -->
                     <div class="book-action-btns">
-                        <v-btn icon small fab @click="dialog_download = true" :disabled="!hasCompatibleFormats">
+                        <v-btn icon small fab @click="downloadBook" :disabled="!hasCompatibleFormats">
                             <v-icon>get_app</v-icon>
                         </v-btn>
                         <v-btn icon small fab :to="'/book/' + book.id + '/edit'">
@@ -708,7 +708,7 @@
         <v-col cols="12" sm="6" class="book-action-col">
             <v-card outlined>
                 <v-list>
-                    <v-list-item @click="dialog_download = !dialog_download" :disabled="book.book_type == this.BOOK_TYPE.PHYSICAL">
+                    <v-list-item @click="downloadBook" :disabled="book.book_type == this.BOOK_TYPE.PHYSICAL">
                         <v-list-item-avatar large :color="book.book_type == this.BOOK_TYPE.PHYSICAL ? 'grey' : 'primary'">
                             <v-icon dark>get_app</v-icon>
                         </v-list-item-avatar>
@@ -1934,6 +1934,13 @@ export default {
         authorAvatarUrl(author) {
             const ts = Math.floor(Date.now() / 10000) * 10000;
             return `/get/author/avatar/${author}?t=${ts}`;
+        },
+        downloadBook() {
+            if (this.book.files && this.book.files.length === 1) {
+                window.open(this.book.files[0].href, '_blank');
+            } else {
+                this.dialog_download = true;
+            }
         },
         async toggleFavorite() {
             if (this.favoriteLoading) return;
