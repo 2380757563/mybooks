@@ -1526,3 +1526,38 @@
     "progressCompleted": "已完成"
   }
 }
+  "chineseConverter": {
+    "title": "繁简转换",
+    "close": "关闭",
+    "hint": "对书库中的书籍执行简体↔繁体中文转换。支持 EPUB / TXT 格式与 8 种转换方向（OpenCC 标准），可选用「a5566123s 个人修正版」增强词表；可另存为新书或替换原书（可选备份）。",
+    "selectBook": "搜索并选择书籍",
+    "noResults": "未找到相关书籍",
+    "direction": "转换方向",
+    "dirT2S": "繁体 → 简体",
+    "dirTW2S": "台湾繁体 → 简体",
+    "dirS2T": "简体 → 繁体",
+    "dirS2TW": "简体 → 台湾繁体",
+    "dirT2TW": "繁体 → 台湾繁体",
+    "dirTW2T": "台湾繁体 → 繁体",
+    "useA5": "增强词表（a5566123s 修正版）",
+    "useA5Hint": "优先匹配个人修正词条（如：幹麼→干嘛、達文西密碼→《达·芬奇密码》）",
+    "useA5DisabledHint": "增强词表仅对繁体→简体方向生效",
+    "convertTitle": "同时转换书名与目录",
+    "convertTitleHint": "转换 OPF / NCX 中的标题类文本",
+    "mode": "输出方式",
+    "modeBook": "另存为新书（保留原书）",
+    "modeReplace": "替换原书",
+    "backup": "转换前备份原文件",
+    "backupHint": "备份保存在工具工作目录中",
+    "startBtn": "开始转换",
+    "convertStarted": "繁简转换任务已启动，右上角可以查看进度",
+    "progressReading": "正在读取书籍…",
+    "progressConverting": "正在转换文本…",
+    "progressSaving": "正在保存结果…",
+    "stageCompleted": "已完成",
+    "convertCompleted": "转换完成！可在书库中查看结果",
+    "convertFailed": "转换失败",
+    "dirTW2SP": "台湾繁体（含台湾用词）→ 简体",
+    "dirS2TWP": "简体 → 台湾繁体（含台湾用词）"
+  }
+}
