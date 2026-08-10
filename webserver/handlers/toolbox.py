@@ -19,6 +19,7 @@ from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
+from webserver.toolbox.chinese_converter_tool import ChineseConverterTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -610,6 +611,59 @@ class AdminBookBarnAcceptorStatus(BaseHandler):
         return {"err": "ok", "data": BookBarnAcceptorTool().get_status()}
 
 
+class AdminChineseConverterConvert(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        direction = (data.get("direction") or "t2s").strip()
+        mode = (data.get("mode") or "book").strip()
+        convert_title = bool(data.get("convert_title", True))
+        backup = bool(data.get("backup", False))
+
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        if direction not in ChineseConverterTool.DIRECTIONS:
+            return {"err": "params.direction.invalid", "msg": _("不支持的转换方向")}
+        if mode not in ("book", "replace"):
+            return {"err": "params.mode.invalid", "msg": _("无效的输出方式")}
+
+        tool = ChineseConverterTool()
+        if tool.is_running():
+            return {"err": "task.running", "msg": _("已有繁简转换任务正在运行，请稍后再试")}
+
+        tool.convert(int(book_id), direction, mode, convert_title, backup, self.user_id())
+        return {"err": "ok", "msg": _("繁简转换任务已启动，右上角可以查看进度")}
+
+
+class AdminChineseConverterProgress(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        task = ChineseConverterTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动繁简转换任务")}
+
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "new_book_id": progress_data.get("new_book_id", 0),
+            "direction": progress_data.get("direction", ""),
+            "stage": progress_data.get("stage", ""),
+        }
+
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
+
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("繁简转换任务已完成"), "data": result}
+
+        return {"err": "ok", "data": result}
+
+
 class AdminBookBarnAcceptorToggle(BaseHandler):
     @js
     @is_admin
@@ -689,4 +743,6 @@ def routes():
                 (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
                 (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
                 (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
+                (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
+                (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
     ]

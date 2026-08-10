@@ -99,6 +99,7 @@ class ToolSet:
         from .author_clean_tool import AuthorCleanTool
         from .mimo_tts import MimoTTSTool
         from .bookbarn_acceptor_tool import BookBarnAcceptorTool
+        from .chinese_converter_tool import ChineseConverterTool
 
         ToolSet.register(MergeFormatsTool.info())
         ToolSet.register(ReviewBookLanguageTool.info())
@@ -111,6 +112,7 @@ class ToolSet:
         ToolSet.register(MimoTTSTool.info())
         ToolSet.register(RareBookDownloader.info())
         ToolSet.register(BookBarnAcceptorTool.info())
+        ToolSet.register(ChineseConverterTool.info())
 
         MinifyPdfTool.cleanup_old_files()
 
