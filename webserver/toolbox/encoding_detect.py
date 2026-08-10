@@ -139,9 +139,8 @@ def _chardet_vote(data):
     """chardet 三段采样投票；返回 (encoding, confidence) 或 None。"""
     if chardet is None:
         return None
-    segments = _sample_segments(data)
     votes = {}
-    for seg in segments:
+    for seg in _sample_segments(data):
         try:
             guess = chardet.detect(seg)
         except Exception:
@@ -153,7 +152,7 @@ def _chardet_vote(data):
     if not votes:
         return None
     best = max(votes.items(), key=lambda kv: kv[1])
-    return (best[0], best[1] / len(segments))
+    return (best[0], best[1] / len(_sample_segments(data)))
 
 
 def _decode_candidates(data):

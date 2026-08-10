@@ -1501,6 +1501,36 @@
     "noEpub": "所选书籍没有 EPUB 格式",
     "audioOpen": "打开有声书"
   },
+  "textReplace": {
+    "title": "正文查找替换",
+    "close": "关闭",
+    "hint": "对 TXT / EPUB 书籍正文执行查找替换（支持普通文本与正则两种模式），替换结果另存为新书，原书零改动。",
+    "selectBook": "搜索并选择书籍",
+    "noResults": "未找到相关书籍",
+    "modePlain": "普通文本",
+    "modeRegex": "正则表达式",
+    "cheatTitle": "正则小抄",
+    "cheatBody": ". 任意字符 | * 零次或多次 | + 一次或多次 | ? 零次或一次 | \\d 数字 | [abc] 字符集 | (x|y) 或 | ^ 行首 | $ 行尾 | 特殊字符用 \\ 转义",
+    "pattern": "查找内容",
+    "patternPlaceholder": "要查找的文本",
+    "replacement": "替换为",
+    "replacementPlaceholder": "替换文本（正则模式可用 \\1 引用分组）",
+    "suffix": "新书标题后缀",
+    "previewBtn": "预览",
+    "previewTitle": "格式：{format} · 命中 {count} 处",
+    "previewZero": "未找到匹配内容",
+    "sampleIndex": "位置 {index}",
+    "runBtn": "执行替换",
+    "runStarted": "替换任务已启动，注意查看消息通知中的处理结果",
+    "runCompleted": "替换完成，已生成新书，原书保持不变",
+    "runFailed": "替换失败",
+    "defaultSuffix": "正文替换版",
+    "progressReading": "正在读取文件…",
+    "progressProcessing": "正在替换…",
+    "progressSaving": "正在保存新书…",
+    "progressCompleted": "已完成",
+    "previewTruncated": "预览仅统计每个条目前 20 万字符，实际替换可能命中更多。"
+  },
   "txtEncodingFixer": {
     "title": "TXT编码修复",
     "close": "关闭",
@@ -1524,8 +1554,7 @@
     "progressDetecting": "正在检测编码…",
     "progressSaving": "正在保存新书…",
     "progressCompleted": "已完成"
-  }
-}
+  },
   "chineseConverter": {
     "title": "繁简转换",
     "close": "关闭",

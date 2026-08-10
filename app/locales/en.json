@@ -1499,6 +1499,36 @@
     "noEpub": "The selected book has no EPUB format",
     "audioOpen": "Open Audio"
   },
+  "textReplace": {
+    "title": "Find & Replace in Text",
+    "close": "Close",
+    "hint": "Find and replace text in the body of TXT / EPUB books, with plain text or regex mode. Replaced files are saved as a new book; the original is never modified.",
+    "selectBook": "Search and select a book",
+    "noResults": "No books found",
+    "modePlain": "Plain text",
+    "modeRegex": "Regex",
+    "cheatTitle": "Regex quick reference",
+    "cheatBody": ". any char | * 0+ times | + 1+ times | ? 0/1 | \\d digit | [abc] set | (x|y) or | ^ start | $ end | escape special chars with \\",
+    "pattern": "Find",
+    "patternPlaceholder": "Text to find",
+    "replacement": "Replace with",
+    "replacementPlaceholder": "Replacement text (\\1 for regex group 1)",
+    "suffix": "New book title suffix",
+    "previewBtn": "Preview",
+    "previewTitle": "Format: {format} | {count} match(es)",
+    "previewZero": "No matches found",
+    "sampleIndex": "Position {index}",
+    "runBtn": "Run replacement",
+    "runStarted": "Replacement task started. Check the message notifications for the result.",
+    "runCompleted": "Replacement completed, new book created. The original book is unchanged.",
+    "runFailed": "Replacement failed",
+    "defaultSuffix": "Replaced",
+    "progressReading": "Reading file...",
+    "progressProcessing": "Replacing...",
+    "progressSaving": "Saving new book...",
+    "progressCompleted": "Completed",
+    "previewTruncated": "Preview stats only cover the first 200,000 characters of each entry; the actual replacement may match more."
+  },
   "txtEncodingFixer": {
     "title": "TXT Encoding Fixer",
     "close": "Close",
@@ -1522,8 +1552,7 @@
     "progressDetecting": "Detecting encoding...",
     "progressSaving": "Saving new book...",
     "progressCompleted": "Completed"
-  }
-}
+  },
   "chineseConverter": {
     "title": "Chinese Converter",
     "close": "Close",
