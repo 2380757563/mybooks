@@ -138,6 +138,17 @@ class TestMojibake(unittest.TestCase):
         self.assertTrue(r["unrecoverable"])
         self.assertFalse(r["mojibake"])
 
+    def test_mid_signal_mojibake_still_recovered(self):
+        # 中信号乱码：原文常用字率中等（ratio~0.4，如古文/专业书）被 BIG5-as-GBK
+        # 误读，恢复差值仅 ~+16——受保护门槛（+10）不得误伤，仍须恢复
+        mid = "昔者莊周夢為胡蝶，栩栩然胡蝶也，自喻適志與！不知周也。"
+        data = mid.encode("big5").decode("gb18030").encode("utf-8")
+        r = detect_encoding(data)
+        self.assertTrue(r["mojibake"], r["reasons"])
+        self.assertEqual(r["encoding"], "big5")
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, mid)
+
 
 class TestIdempotency(unittest.TestCase):
     """幂等性：正常 UTF-8 中文必须原样输出，绝不能反转成乱码。
@@ -176,6 +187,25 @@ class TestIdempotency(unittest.TestCase):
         self._assert_idempotent(
             "人工智能的发展历程，包括机器学习与深度学习。" * 50
             + "这是对幂等性的长文回归验证。" * 30)
+
+    def test_utf8_rare_chars(self):
+        # 僻字密集（常用字占比为 0）：不得因评分低/反转候选微胜而误判 GBK/BIG5
+        self._assert_idempotent("龘靐齉爨癵籱饢驫麣纞")
+
+    def test_utf8_rare_chars_long(self):
+        self._assert_idempotent("龘靐齉爨癵籱饢驫麣纞" * 20)
+
+    def test_utf8_repeated_rare_char(self):
+        # 低熵 + 零常用字：重复生僻字不得误判
+        self._assert_idempotent("龘" * 50000)
+
+    def test_ascii_punctuation_only(self):
+        # 纯 ASCII 符号全集：所有编码等价，锁死 utf-8 直解
+        self._assert_idempotent("""1234567890!@#$%^&*()_+-=[]{};':",./<>?""")
+
+    def test_repeated_single_byte(self):
+        # 低熵重复单字节：不弃权、不误判
+        self._assert_idempotent("A" * 100000)
 
 
 class TestSamplingBoundary(unittest.TestCase):
