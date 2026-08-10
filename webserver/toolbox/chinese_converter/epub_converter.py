@@ -173,10 +173,12 @@ def _convert_text_nodes(soup, converter):
 
 
 def _write_epub(out_path, entries, mimetype_data):
-    """按 EPUB 规范写 zip：mimetype 首项且 STORED，其余 DEFLATED。"""
+    """按 EPUB 规范写 zip：mimetype 首项且 STORED，其余 DEFLATED。
+
+    保留原始条目顺序（部分阅读器依赖条目顺序），仅将 mimetype 提前到首位。
+    """
     names = list(entries.keys())
     ordered = [n for n in names if n != "mimetype"]
-    ordered.sort()
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zout:
         zinfo = zipfile.ZipInfo("mimetype")

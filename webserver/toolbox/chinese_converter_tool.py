@@ -117,15 +117,18 @@ class ChineseConverterTool(BaseTool):
                             book_id, user_id)
             return
 
-        task_id = self.create_task(progress_data={
-            "status": "starting", "book_id": book_id,
-            "direction": direction, "mode": mode,
-        })
-        ChineseConverterTool._last_task_id = task_id
+        # create_task 等全部放入 try：若中途抛异常，finally 仍会释放锁
+        task_id = None
         error_message = None
         book_title = "Unknown"
 
         try:
+            task_id = self.create_task(progress_data={
+                "status": "starting", "book_id": book_id,
+                "direction": direction, "mode": mode,
+            })
+            ChineseConverterTool._last_task_id = task_id
+
             books = self.db.get_data_as_dict(ids=[book_id])
             if not books:
                 error_message = _("书籍不存在：ID=%d") % book_id
@@ -200,16 +203,25 @@ class ChineseConverterTool(BaseTool):
             logging.error("[ChineseConverterTool] Convert failed for book_id=%d: %s", book_id, err)
             logging.error(traceback.format_exc())
         finally:
-            self.complete_task(task_id, error_message=error_message)
+            # create_task 失败时 task_id 为 None，跳过任务收尾（锁仍必须释放）
+            if task_id is not None:
+                self.complete_task(task_id, error_message=error_message)
             ChineseConverterTool._convert_lock.release()
 
     # ── 输出处理 ────────────────────────────────────────────
 
     def _replace_format(self, book_id: int, fmt: str, out_path: str,
                         backup: bool, work_dir: str) -> Optional[int]:
-        """替换原书格式；可选备份；返回新 book_id（None 表示原位替换）。"""
+        """替换原书格式；可选备份；返回新 book_id（None 表示原位替换）。
+
+        备份保存在独立持久目录（``get_work_dir("backups")``），不随 work_dir
+        清理，避免成功路径清理临时目录时误删备份。
+        """
         if backup:
-            backup_path = os.path.join(work_dir, "backup." + fmt.lower())
+            backup_dir = self.get_work_dir("backups")
+            backup_path = os.path.join(
+                backup_dir, "backup_%d_%s_%d.%s" % (
+                    book_id, fmt.lower(), int(time.time()), fmt.lower()))
             calibre_path = self.db.format_abspath(book_id, fmt, index_is_id=True)
             if calibre_path and os.path.exists(calibre_path):
                 shutil.copy2(calibre_path, backup_path)
