@@ -3152,6 +3152,7 @@ class BookSendToMail(BaseHandler):
         try:
             data = tornado.escape.json_decode(self.request.body)
             mail_to = data.get("email", "").strip()
+            requested_format = (data.get("format") or "").strip().lower()
         except:
             return {"err": "params.invalid", "msg": _("没有指定邮箱地址")}
 
@@ -3168,12 +3169,22 @@ class BookSendToMail(BaseHandler):
         file_path = None
         file_format = None
 
-        for fmt in format_priority:
-            fmt_key = "fmt_%s" % fmt
+        if requested_format:
+            # 书籍有多个格式时，客户端（发送到邮箱对话框）会让用户指定其中一个格式；
+            # 仍然只允许邮件兼容的格式，避免绕过前端选项发送任意格式。
+            if requested_format not in format_priority:
+                return {"err": "format.not_found", "msg": _("书籍没有支持的文件格式（EPUB/AZW3/PDF/MOBI/TXT）")}
+            fmt_key = "fmt_%s" % requested_format
             if fmt_key in book:
                 file_path = book[fmt_key]
-                file_format = fmt
-                break
+                file_format = requested_format
+        else:
+            for fmt in format_priority:
+                fmt_key = "fmt_%s" % fmt
+                if fmt_key in book:
+                    file_path = book[fmt_key]
+                    file_format = fmt
+                    break
 
         if not file_path:
             return {"err": "format.not_found", "msg": _("书籍没有支持的文件格式（EPUB/AZW3/PDF/MOBI/TXT）")}

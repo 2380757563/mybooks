@@ -400,7 +400,7 @@
                                     <v-icon>mdi-robot</v-icon>
                                     {{ $t('book.aiUpdate') }}
                                 </v-list-item>
-                                <v-list-item v-if="$store.state.user?.is_login" @click="dialog_send_to_email = true" :disabled="!hasCompatibleEmailFormats">
+                                <v-list-item v-if="$store.state.user?.is_login" @click="openEmailDialog" :disabled="!hasCompatibleEmailFormats">
                                     <v-icon>mdi-email-send</v-icon>
                                     {{ $t('book.shareToEmail') }}
                                 </v-list-item>
@@ -1310,11 +1310,22 @@
             </v-card-title>
             <v-card-text>
                 <p class="mb-4">
-                    {{ $t('book.shareToEmailDesc') }}
-                    <span class="caption grey--text">
-                        ({{ $t('book.willSendFormat', { format: selectedEmailFormat }) }})
+                    <span v-if="!hasMultipleEmailFormats" class="caption grey--text">
+                        ({{ $t('book.willSendFormat', { format: selected_email_format.toUpperCase() }) }})
                     </span>
                 </p>
+                <template v-if="hasMultipleEmailFormats">
+                    <p class="mb-2">{{ $t('book.selectFormatToSend') }}</p>
+                    <v-radio-group v-model="selected_email_format" class="mt-0">
+                        <v-radio
+                            v-for="file in compatibleEmailFormatFiles"
+                            :key="'email-' + file.format"
+                            :value="file.format.toLowerCase()"
+                            :label="`${file.format} - ${formatFileSize(file.size)}`"
+                        ></v-radio>
+                    </v-radio-group>
+                </template>
+                <p class="mb-4">{{ $t('book.shareToEmailDesc') }}</p>
                 <v-text-field
                     v-model="email_address"
                     :label="$t('book.emailAddress') + ' *'"
@@ -1593,31 +1604,34 @@ export default {
             return this.defaultReadFormat ? this.defaultReadFormat.href : '/read/' + (this.book ? this.book.id : '');
         },
 
-        // 检查是否有兼容邮箱发送的文件格式（EPUB/AZW3/PDF/MOBI/TXT）
-        hasCompatibleEmailFormats: function() {
-            if (!this.book || !this.book.files) return false;
-            const supportedFormats = ['epub', 'azw3', 'pdf', 'mobi', 'txt'];
-            return this.book.files.some(file =>
-                supportedFormats.includes(file.format.toLowerCase())
-            );
+        // 邮箱发送兼容的文件格式列表（EPUB/AZW3/PDF/MOBI/TXT），按优先级排序，供邮箱对话框中的格式选择使用
+        compatibleEmailFormatFiles: function() {
+            if (!this.book || !this.book.files) return [];
+            const formatPriority = ['epub', 'azw3', 'pdf', 'mobi', 'txt'];
+            return formatPriority
+                .map(format => this.book.files.find(f => f.format.toLowerCase() === format))
+                .filter(Boolean);
         },
 
-        // 获取要发送的邮件格式（优先级：EPUB > AZW3 > PDF > MOBI > TXT）
-        selectedEmailFormat: function() {
-            if (!this.book || !this.book.files) return '';
-            const formatPriority = ['epub', 'azw3', 'pdf', 'mobi', 'txt', 'docx'];
-            for (const format of formatPriority) {
-                const file = this.book.files.find(f =>
-                    f.format.toLowerCase() === format
-                );
-                if (file) return format.toUpperCase();
-            }
-            return '';
+        // 检查是否有兼容邮箱发送的文件格式（EPUB/AZW3/PDF/MOBI/TXT）
+        hasCompatibleEmailFormats: function() {
+            return this.compatibleEmailFormatFiles.length > 0;
+        },
+
+        // 书籍是否有多个可发送邮箱的格式，此时需要让用户选择发送哪个
+        hasMultipleEmailFormats: function() {
+            return this.compatibleEmailFormatFiles.length > 1;
+        },
+
+        // 默认要发送的邮件格式（优先级：EPUB > AZW3 > PDF > MOBI > TXT），用于打开对话框时的初始选中项
+        defaultEmailFormat: function() {
+            const file = this.compatibleEmailFormatFiles[0];
+            return file ? file.format.toLowerCase() : '';
         },
 
         // 检查是否可以发送到邮箱
         canSendToEmail() {
-            return this.email_address && this.isValidEmail(this.email_address) && !this.email_error;
+            return !!(this.email_address && this.isValidEmail(this.email_address) && !this.email_error && this.selected_email_format);
         },
 
         // 邮箱验证规则
@@ -1821,6 +1835,7 @@ export default {
         email_address: '',
         email_error: '',
         email_size_warning: '',
+        selected_email_format: '',
         // 图章位置选择对话框
         dialog_stamp_position: false,
         stamp_selected_position: '',
@@ -3647,12 +3662,19 @@ export default {
             a.click();
         },
 
+        // 打开邮箱对话框
+        openEmailDialog() {
+            this.selected_email_format = this.defaultEmailFormat;
+            this.dialog_send_to_email = true;
+        },
+
         // 关闭邮箱对话框
         closeEmailDialog() {
             this.dialog_send_to_email = false;
             this.email_address = '';
             this.email_error = '';
             this.email_size_warning = '';
+            this.selected_email_format = '';
         },
 
         // 发送到邮箱
@@ -3671,7 +3693,8 @@ export default {
             this.sending_to_email = true;
             try {
                 const requestBody = {
-                    email: this.email_address.trim()
+                    email: this.email_address.trim(),
+                    format: this.selected_email_format,
                 };
 
                 const response = await this.$backend(`/book/${this.book.id}/mailto`, {

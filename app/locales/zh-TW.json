@@ -602,6 +602,7 @@
     "clearCategory": "清除",
     "shareToEmail": "分享到信箱",
     "shareToEmailDesc": "輸入信箱位址，系統將自動發送書籍檔案到該信箱",
+    "selectFormatToSend": "選擇要發送的格式：",
     "emailAddress": "信箱位址",
     "emailRequired": "信箱位址不能為空",
     "emailInvalid": "信箱位址格式不正確",

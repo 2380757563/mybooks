@@ -811,6 +811,7 @@
     "clearCategory": "Clear",
     "shareToEmail": "Send via Email",
     "shareToEmailDesc": "Enter an email address to send the book file",
+    "selectFormatToSend": "Select the format to send:",
     "emailAddress": "Email Address",
     "emailRequired": "Email address is required",
     "emailInvalid": "Invalid email address format",
