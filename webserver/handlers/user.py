@@ -101,6 +101,9 @@ class UserUpdate(BaseHandler):
             # 服务端二次校验总开关，避免绕过前端隐藏直接改这个字段
             user.allow_statistic = bool(data.get("allow_statistic"))
 
+        if "show_home_recommendations" in data:
+            user.show_home_recommendations = bool(data.get("show_home_recommendations"))
+
         try:
             user.save()
             self.add_msg("success", _("设置已保存"))
@@ -483,6 +486,8 @@ class UserInfo(BaseHandler):
             "allow_user_disable_statistic": CONF.get("ALLOW_USER_DISABLE_STATISTIC", False),
             "total_reading_seconds": user.total_reading_seconds or 0,
             "download_count": user.download_count or 0,
+            "show_home_recommendations": user.show_home_recommendations,
+            "review_banned": user.review_banned,  # 是否被管理员禁止发表评论，见 plan/Social_Reading_Plan.md §2.2
         })
         if enable_vip_quota:
             d["vipquota"] = user.vipquota or 0
