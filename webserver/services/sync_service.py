@@ -142,6 +142,8 @@ class MyReaderSyncService:
     connections: Dict[int, Set] = defaultdict(set)
     _buffer = ReadingRecordBuffer()
     _periodic_callback: Optional[tornado.ioloop.PeriodicCallback] = None
+    _purge_periodic_callback: Optional[tornado.ioloop.PeriodicCallback] = None
+    _PURGE_INTERVAL_MS = 24 * 3600 * 1000  # 每天清理一次软删除记录
 
     @staticmethod
     def is_enabled() -> bool:
@@ -469,19 +471,55 @@ class MyReaderSyncService:
         cls._buffer.flush()
 
     @classmethod
-    def start(cls) -> None:
-        if cls._periodic_callback is not None:
+    def purge_soft_deleted(cls) -> None:
+        """Physically delete `reading_records` rows soft-deleted (`deleted_at`
+        set) longer than `SYNC_SOFT_DELETE_RETENTION_DAYS` ago.
+
+        Only `notes` genuinely accumulates one row per record (books/configs
+        are single-row-per-book, always overwritten in place — see
+        `_push_book_records`), and soft-deleted notes were otherwise kept
+        forever, so this is the only thing standing between "delete a note"
+        and unbounded table growth.
+        """
+        retention_days = CONF.get("SYNC_SOFT_DELETE_RETENTION_DAYS", 7)
+        if retention_days <= 0:
             return
-        interval_ms = CONF.get("SYNC_DB_FLUSH_INTERVAL_SEC", 5) * 1000
-        cls._periodic_callback = tornado.ioloop.PeriodicCallback(cls.flush_now, interval_ms)
-        cls._periodic_callback.start()
-        logging.info("[sync] reading_records write buffer started, flushing every %sms", interval_ms)
+        cutoff_ms = int(time.time() * 1000) - retention_days * 24 * 3600 * 1000
+        db = ReadingRecord._session()
+        try:
+            deleted = (
+                db.query(ReadingRecord)
+                .filter(ReadingRecord.deleted_at.isnot(None), ReadingRecord.deleted_at < cutoff_ms)
+                .delete(synchronize_session=False)
+            )
+            db.commit()
+            if deleted:
+                logging.info("[sync] purged %d soft-deleted reading_records row(s) older than %d day(s)", deleted, retention_days)
+        except Exception:
+            db.rollback()
+            logging.error("[sync] purge_soft_deleted failed, will retry next cycle", exc_info=True)
+
+    @classmethod
+    def start(cls) -> None:
+        if cls._periodic_callback is None:
+            interval_ms = CONF.get("SYNC_DB_FLUSH_INTERVAL_SEC", 5) * 1000
+            cls._periodic_callback = tornado.ioloop.PeriodicCallback(cls.flush_now, interval_ms)
+            cls._periodic_callback.start()
+            logging.info("[sync] reading_records write buffer started, flushing every %sms", interval_ms)
+        if cls._purge_periodic_callback is None:
+            cls._purge_periodic_callback = tornado.ioloop.PeriodicCallback(cls.purge_soft_deleted, cls._PURGE_INTERVAL_MS)
+            cls._purge_periodic_callback.start()
+            tornado.ioloop.IOLoop.current().call_later(0, cls.purge_soft_deleted)  # 启动时先跑一次，之后每天一次
+            logging.info("[sync] reading_records soft-delete purge started, running every %sms", cls._PURGE_INTERVAL_MS)
 
     @classmethod
     def stop(cls) -> None:
         if cls._periodic_callback is not None:
             cls._periodic_callback.stop()
             cls._periodic_callback = None
+        if cls._purge_periodic_callback is not None:
+            cls._purge_periodic_callback.stop()
+            cls._purge_periodic_callback = None
         cls.flush_now()
         logging.info("[sync] reading_records write buffer stopped, final flush done")
 

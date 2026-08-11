@@ -159,6 +159,39 @@ class TestSyncServiceStorage(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(run())
 
+    def test_purge_soft_deleted_removes_only_stale_tombstones(self):
+        """软删除记录超过 SYNC_SOFT_DELETE_RETENTION_DAYS 天才物理清理；未过期的
+        tombstone、以及未删除的记录都要保留，见 purge_soft_deleted() 实现。"""
+        import time
+        now_ms = int(time.time() * 1000)
+        eight_days_ago = now_ms - 8 * 24 * 3600 * 1000
+
+        async def run():
+            # 早已软删除，应当被清理
+            await MyReaderSyncService.push(114, {"notes": [
+                {"id": "n1", "book_hash": "sync-hashH", "updated_at": eight_days_ago, "deleted_at": eight_days_ago, "note": "old"},
+            ]})
+            # 刚刚软删除，应当保留
+            await MyReaderSyncService.push(114, {"notes": [
+                {"id": "n2", "book_hash": "sync-hashH", "updated_at": now_ms, "deleted_at": now_ms, "note": "recent"},
+            ]})
+            # 未删除，应当保留
+            await MyReaderSyncService.push(114, {"notes": [
+                {"id": "n3", "book_hash": "sync-hashH", "updated_at": now_ms, "note": "alive"},
+            ]})
+            MyReaderSyncService.flush_now()
+
+            MyReaderSyncService.purge_soft_deleted()
+
+            db = ReadingRecord._session()
+            remaining = {
+                r.record_id
+                for r in db.query(ReadingRecord).filter_by(reader_id=114, book_hash="sync-hashH").all()
+            }
+            self.assertEqual(remaining, {"n2", "n3"})
+
+        asyncio.get_event_loop().run_until_complete(run())
+
     def test_per_user_isolation(self):
         async def run():
             await MyReaderSyncService.push(108, {"books": [{"id": "b1", "book_hash": "sync-hashG1", "updated_at": 1}]})

@@ -49,7 +49,7 @@ from webserver import loader
 
 CONF = loader.get_settings()
 MEGA_BYTES = 1024 * 1024
-SCAN_EXT = ["azw", "azw3", "epub", "mobi", "pdf", "txt"]
+SCAN_EXT = ["azw", "azw3", "epub", "mobi", "pdf", "txt", "docx"]
 
 
 class ScanService(AsyncService):

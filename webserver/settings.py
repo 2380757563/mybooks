@@ -110,6 +110,7 @@ settings = {
     "SYNC_DB_FLUSH_INTERVAL_SEC": 5,      # reading_records 批量落库周期（秒）
     "SYNC_SHARED_NOTES_MAX_USERS": 20,    # 共读场景单本书最多返回多少个不同用户的 notes
     "SYNC_LEGACY_MIGRATION_DONE": False,  # 旧版 sync 文件（books/configs/notes.json）是否已全部迁移入库
+    "SYNC_SOFT_DELETE_RETENTION_DAYS": 7,  # reading_records 软删除（deleted_at）记录保留天数，超期物理清理
     "ALLOW_USER_DISABLE_STATISTIC": False,
     "READING_STATS_FLUSH_INTERVAL_SEC": 5,
     "ENABLE_HOMEPAGE_READING_STATS": True,
