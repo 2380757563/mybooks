@@ -103,6 +103,9 @@ settings = {
     "WEBDAV_SYNC_FOLDER": False,
     "ENABLE_DATA_SYNC": True,
     "MYREADER_SYNC_PATH": "/data/sync/",
+    "ENABLE_BOOK_REVIEW": True,            # 允许用户对书籍进行评论及评分
+    "REVIEW_REQUIRES_APPROVAL": False,     # 评论需要审核后才能展示
+    "ENABLE_BOOK_RECOMMEND_TO_OTHERS": True,  # 评价是否计入推荐人数/首页推荐位
     "ENABLE_SHARED_NOTES": True,          # 阅读时可查看其他用户的划线与笔记，见 plan/Social_Reading_Plan.md
     "SYNC_DB_FLUSH_INTERVAL_SEC": 5,      # reading_records 批量落库周期（秒）
     "SYNC_SHARED_NOTES_MAX_USERS": 20,    # 共读场景单本书最多返回多少个不同用户的 notes

@@ -164,11 +164,12 @@
 
 ### 4.2 阅读信息条计数器方案
 
-✅ 采用扩展 `Item` 表（`webserver/models.py:387`）的方案，新增三列：`count_reading`、`count_favorite`、`count_recommend`（`Integer`，允许 `NULL`，`NULL` 表示"尚未初始化/回填"）。
+✅【实现调整，2026-08 落地时收敛】§8 问题 17 的确认原话允许两个方案二选一（"可以使用计数器方案……或者在更新阅读状态时判断，如果对应计数字段不存在，就在阅读状态中统计一次更新进去"）。实现阶段选择了后者的简化版本：**不新增 `Item.count_*` 列**，改为 `BookReviewService.get_stats()` 对 `ReadingState`/`book_reviews` 做实时 `COUNT` 查询，结果经 §4.1 的通用 `TTLCache`（key=`book_social_stats:<book_id>`，TTL 60s）缓存。
 
-- **增量维护**：`favorite`/`read_state` 切换、评价提交/编辑/隐藏/删除时，在对应 handler 里 `+1`/`-1`。
-- **防止负值**：所有递减操作用 `GREATEST(0, count - 1)` 语义（SQLAlchemy 层用 `func.max(0, Item.count_x - 1)` 或应用层先查后判断再写，避免因为历史数据不一致导致计数变负）。
-- **历史数据回填（懒加载 + 兜底）**：✅ 按确认方案——当某本书的计数列为 `NULL`（未初始化）时，在**下一次相关阅读状态变更**（切换收藏/在读/提交评价）时，先做一次真实 `COUNT` 聚合把当前准确值写入该列，再基于这个基准值继续做增量维护；`social-stats` 接口读取到 `NULL` 时，先按需触发一次同步的 `COUNT` 回填（写惰性初始化），后续请求走列值，不需要为全量存量书籍单独跑一次迁移脚本。
+- 理由：`favorite`/`read_state` 的写入点分散在既有代码的多处（`BookFavorite`/`BookWantToRead`/`BookReading` 等 handler，以及可能的批量操作、书籍删除等路径），逐一改造为增量 `+1`/`-1` 风险较高（容易遗漏某个写入点导致计数漂移，且难以在一次改动中审计完备）；而 `recommend_count` 的来源（`book_reviews`）完全由本次新增代码独占，才具备"增量维护不会漏埋点"的前提。
+- `recommend_count` 单独看确实可以做成 `Item.count_recommend` 增量列，但为了让阅读信息条三个数字的实现方式统一、心智负担更低，最终三项都走同一套"TTLCache 包一层 COUNT 查询"的路径。
+- 任一评价的新增/编辑/软删除/管理员操作都会显式 `invalidate` 对应 `book_id` 的缓存（`BookReviewService.invalidate_stats()`），保证评价类数字最多有一次请求的延迟；`favorite`/`read_state` 变化目前**未**显式 invalidate（尚未接入既有 handler），依赖 60s TTL 自然过期，属于已知的、有界的短暂延迟，可接受。
+- 如果未来实测 `COUNT` 查询在大库场景下开销明显，再按原方案升级为 `Item` 计数器列，不影响接口对外形状（`GET /api/book/:id/social-stats` 返回结构不变）。
 
 ### 4.3 sync 落库的写入频率与批量合并
 
@@ -265,13 +266,9 @@ show_home_recommendations = Column(Boolean, default=True, nullable=False)  # 首
 review_banned = Column(Boolean, default=False, nullable=False)              # 是否被禁止发表评论
 ```
 
-### 5.4 `Item` 表新增列（§4.2 计数器方案）
+### 5.4 `Item` 表新增列（§4.2 计数器方案）— 未采用
 
-```python
-count_reading = Column(Integer, nullable=True)     # NULL = 未初始化，读/写时懒回填
-count_favorite = Column(Integer, nullable=True)
-count_recommend = Column(Integer, nullable=True)
-```
+草稿阶段设计了 `count_reading`/`count_favorite`/`count_recommend` 三列，实现阶段按 §4.2 的说明改为 `TTLCache` 包一层实时 `COUNT` 查询，未新增这三列，`Item` 表结构不变。
 
 ---
 

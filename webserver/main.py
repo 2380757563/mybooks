@@ -408,7 +408,7 @@ def make_app():
     # Assemble routes carefully:
     # WebDAV must come before files.routes() because files has a catch-all (r"/(.*)")
     # We need to get routes from handlers module without files, add webdav, then add files
-    from webserver.handlers import assistant, mcp, admin, barcode, scan, opds, book, user, meta, audio, toolbox, sync
+    from webserver.handlers import assistant, mcp, admin, barcode, scan, opds, book, book_review, user, meta, audio, toolbox, sync
 
     app_routes = []
     app_routes += social_routes.SOCIAL_AUTH_ROUTES
@@ -419,6 +419,7 @@ def make_app():
     app_routes += scan.routes()
     app_routes += opds.routes()
     app_routes += book.routes()
+    app_routes += book_review.routes()
     app_routes += user.routes()
     app_routes += meta.routes()
     app_routes += audio.routes()

@@ -12,7 +12,7 @@ import zlib
 from webserver.i18n import _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
-from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.orm import relationship, declarative_base
 from webserver.constants import BOOK_TYPE_EBOOK
@@ -121,6 +121,8 @@ class Reader(Base, SQLAlchemyMixin):
     download_count = Column(Integer, default=0, nullable=False)  # 累计下载次数，仅 action=download 事件
     push_count = Column(Integer, default=0, nullable=False)  # 累计推送次数，仅 action=push 事件；不回填历史数据，从功能上线时刻起累计
     allow_statistic = Column(Boolean, default=True, nullable=False)  # 是否采集该用户的阅读/下载统计，默认采集（opt-out）
+    show_home_recommendations = Column(Boolean, default=True, nullable=False)  # 首页展示其他用户推荐，见 plan/Social_Reading_Plan.md
+    review_banned = Column(Boolean, default=False, nullable=False)  # 是否被管理员禁止发表评论
 
     def __str__(self):
         return "<id=%d, username=%s, email=%s, admin:%d>" % (
@@ -641,6 +643,35 @@ class ReadingRecord(Base, SQLAlchemyMixin):
     )
 
 
+# 用户对某本书的评分 + 评论（"共读"里的评价 = 推荐，见 plan/Social_Reading_Plan.md §5.1）。
+# 每个用户对每本书最多一条（唯一约束），自行删除是软删除（deleted_at），管理员屏蔽是把
+# status 置为 hidden（prev_status 记录屏蔽前的状态，供"恢复"用），两者语义不同、互不覆盖。
+class BookReview(Base, SQLAlchemyMixin):
+    __tablename__ = "book_reviews"
+
+    STATUS_PENDING = "pending"    # 未审核
+    STATUS_APPROVED = "approved"  # 通过
+    STATUS_HIDDEN = "hidden"      # 管理员屏蔽
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reader_id = Column(Integer, ForeignKey("readers.id"), nullable=False)
+    book_id = Column(Integer, nullable=False)
+    rating = Column(Integer, nullable=False)             # 沿用 book.rating 刻度（0-10）
+    comment = Column(Text, default="")                    # 允许为空
+    status = Column(String(16), nullable=False, default=STATUS_APPROVED)
+    prev_status = Column(String(16), nullable=True)       # 进入 hidden 前的状态快照，供"恢复"使用
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)           # 用户自行删除（软删除）
+
+    reader = relationship(Reader)
+
+    __table_args__ = (
+        UniqueConstraint("reader_id", "book_id", name="ux_book_review"),
+        Index("ix_book_review_book", "book_id", "status", "update_time"),
+    )
+
+
 class Device(Base, SQLAlchemyMixin):
     """用户阅读设备"""
 
@@ -814,7 +845,7 @@ def user_syncdb(engine):
 # 表结构随功能迭代新增的表，不希望依赖运维方手动重新执行 `--syncdb` 才能用上
 # （`docker/start.sh` 每次启动都会跑 --syncdb，但手工部署/测试环境不一定会），
 # 在正常的 make_app() 启动路径里也顺带补建一次，checkfirst=True 天然幂等。
-_NEW_TABLES_AUTO_ENSURE = (ReadingRecord,)
+_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview)
 
 
 def ensure_new_tables(engine):
