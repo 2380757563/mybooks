@@ -1507,6 +1507,8 @@
     "hint": "对 TXT / EPUB 书籍正文执行查找替换（支持普通文本与正则两种模式），替换结果另存为新书，原书零改动。",
     "selectBook": "搜索并选择书籍",
     "noResults": "未找到相关书籍",
+    "formatLabel": "替换格式（仅对所选格式生成新书）",
+    "formatOnly": "本书仅有 {format} 格式，替换将作用于 {format}。",
     "modePlain": "普通文本",
     "modeRegex": "正则表达式",
     "cheatTitle": "正则小抄",

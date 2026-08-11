@@ -145,23 +145,25 @@ class TextReplaceTool(BaseTool):
     # ------------------------------------------------------------ 预览（同步）
 
     @AsyncService.register_function
-    def preview(self, book_id: int, pattern: str, replacement: str, use_regex: bool) -> dict:
+    def preview(self, book_id: int, pattern: str, replacement: str, use_regex: bool,
+                fmt: Optional[str] = None) -> dict:
         """同步返回匹配数 + 上下文样本 + 正则错误。
 
         :param book_id:    Calibre 书籍 ID。
         :param pattern:    查找内容（普通文本或正则表达式）。
         :param replacement: 替换内容。
         :param use_regex:  是否按正则解析 pattern。
+        :param fmt:        指定格式（TXT / EPUB，大写）；不指定时自动选择（EPUB 优先）。
         :return dict: ``format``（TXT / EPUB）/ ``matches`` / ``samples`` /
             ``regex_error`` / ``truncated``（是否因超过 PREVIEW_LIMIT 只统计了前缀）。
-        :raises RuntimeError: 书籍不存在 / 无 TXT、EPUB 格式 / 文件缺失。
+        :raises RuntimeError: 书籍不存在 / 无 TXT、EPUB 格式 / 指定格式缺失 / 文件缺失。
         """
         apply_fn, regex_error = self._compile(pattern, replacement, use_regex)
         if apply_fn is None:
             return {"format": None, "matches": 0, "samples": [], "regex_error": regex_error,
                     "truncated": False}
 
-        fmt, texts = self._load_texts(book_id)
+        fmt, texts = self._load_texts(book_id, fmt)
         total = 0
         samples: List[dict] = []
         truncated = False
@@ -186,7 +188,8 @@ class TextReplaceTool(BaseTool):
 
     @AsyncService.register_service
     def run(self, book_id: int, pattern: str, replacement: str,
-            use_regex: bool, suffix: str, user_id: int) -> None:
+            use_regex: bool, suffix: str, user_id: int,
+            fmt: Optional[str] = None) -> None:
         """后台执行查找替换并生成新书。
 
         :param book_id:    Calibre 书籍 ID。
@@ -195,6 +198,7 @@ class TextReplaceTool(BaseTool):
         :param use_regex:  是否按正则解析 pattern。
         :param suffix:     新书标题后缀（如「正文替换版」）。
         :param user_id:    操作用户 ID。
+        :param fmt:        指定格式（TXT / EPUB，大写）；不指定时自动选择（EPUB 优先）。
         """
         if not TextReplaceTool._run_lock.acquire(blocking=False):
             logging.warning(
@@ -230,7 +234,12 @@ class TextReplaceTool(BaseTool):
             self.update_task_progress(task_id, 10, {"status": "running", "stage": "reading"})
             progress_callback(10)
 
-            fmt = self._detect_format(book)
+            try:
+                fmt = self._detect_format(book, fmt)
+            except RuntimeError as err:
+                error_message = str(err)
+                logging.error("[TextReplaceTool] %s for book_id=%d [uid:%d]", error_message, book_id, user_id)
+                return
             if fmt is None:
                 error_message = _("该书籍没有 TXT 或 EPUB 格式，无法执行替换")
                 logging.error("[TextReplaceTool] No TXT/EPUB format for book_id=%d [uid:%d]", book_id, user_id)
@@ -280,36 +289,54 @@ class TextReplaceTool(BaseTool):
     # ------------------------------------------------------------ 内部实现
 
     @staticmethod
-    def _detect_format(book: dict) -> Optional[str]:
-        """确定可用格式：TXT 优先，其次 EPUB；无则返回 None。"""
+    def _detect_format(book: dict, fmt: Optional[str] = None) -> Optional[str]:
+        """确定可用格式。
+
+        :param fmt: 指定格式（TXT / EPUB，大写）；仅在该格式存在时返回；
+            指定但缺失时 raise RuntimeError（带明确提示）。
+        :return: 未指定时按 EPUB 优先、TXT 其次自动选择；无可用格式返回 None。
+        """
         fmts = [f.upper() for f in (book.get("available_formats") or [])]
-        for fmt in ("TXT", "EPUB"):
+        if fmt:
+            fmt = fmt.upper()
+            if fmt not in fmts:
+                raise RuntimeError(_("该书籍没有 %s 格式，无法执行替换") % fmt)
+            return fmt
+        for fmt in ("EPUB", "TXT"):
             if fmt in fmts:
                 return fmt
         return None
 
-    def _load_texts(self, book_id: int) -> Tuple[str, List[str]]:
+    def _load_texts(self, book_id: int, fmt: Optional[str] = None) -> Tuple[str, List[str]]:
         """读取书籍 TXT / EPUB 正文并返回 (fmt, 文本列表)。
 
         TXT 返回单段解码文本；EPUB 按 manifest 正文条目逐段返回，
         与 :meth:`_replace_epub` 的逐条目替换一一对应（预览命中数与实跑一致）。
+
+        :param fmt: 指定格式（TXT / EPUB，大写）；不指定时自动选择（EPUB 优先）。
         """
         books = self.db.get_data_as_dict(ids=[book_id])
         book = books[0] if books else {}
         fmts = [f.upper() for f in (book.get("available_formats") or [])]
-        if "TXT" in fmts:
+        if fmt:
+            fmt = fmt.upper()
+            if fmt not in fmts:
+                raise RuntimeError(_("该书籍没有 %s 格式，无法执行替换") % fmt)
+        else:
+            fmt = "EPUB" if "EPUB" in fmts else ("TXT" if "TXT" in fmts else None)
+        if fmt is None:
+            raise RuntimeError(_("该书籍没有 TXT 或 EPUB 格式，无法执行替换"))
+        if fmt == "TXT":
             txt_path = book_utils.get_book_file(self, book_id, "TXT")
             with open(txt_path, "rb") as f:
                 data = f.read()
-            text, _ = encoding_detect.decode_with_report(data)
+            text, enc_report = encoding_detect.decode_with_report(data)
             return "TXT", [text]
-        if "EPUB" in fmts:
-            epub_path = book_utils.get_book_file(self, book_id, "EPUB")
-            # 预览只读正文条目，避免图片/字体等全量读入内存
-            entries = _read_text_entries(epub_path)
-            texts = [_decode_entry(entries[name])[0] for name in _find_text_entries(entries)]
-            return "EPUB", texts
-        raise RuntimeError(_("该书籍没有 TXT 或 EPUB 格式，无法执行替换"))
+        epub_path = book_utils.get_book_file(self, book_id, "EPUB")
+        # 预览只读正文条目，避免图片/字体等全量读入内存
+        entries = _read_text_entries(epub_path)
+        texts = [_decode_entry(entries[name])[0] for name in _find_text_entries(entries)]
+        return "EPUB", texts
 
     def _replace_txt(self, book_id: int, apply_fn: Callable, out_path: str) -> int:
         """TXT：检测编码 → str 替换 → 原编码写回。返回命中数。

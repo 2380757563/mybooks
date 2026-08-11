@@ -132,13 +132,17 @@ def build_mini_epub(path):
 
 
 class FakeDB:
-    def __init__(self, fmt, path):
-        self.fmt, self.path = fmt, path
+    def __init__(self, fmts, path=None, paths=None):
+        self.fmts = [fmts] if isinstance(fmts, str) else list(fmts)
+        self.path = path
+        self.paths = paths or {}
 
     def get_data_as_dict(self, ids=None):
-        return [{"available_formats": [self.fmt], "title": "test book"}]
+        return [{"available_formats": list(self.fmts), "title": "test book"}]
 
     def format_abspath(self, book_id, fmt, index_is_id=False):
+        if self.paths:
+            return self.paths.get(fmt)
         return self.path
 
 
@@ -198,6 +202,61 @@ class TestSamples(unittest.TestCase):
         count, samples = TextReplaceTool._scan_samples(text, "猫", False)
         self.assertEqual(count, 100)
         self.assertEqual(len(samples), 5)
+
+
+class TestFormatSelection(unittest.TestCase):
+    """格式选择：显式指定 / 自动选择优先级。"""
+
+    def test_detect_specified_txt(self):
+        book = {"available_formats": ["TXT", "EPUB"]}
+        self.assertEqual(TextReplaceTool._detect_format(book, "TXT"), "TXT")
+
+    def test_detect_specified_epub_lower(self):
+        book = {"available_formats": ["TXT", "EPUB"]}
+        self.assertEqual(TextReplaceTool._detect_format(book, "epub"), "EPUB")
+
+    def test_detect_specified_missing_raises(self):
+        book = {"available_formats": ["EPUB"]}
+        with self.assertRaises(RuntimeError):
+            TextReplaceTool._detect_format(book, "TXT")
+
+    def test_detect_default_epub_priority(self):
+        book = {"available_formats": ["TXT", "EPUB"]}
+        self.assertEqual(TextReplaceTool._detect_format(book), "EPUB")
+
+    def test_detect_default_txt_fallback(self):
+        book = {"available_formats": ["PDF", "TXT"]}
+        self.assertEqual(TextReplaceTool._detect_format(book), "TXT")
+
+    def test_detect_none(self):
+        book = {"available_formats": ["PDF"]}
+        self.assertIsNone(TextReplaceTool._detect_format(book))
+
+    def test_load_texts_selects_format(self):
+        epub = os.path.join(TESTS_DIR, "_tmp_sel.epub")
+        txt = os.path.join(TESTS_DIR, "_tmp_sel.txt")
+        build_mini_epub(epub)
+        with io.open(txt, "wb") as f:
+            f.write(GBK_TEXT.encode("gb18030"))
+        try:
+            tool = TextReplaceTool()
+            tool.db = FakeDB(["EPUB", "TXT"], paths={"EPUB": epub, "TXT": txt})
+
+            fmt, texts = tool._load_texts(0)  # 未指定：EPUB 优先
+            self.assertEqual(fmt, "EPUB")
+            self.assertEqual(len(texts), 2)
+            self.assertIn("机器学习", texts[0])
+
+            fmt, texts = tool._load_texts(0, "TXT")
+            self.assertEqual(fmt, "TXT")
+            self.assertEqual(len(texts), 1)
+            self.assertIn("第一章", texts[0])
+
+            with self.assertRaises(RuntimeError):
+                tool._load_texts(0, "PDF")
+        finally:
+            os.remove(epub)
+            os.remove(txt)
 
 
 class TestTxtReplace(unittest.TestCase):

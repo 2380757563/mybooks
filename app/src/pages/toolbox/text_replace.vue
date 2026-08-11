@@ -82,6 +82,23 @@
           <template v-if="selected">
             <v-divider class="mb-4" />
 
+            <!-- Format selection (only when both TXT and EPUB exist) -->
+            <div v-if="bookFormats.length > 1" class="mb-3">
+              <div class="caption font-weight-medium mb-1">{{ $t('textReplace.formatLabel') }}</div>
+              <v-radio-group v-model="selectedFormat" dense row class="mt-0">
+                <v-radio
+                  v-for="f in bookFormats"
+                  :key="f"
+                  :label="f"
+                  :value="f"
+                  color="primary"
+                />
+              </v-radio-group>
+            </div>
+            <div v-else-if="bookFormats.length === 1" class="caption grey--text mb-3">
+              {{ $t('textReplace.formatOnly', { format: bookFormats[0] }) }}
+            </div>
+
             <!-- Mode switch -->
             <v-radio-group v-model="useRegex" dense row class="mt-1 mb-3">
               <v-radio :label="$t('textReplace.modePlain')" :value="false" />
@@ -245,6 +262,7 @@ export default {
     searching: false,
     searched: false,
     selected: null,
+    selectedFormat: '',
 
     useRegex: false,
     pattern: '',
@@ -262,6 +280,19 @@ export default {
     resultType: 'success',
     pollTimer: null,
   }),
+  computed: {
+    bookFormats() {
+      if (!this.selected || !this.selected.files) return [];
+      const fmts = [];
+      for (const f of this.selected.files) {
+        const fmt = (f.format || '').toUpperCase();
+        if ((fmt === 'TXT' || fmt === 'EPUB') && !fmts.includes(fmt)) {
+          fmts.push(fmt);
+        }
+      }
+      return fmts;
+    },
+  },
   created() {
     this.$store.commit('navbar', true);
   },
@@ -300,6 +331,10 @@ export default {
     },
     selectBook(book) {
       this.selected = this.selected && this.selected.id === book.id ? null : book;
+      const fmts = book.files
+        ? book.files.map(f => (f.format || '').toUpperCase()).filter(f => f === 'TXT' || f === 'EPUB')
+        : [];
+      this.selectedFormat = fmts.includes('EPUB') ? 'EPUB' : (fmts.includes('TXT') ? 'TXT' : '');
       this.previewResult = null;
       this.previewError = '';
       this.resultMsg = '';
@@ -367,6 +402,7 @@ export default {
             pattern: this.pattern,
             replacement: this.replacement,
             use_regex: this.useRegex,
+            format: this.selectedFormat,
           }),
         });
         if (rsp.err === 'ok') {
@@ -397,6 +433,7 @@ export default {
             replacement: this.replacement,
             use_regex: this.useRegex,
             suffix: this.suffix || this.$t('textReplace.defaultSuffix'),
+            format: this.selectedFormat,
           }),
         });
         if (rsp.err === 'ok') {
