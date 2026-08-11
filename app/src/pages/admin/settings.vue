@@ -171,6 +171,7 @@
                       class="book-nav-name-field"
                       :error="isBookNavNameDuplicate(cat.name)"
                       :placeholder="$t('settings.name')"
+                      @focus="cat.expanded = true"
                     ></v-text-field>
                     <v-spacer></v-spacer>
                     <v-btn icon small @click="removeBookNavCategory(idx)">

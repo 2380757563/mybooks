@@ -36,10 +36,8 @@ class SyncHandler(BaseHandler):
         book_hash = self.get_argument("book", None)
         own_arg = self.get_argument("own", None)
         if own_arg is None:
-            # 客户端没传 own 时，按当前用户的个人偏好决定：show_other_annotations=False
-            # （不想看到别人的批注）就等价于 own=1，否则按 own=0 处理，见 plan §2.2。
-            show_other = bool((getattr(self.current_user, "extra", None) or {}).get("show_other_annotations", True))
-            own = 1 if not show_other else 0
+            # 客户端没传 own 时，表示为旧的客户端，按之前的逻辑只会返回自己的批注信息
+            own = 1
         elif own_arg in ("0", "1"):
             own = int(own_arg)
         else:
