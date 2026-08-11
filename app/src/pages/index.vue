@@ -62,6 +62,36 @@
             </v-card>
         </v-col>
     </v-row>
+    <v-row v-if="social_recommend_books.length > 0">
+        <v-col cols=12>
+            <p class="ma-0 title">{{ $t('index.socialRecommendation') }}</p>
+        </v-col>
+        <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
+            <v-card :to="book.href" class="ma-1" outlined>
+                <div class="book-img-container" :title="book.title">
+                    <v-img
+                        :src="book.thumb"
+                        :aspect-ratio="11/15"
+                        style="border-radius: 12px;"
+                        class="book-img-hover"
+                        contain
+                    ></v-img>
+                    <div v-if="book.book_type === 1" class="physical-book-badge">
+                        <v-icon small color="white">mdi-bookshelf</v-icon>
+                    </div>
+                    <div
+                        v-if="book.recommender && book.recommender.avatar"
+                        class="recommender-badge"
+                        :title="book.recommender.nickname"
+                    >
+                        <v-avatar size="22">
+                            <v-img :src="book.recommender.avatar"></v-img>
+                        </v-avatar>
+                    </div>
+                </div>
+            </v-card>
+        </v-col>
+    </v-row>
     <v-row>
         <v-col cols=12 v-if="random_books.length > 0">
             <v-divider class="new-legend"></v-divider>
@@ -112,6 +142,12 @@ export default {
         },
         get_recent_books: function() {
             return this.new_books.map( b => {
+                b['href'] = "/book/" + b.id;
+                return b;
+            });
+        },
+        get_social_recommend_books: function() {
+            return this.social_recommend_books.map( b => {
                 b['href'] = "/book/" + b.id;
                 return b;
             });
@@ -179,6 +215,7 @@ export default {
                 if (rsp.err === 'ok') {
                     this.random_books = rsp.random_books || [];
                     this.new_books = rsp.new_books || [];
+                    this.social_recommend_books = rsp.social_recommend_books || [];
                 }
             }).catch( error => {
                 console.error('Failed to refresh books:', error);
@@ -217,6 +254,7 @@ export default {
     data: () => ({
         random_books: [],
         new_books: [],
+        social_recommend_books: [],
         libraryStats: null,
         releaseNotesDialog: false,
         releaseNotesContent: '',
@@ -369,6 +407,17 @@ export default {
     justify-content: center;
     box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
     z-index: 3;
+}
+
+/* 首页"其他用户推荐"卡片上的推荐人头像角标，见 plan/Social_Reading_Plan.md §2.3 */
+.recommender-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    z-index: 3;
+    border: 2px solid white;
 }
 
 .book-img-hover {

@@ -25,6 +25,7 @@
   "index": {
     "randomRecommendation": "Recommendation",
     "newRecommendation": "Recent updated",
+    "socialRecommendation": "Recommended by readers",
     "categoryBrowse": "Category",
     "categoryNavigation": "Tag Groups",
     "authors": "Authors",

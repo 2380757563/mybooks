@@ -25,6 +25,7 @@
   "index": {
     "randomRecommendation": "隨機推薦",
     "newRecommendation": "新書推薦",
+    "socialRecommendation": "他們在推薦",
     "categoryBrowse": "分類瀏覽",
     "categoryNavigation": "標籤分類",
     "authors": "作者",

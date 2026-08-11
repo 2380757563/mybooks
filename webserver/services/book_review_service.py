@@ -154,6 +154,28 @@ class BookReviewService:
         _stats_cache.invalidate(_stats_key(book_id))
 
     @classmethod
+    def recent_recommendations(cls, db, days: int = 7, limit: int = 10) -> List[BookReview]:
+        """最近 `days` 天内、状态为通过的评价，按 `book_id` 去重（每本书只取最新一条），
+        用于首页"其他用户推荐"，见 plan §2.3。"""
+        since = datetime.datetime.now() - datetime.timedelta(days=days)
+        rows = (
+            db.query(BookReview)
+            .filter(BookReview.status == BookReview.STATUS_APPROVED, BookReview.deleted_at.is_(None), BookReview.update_time >= since)
+            .order_by(BookReview.update_time.desc())
+            .all()
+        )
+        seen_books = set()
+        result: List[BookReview] = []
+        for row in rows:
+            if row.book_id in seen_books:
+                continue
+            seen_books.add(row.book_id)
+            result.append(row)
+            if len(result) >= limit:
+                break
+        return result
+
+    @classmethod
     def cascade_delete_book(cls, db, book_id: int) -> None:
         """书籍被删除/下架时级联清理，见 plan §6。"""
         db.query(BookReview).filter(BookReview.book_id == book_id).delete(synchronize_session=False)

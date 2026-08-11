@@ -25,6 +25,7 @@
   "index": {
     "randomRecommendation": "随便推荐",
     "newRecommendation": "新书推荐",
+    "socialRecommendation": "他们在推荐",
     "categoryBrowse": "分类浏览",
     "categoryNavigation": "标签分类",
     "authors": "作者",

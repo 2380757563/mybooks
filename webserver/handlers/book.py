@@ -42,6 +42,7 @@ from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, ListHandler, auth, js
 from webserver.models import Item, Reading, ReadingState, Reader
 from webserver.services.reading_stats_service import ReadingStatsService
+from webserver.services.book_review_service import BookReviewService
 from webserver.plugins.meta import douban, youshu, douban_v2
 from webserver.plugins.meta.bookbarn_tags import BookBarnTags
 from webserver.plugins.parser.txt import get_content_encoding
@@ -62,6 +63,41 @@ CONF = loader.get_settings()
 class Index(BaseHandler):
     def fmt(self, b):
         return BookFormatter(self, b).format()
+
+    def _reader_avatar_url(self, reader):
+        if not reader or not reader.avatar:
+            return ""
+        if reader.avatar.startswith("http"):
+            return reader.avatar.replace("http://", "https://")
+        return self.site_url + "/avatar/%s" % reader.avatar
+
+    def _social_recommend_books(self):
+        """首页"其他用户推荐"：最近 7 天内被评价（且状态通过）的书，见 plan §2.3。
+        仅登录且个人偏好 show_home_recommendations=True 时才计算，游客/关闭时返回空列表。"""
+        if not CONF.get("ENABLE_BOOK_RECOMMEND_TO_OTHERS", True):
+            return []
+        if not self.current_user or not getattr(self.current_user, "show_home_recommendations", True):
+            return []
+        review_rows = BookReviewService.recent_recommendations(self.sqlite_session, days=7, limit=10)
+        if not review_rows:
+            return []
+        rec_books = {b["id"]: b for b in self.get_books(ids=[r.book_id for r in review_rows])}
+        readers = {
+            u.id: u for u in self.sqlite_session.query(Reader).filter(Reader.id.in_({r.reader_id for r in review_rows})).all()
+        }
+        result = []
+        for row in review_rows:
+            book = rec_books.get(row.book_id)
+            if not book:
+                continue
+            book_data = self.fmt(book)
+            reader = readers.get(row.reader_id)
+            book_data["recommender"] = {
+                "nickname": (reader.name or reader.username) if reader else "",
+                "avatar": self._reader_avatar_url(reader),
+            }
+            result.append(book_data)
+        return result
 
     @js
     def get(self):
@@ -98,6 +134,7 @@ class Index(BaseHandler):
             "new_books_count": len(new_books),
             "random_books": [self.fmt(b) for b in random_books],
             "new_books": [self.fmt(b) for b in new_books],
+            "social_recommend_books": self._social_recommend_books(),
         }
 
 
