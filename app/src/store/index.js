@@ -1,10 +1,15 @@
 export const state = () => ({
     nav: true, loading: true, count: 0, user: {
-        is_admin: false, is_login: false, nickname: "", kindle_email: "", avatar: "",
+        is_admin: false,
+        is_login: false,
+        nickname: "",
+        kindle_email: "",
+        avatar: "",
     }, alert: {
         to: "", msg: "", type: "", show: false,
     }, sys: {
-        socials: [], allow: {
+        socials: [],
+        allow: {
             physical_books: false,
             upload: false,
             register: false,
@@ -12,7 +17,8 @@ export const state = () => ({
             guest_download: false,
             guest_upload: false,
             guest_push: false,
-            guest_register: false
+            guest_register: false,
+            book_review: false
         },
     },
     site_title: "首页",

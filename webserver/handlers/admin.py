@@ -33,7 +33,8 @@ from webserver.services.book_barn import BookBarnClient, BookBarnService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.services.book_search import BookSearch
 from webserver.handlers.base import BaseHandler, auth, js, is_admin
-from webserver.models import Reader, Item, Authors, Reading
+from webserver.models import Reader, Item, Authors, Reading, BookReview
+from webserver.services.book_review_service import BookReviewService
 from webserver.base.formatter import SimpleBookFormatter
 from webserver.base.setting_saver import SettingsSaver
 from webserver.base.trash_manager import TrashManager
@@ -151,6 +152,7 @@ class AdminUsers(BaseHandler):
                 "push_count": reading_counts.get((user.id, Reading.ACTION_PUSH), 0),
                 "download_count": user.download_count or 0,
                 "total_reading_seconds": user.total_reading_seconds or 0,
+                "allow_review": user.allow_review,
             }
             if enable_vip_quota:
                 d["vipquota"] = user.vipquota or 0
@@ -203,6 +205,9 @@ class AdminUsers(BaseHandler):
         if "admin" in data:
             user.admin = data["admin"]
 
+        if "allow_review" in data:
+            user.allow_review = bool(data["allow_review"])
+
         if user.admin is False and self.user_id() == user.id:
             return {
                 "err": "params.user.invalid",
@@ -250,6 +255,66 @@ class AdminUsers(BaseHandler):
             user.set_permission(p)
         user.save()
         return {"err": "ok"}
+
+
+class AdminBookReviews(BaseHandler):
+    """管理员"用户评论"管理页：分页列出所有评论，支持按状态过滤，以及通过/屏蔽/恢复操作。
+    见 plan/Social_Reading_Plan.md §2.6。"""
+
+    @js
+    @is_admin
+    def get(self):
+        status = self.get_argument("status", "") or None
+        if status is not None and status not in (BookReview.STATUS_PENDING, BookReview.STATUS_APPROVED, BookReview.STATUS_HIDDEN):
+            return {"err": "params.invalid", "msg": _("非法的 status 参数")}
+        try:
+            page = max(1, int(self.get_argument("page", 1)))
+            page_size = min(100, max(1, int(self.get_argument("page_size", 20))))
+        except (TypeError, ValueError):
+            return {"err": "params.invalid", "msg": _("分页参数错误")}
+
+        rows, total = BookReviewService.list_for_admin(self.sqlite_session, status=status, page=page, page_size=page_size)
+        reader_ids = {r.reader_id for r in rows}
+        book_ids = list({r.book_id for r in rows})
+        readers = {}
+        if reader_ids:
+            readers = {u.id: u for u in self.sqlite_session.query(Reader).filter(Reader.id.in_(reader_ids)).all()}
+        books = {b["id"]: b for b in self.get_books(ids=book_ids)} if book_ids else {}
+
+        items = []
+        for row in rows:
+            reader = readers.get(row.reader_id)
+            book = books.get(row.book_id)
+            items.append({
+                "id": row.id,
+                "book_id": row.book_id,
+                "book_title": book.get("title", "") if book else "",
+                "reader_id": row.reader_id,
+                "username": reader.username if reader else "",
+                "rating": row.rating,
+                "comment": row.comment or "",
+                "status": row.status,
+                "update_time": row.update_time.strftime("%Y-%m-%d %H:%M:%S") if row.update_time else "",
+            })
+        return {"err": "ok", "total": total, "page": page, "page_size": page_size, "reviews": items}
+
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body or b"{}")
+        review_id = data.get("id")
+        action = data.get("action")
+        if not review_id or action not in ("approve", "hide", "restore", "delete"):
+            return {"err": "params.invalid", "msg": _("参数错误")}
+        if action == "delete":
+            # 物理删除，见 plan §2.4c：不同于"隐藏"，删除后不可恢复、也不会再出现在任何列表里
+            if not BookReviewService.hard_delete(self.sqlite_session, int(review_id)):
+                return {"err": "params.invalid", "msg": _("评论不存在")}
+            return {"err": "ok", "msg": _("已删除")}
+        row = BookReviewService.moderate(self.sqlite_session, int(review_id), action)
+        if row is None:
+            return {"err": "params.invalid", "msg": _("评论不存在")}
+        return {"err": "ok", "msg": _("操作成功")}
 
 
 class AdminTestMail(BaseHandler):
@@ -446,6 +511,10 @@ class AdminSettings(BaseHandler):
             "ENABLE_AUTHOR_INFO",
             "ALLOW_USER_DISABLE_STATISTIC",
             "ENABLE_HOMEPAGE_READING_STATS",
+            "ENABLE_BOOK_REVIEW",
+            "REVIEW_REQUIRES_APPROVAL",
+            "ENABLE_BOOK_RECOMMEND_TO_OTHERS",
+            "ENABLE_SHARED_NOTES",
         ]
 
         current_icon = CONF.get(
@@ -1029,6 +1098,13 @@ class AdminDeleteBooks(BaseHandler):
         except Exception as e:
             logging.error(f"删除书籍的Item记录失败: {e}")
 
+        # 级联清理评价与阅读器同步记录（评论/收藏/在读状态的"共读"数据），见 plan/Social_Reading_Plan.md §6
+        for book_id in idlist:
+            try:
+                BookReviewService.cascade_delete_book(self.sqlite_session, book_id)
+            except Exception as e:
+                logging.error(f"删除书籍 {book_id} 的评价/同步记录失败: {e}")
+
         return {"err": "ok", "msg": _("删除成功")}
 
 
@@ -1563,6 +1639,7 @@ def routes():
     return [
         (r"/api/admin/ssl", AdminSSL),
         (r"/api/admin/users", AdminUsers),
+        (r"/api/admin/book-reviews", AdminBookReviews),
         (r"/api/admin/install", AdminInstall),
         (r"/api/admin/settings", AdminSettings),
         (r"/api/admin/testmail", AdminTestMail),

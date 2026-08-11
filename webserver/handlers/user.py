@@ -97,9 +97,16 @@ class UserUpdate(BaseHandler):
         if "allow_sending_mail" in data:
             user.extra["allow_sending_mail"] = bool(data.get("allow_sending_mail"))
 
+        if "show_other_annotations" in data:
+            # 是否在阅读时显示其他用户的批注/划线，见 plan/Social_Reading_Plan.md §2.2
+            user.extra["show_other_annotations"] = bool(data.get("show_other_annotations"))
+
         if "allow_statistic" in data and CONF.get("ALLOW_USER_DISABLE_STATISTIC", False):
             # 服务端二次校验总开关，避免绕过前端隐藏直接改这个字段
             user.allow_statistic = bool(data.get("allow_statistic"))
+
+        if "show_home_recommendations" in data:
+            user.show_home_recommendations = bool(data.get("show_home_recommendations"))
 
         try:
             user.save()
@@ -468,6 +475,8 @@ class UserInfo(BaseHandler):
                 }
             return d
 
+        enable_review = CONF.get("ENABLE_BOOK_REVIEW", True)
+
         d.update({
             "is_login": True,
             "is_guest": False,
@@ -483,6 +492,8 @@ class UserInfo(BaseHandler):
             "allow_user_disable_statistic": CONF.get("ALLOW_USER_DISABLE_STATISTIC", False),
             "total_reading_seconds": user.total_reading_seconds or 0,
             "download_count": user.download_count or 0,
+            "show_home_recommendations": user.show_home_recommendations,
+            "allow_review": user.allow_review and enable_review,  # 是否允许发表评论（管理员可禁止）
         })
         if enable_vip_quota:
             d["vipquota"] = user.vipquota or 0
@@ -491,9 +502,11 @@ class UserInfo(BaseHandler):
         if user.avatar:
             if user.avatar.startswith("http"):
                 gravatar_url = "https://www.gravatar.com"
-                d["avatar"] = user.avatar.replace("http://", "https://").replace(gravatar_url, CONF["avatar_service"])
+                d["avatar"] = user.avatar.replace("http://", "https://").replace(gravatar_url, CONF.get("avatar_service", ""))
             else:
                 d["avatar"] = self.site_url + "/avatar/%s" % user.avatar
+        # 与 kindle_email 一样，不论 detail 与否都返回，见 plan/Social_Reading_Plan.md §2.2
+        d["show_other_annotations"] = (user.extra or {}).get("show_other_annotations", True)
         if user.extra:
             d["kindle_email"] = user.extra.get("kindle_email", "")
             if detail:

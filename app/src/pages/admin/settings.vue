@@ -23,6 +23,7 @@
               </p>
             </template>
 
+            <div class="pl-6" v-if="card.fields && card.fields.length">
             <template v-for="f in card.fields">
               <v-checkbox
                 small
@@ -143,6 +144,88 @@
                   </template>
                 </v-select>
               </template>
+              <template
+                v-else-if="f.type === 'book_nav'"
+                :key="f.key + '-book_nav'"
+              >
+                <v-alert v-if="bookNavDuplicateNames.length" type="error" dense text>
+                  {{
+                    $t("settings.book_nav_duplicate_error", {
+                      names: bookNavDuplicateNames.join("、"),
+                    })
+                  }}
+                </v-alert>
+                <v-card
+                  outlined
+                  class="mb-2 book-nav-card"
+                  v-for="(cat, idx) in bookNavList"
+                  :key="'book-nav-' + idx"
+                >
+                  <v-card-title class="py-1 pr-2">
+                    <v-text-field
+                      v-model="cat.name"
+                      solo
+                      flat
+                      dense
+                      hide-details
+                      class="book-nav-name-field"
+                      :error="isBookNavNameDuplicate(cat.name)"
+                      :placeholder="$t('settings.name')"
+                    ></v-text-field>
+                    <v-spacer></v-spacer>
+                    <v-btn icon small @click="removeBookNavCategory(idx)">
+                      <v-icon small>delete</v-icon>
+                    </v-btn>
+                    <v-btn icon @click="cat.expanded = !cat.expanded">
+                      <v-icon>{{
+                        cat.expanded ? "mdi-chevron-up" : "mdi-chevron-down"
+                      }}</v-icon>
+                    </v-btn>
+                  </v-card-title>
+                  <v-expand-transition>
+                    <v-card-text v-show="cat.expanded" class="pt-0">
+                      <v-chip
+                        v-for="(tag, tIdx) in cat.tags"
+                        :key="tag + '-' + tIdx"
+                        class="ma-1"
+                        color="#003153"
+                        style="color: #fff"
+                        close
+                        close-icon="mdi-close"
+                        @click:close="removeBookNavTag(idx, tIdx)"
+                      >
+                        {{ tag }}
+                      </v-chip>
+                      <v-chip
+                        v-if="!cat.addingTag"
+                        class="ma-1"
+                        color="#003153"
+                        style="color: #fff; cursor: pointer"
+                        @click="startAddBookNavTag(idx)"
+                      >
+                        <v-icon small color="white">add</v-icon>
+                      </v-chip>
+                      <v-text-field
+                        v-else
+                        v-model="cat.newTag"
+                        dense
+                        hide-details
+                        autofocus
+                        class="book-nav-tag-input ma-1"
+                        @keyup.enter="confirmAddBookNavTag(idx)"
+                        @blur="confirmAddBookNavTag(idx)"
+                      ></v-text-field>
+                    </v-card-text>
+                  </v-expand-transition>
+                </v-card>
+                <v-row>
+                  <v-col align="center">
+                    <v-btn color="primary" @click="addBookNavCategory"
+                      ><v-icon>add</v-icon>{{ $t("settings.add") }}</v-btn
+                    >
+                  </v-col>
+                </v-row>
+              </template>
               <v-text-field
                 v-else
                 v-model="settings[f.key]"
@@ -155,6 +238,7 @@
                 </template>
               </v-text-field>
             </template>
+            </div>
 
             <template v-for="b in card.buttons">
               <v-btn :key="b.label" @click="run(b.action)" color="primary"
@@ -963,6 +1047,30 @@ export default {
             label: "settings.enable_homepage_reading_stats",
             type: "checkbox",
           },
+          {
+            icon: "mdi-star-outline",
+            key: "ENABLE_BOOK_REVIEW",
+            label: "settings.enable_book_review",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-shield-check-outline",
+            key: "REVIEW_REQUIRES_APPROVAL",
+            label: "settings.review_requires_approval",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-thumb-up-outline",
+            key: "ENABLE_BOOK_RECOMMEND_TO_OTHERS",
+            label: "settings.enable_book_recommend_to_others",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-note-multiple-outline",
+            key: "ENABLE_SHARED_NOTES",
+            label: "settings.enable_shared_notes",
+            type: "checkbox",
+          },
         ]
       },
       {
@@ -1111,9 +1219,9 @@ export default {
         subtitle: "settings.book_tags_description",
         fields: [
           {
-            icon: "person",
+            icon: "mdi-tag-outline",
             key: "BOOK_NAV",
-            type: "textarea",
+            type: "book_nav",
             label: "settings.book_nav",
           },
         ],
@@ -1427,6 +1535,8 @@ export default {
           ele.help = false;
           ele.link = m[ele.value].link;
         });
+
+        this.bookNavList = this.parseBookNav(this.settings["BOOK_NAV"] || "");
       }
     });
   },
@@ -1437,6 +1547,7 @@ export default {
     settings: {},
     site_url: "",
     cards: [],
+    bookNavList: [],
     thanksToNames: [],
     thanksToShow: false,
     appliedToken: false,
@@ -1507,6 +1618,15 @@ export default {
         ? this.$t("settings.save_confirm_message_autoreload")
         : this.$t("settings.save_confirm_message_no_autoreload");
     },
+    bookNavDuplicateNames() {
+      const counts = {};
+      this.bookNavList.forEach((cat) => {
+        const name = (cat.name || "").trim();
+        if (!name) return;
+        counts[name] = (counts[name] || 0) + 1;
+      });
+      return Object.keys(counts).filter((name) => counts[name] > 1);
+    },
   },
   mounted() {
     this.fetchTrashSize();
@@ -1530,7 +1650,83 @@ export default {
         console.warn("Failed to load thanks-to list:", error);
       }
     },
+    parseBookNav(text) {
+      const list = [];
+      (text || "").split("\n").forEach((line) => {
+        if (!line.trim()) return;
+        const idx = line.indexOf("=");
+        let name = line;
+        let tags = [];
+        if (idx !== -1) {
+          name = line.slice(0, idx);
+          tags = line
+            .slice(idx + 1)
+            .split("/")
+            .map((t) => t.trim())
+            .filter((t) => t !== "");
+        }
+        list.push({
+          name: name.trim(),
+          tags,
+          expanded: false,
+          addingTag: false,
+          newTag: "",
+        });
+      });
+      return list;
+    },
+    serializeBookNav(list) {
+      return list
+        .filter((cat) => (cat.name || "").trim() !== "")
+        .map((cat) => `${cat.name.trim()}=${(cat.tags || []).join("/")}`)
+        .join("\n");
+    },
+    addBookNavCategory() {
+      this.bookNavList.push({
+        name: "",
+        tags: [],
+        expanded: true,
+        addingTag: false,
+        newTag: "",
+      });
+    },
+    removeBookNavCategory(idx) {
+      this.bookNavList.splice(idx, 1);
+    },
+    removeBookNavTag(catIdx, tagIdx) {
+      this.bookNavList[catIdx].tags.splice(tagIdx, 1);
+    },
+    startAddBookNavTag(catIdx) {
+      const cat = this.bookNavList[catIdx];
+      cat.newTag = "";
+      cat.addingTag = true;
+    },
+    confirmAddBookNavTag(catIdx) {
+      const cat = this.bookNavList[catIdx];
+      const tag = (cat.newTag || "").trim();
+      if (tag && !cat.tags.includes(tag)) {
+        cat.tags.push(tag);
+      }
+      cat.newTag = "";
+      cat.addingTag = false;
+    },
+    isBookNavNameDuplicate(name) {
+      const trimmed = (name || "").trim();
+      if (!trimmed) return false;
+      return this.bookNavDuplicateNames.includes(trimmed);
+    },
     saveSettings: function () {
+      if (this.bookNavDuplicateNames.length > 0) {
+        this.$alert(
+          "error",
+          this.$t("settings.book_nav_duplicate_error", {
+            names: this.bookNavDuplicateNames.join("、"),
+          })
+        );
+        return;
+      }
+      this.settings["BOOK_NAV"] = this.serializeBookNav(this.bookNavList);
+
       if (this.settings["site_language"] === "") {
         this.settings["site_language"] = "zh";
       }
@@ -1790,6 +1986,23 @@ export default {
 <style>
 .cursor-pointer {
   cursor: pointer;
+}
+
+.book-nav-card .book-nav-name-field {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.book-nav-card .book-nav-name-field .v-input__slot {
+  padding: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.book-nav-tag-input {
+  display: inline-block;
+  width: 120px;
+  vertical-align: middle;
 }
 
 .thanks-heart-icon {

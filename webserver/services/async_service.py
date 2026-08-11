@@ -143,6 +143,15 @@ class AsyncService(metaclass=SingletonType):
                 ALTER TABLE readers ADD COLUMN push_count INTEGER DEFAULT 0
             """))
             changed = True
+
+        if "show_home_recommendations" not in columns:
+            self.session.execute(text("""
+                ALTER TABLE readers ADD COLUMN show_home_recommendations BOOLEAN DEFAULT 1
+            """))
+            self.session.execute(text("""
+                ALTER TABLE readers ADD COLUMN allow_review BOOLEAN DEFAULT 1
+            """))
+            changed = True
         return changed
 
     def adjust_readings_table(self):
