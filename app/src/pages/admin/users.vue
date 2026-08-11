@@ -123,6 +123,24 @@
                             <v-list-item-title> {{ $t('admin.users.set_admin') }} </v-list-item-title>
                         </v-list-item>
                         <v-list-item
+                            v-if="item.review_banned"
+                            @click="
+                                setuser(item.id, { review_banned: false });
+                                item.review_banned = false;
+                            "
+                        >
+                            <v-list-item-title> {{ $t('admin.users.unban_review') }} </v-list-item-title>
+                        </v-list-item>
+                        <v-list-item
+                            v-else
+                            @click="
+                                setuser(item.id, { review_banned: true });
+                                item.review_banned = true;
+                            "
+                        >
+                            <v-list-item-title> {{ $t('admin.users.ban_review') }} </v-list-item-title>
+                        </v-list-item>
+                        <v-list-item
                             @click="openChangePasswordDialog(item)"
                         >
                             <v-list-item-title> {{ $t('admin.users.change_password') }} </v-list-item-title>

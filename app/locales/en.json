@@ -353,6 +353,8 @@
       "activate_account": "Activate Account",
       "remove_admin": "Revoke admin role",
       "set_admin": "Grant admin role",
+      "ban_review": "Ban from reviewing",
+      "unban_review": "Unban from reviewing",
       "delete_user": "Delete User",
       "login": "Login",
       "upload": "Upload",
@@ -1297,6 +1299,22 @@
     "replySubmit": "Submit",
     "actionNew": "New Memo",
     "colReply": "Reply"
+  },
+  "adminBookReviews": {
+    "pageTitle": "User Reviews",
+    "colBook": "Book",
+    "colUser": "User",
+    "colRating": "Rating",
+    "colComment": "Comment",
+    "colStatus": "Status",
+    "colActions": "Actions",
+    "statusAll": "All statuses",
+    "statusPending": "Pending",
+    "statusApproved": "Approved",
+    "statusHidden": "Hidden",
+    "actionApprove": "Approve",
+    "actionHide": "Hide",
+    "actionRestore": "Restore"
   },
   "minifyPdf": {
     "title": "Minify PDF",

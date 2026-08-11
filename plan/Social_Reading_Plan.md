@@ -394,3 +394,14 @@ review_banned = Column(Boolean, default=False, nullable=False)              # �
 7. **Phase 6**：前端 i18n 全量补全（zh/zh-TW/en）、异常场景测试、性能验证（sync 批量写入压测、SQLite 锁争用观察）
 
 每个 Phase 建议独立提测，避免大 PR 难以 review。Phase 1 与 Phase 2 可并行开发，Phase 3/4 依赖 Phase 2 的表结构和接口先落地。
+
+---
+
+## 10. 实施状态（`feature/social-reading` 分支）
+
+Phase 1–6 均已实现并各自独立提交（`git log feature/social-reading`）。与本文档草稿相比的已知偏差：
+
+- **§4.2 计数器方案**：未新增 `Item.count_*` 列，改为 `BookReviewService.get_stats()` 实时 `COUNT` + `TTLCache`（60s）。原因与取舍见 §4.2 正文的调整说明。
+- **Phase 3 的范围**在实现时拆成了两部分：后端（管理员审核接口、`review_banned` 字段）随 Phase 3 提交；对应的前端页面（`admin/book-reviews.vue`、`admin/users.vue` 的禁止评论按钮）延后到 Phase 6 一并提交，因为当时判断它们和 i18n 收尾更适合放在一起验收，不影响功能完整性。
+- **性能验证**：本沙盒环境缺少 `calibre` 依赖，无法跑通 `pytest tests`（依赖 `webserver.main` 的 `import calibre.db`），因此 §4.3 提到的"sync 批量写入压测、SQLite 锁争用观察"未能实际执行，只做了：① 绕开 `webserver.main` 的独立 SQLite 内存库单元测试（验证批量落库/缓冲区/迁移逻辑本身的正确性）；② 完整的 `tests/test_sync.py`、`tests/test_book_review.py`、`tests/test_admin_book_reviews.py` 用例已写好，需要在有 calibre 环境的机器上跑一遍 `pytest tests` 才能最终确认全绿。
+- **i18n**：`zh`/`zh-TW`/`en` 三个 locale 文件的新增 key 已逐一核对齐全（脚本比对 `$t()` 调用 vs locale 文件），后端错误消息按 §8 问题 20 的决定继续使用中文硬编码，不接入 gettext 流程。

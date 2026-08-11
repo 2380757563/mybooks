@@ -351,6 +351,8 @@
       "activate_account": "直接啟用帳戶",
       "remove_admin": "取消管理員",
       "set_admin": "設定為管理員",
+      "ban_review": "禁止發表評論",
+      "unban_review": "恢復發表評論",
       "delete_user": "立即刪除該使用者",
       "login": "登入",
       "upload": "上傳",
@@ -1297,6 +1299,22 @@
     "replySubmit": "提交",
     "actionNew": "新增留言",
     "colReply": "管理員回覆"
+  },
+  "adminBookReviews": {
+    "pageTitle": "用戶評論",
+    "colBook": "書名",
+    "colUser": "用戶名",
+    "colRating": "評分",
+    "colComment": "評論內容",
+    "colStatus": "狀態",
+    "colActions": "操作",
+    "statusAll": "全部狀態",
+    "statusPending": "未審核",
+    "statusApproved": "通過",
+    "statusHidden": "隱藏",
+    "actionApprove": "通過",
+    "actionHide": "屏蔽",
+    "actionRestore": "恢復"
   },
   "minifyPdf": {
     "title": "PDF 瘦身",

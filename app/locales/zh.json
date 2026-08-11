@@ -351,6 +351,8 @@
       "activate_account": "直接激活账户",
       "remove_admin": "取消管理员",
       "set_admin": "设置为管理员",
+      "ban_review": "禁止发表评论",
+      "unban_review": "恢复发表评论",
       "delete_user": "立即删除该用户",
       "login": "登录",
       "upload": "上传",
@@ -1299,6 +1301,22 @@
     "replySubmit": "提交",
     "actionNew": "新建留言",
     "colReply": "管理员回复"
+  },
+  "adminBookReviews": {
+    "pageTitle": "用户评论",
+    "colBook": "书名",
+    "colUser": "用户名",
+    "colRating": "评分",
+    "colComment": "评论内容",
+    "colStatus": "状态",
+    "colActions": "操作",
+    "statusAll": "全部状态",
+    "statusPending": "未审核",
+    "statusApproved": "通过",
+    "statusHidden": "隐藏",
+    "actionApprove": "通过",
+    "actionHide": "屏蔽",
+    "actionRestore": "恢复"
   },
   "minifyPdf": {
     "title": "PDF 瘦身",
