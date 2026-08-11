@@ -57,6 +57,7 @@
                         <span v-if="!$vuetify.breakpoint.xs">{{ $t('imports.import_audiobooks') }}</span>
                     </v-btn>
                     <v-btn
+                        v-if="allowPhysicalBooks"
                         :disabled="loading"
                         :outlined="$vuetify.breakpoint.xs"
                         color="secondary"
@@ -271,6 +272,9 @@ export default {
         this.getDataFromApi();
     },
     computed: {
+        allowPhysicalBooks() {
+            return !!(this.$store.state.sys && this.$store.state.sys.allow && this.$store.state.sys.allow.physical_books);
+        },
         pageCount: function () {
             return parseInt(this.total / 20);
         },

@@ -15,17 +15,19 @@
                         <span class="stat-label">{{ $t('index.ebookCount') }}:</span>
                         <span class="stat-value">{{ libraryStats.ebook_count }}</span>
                     </div>
-                    <div class="stat-separator">|</div>
-                    <div class="stat-group">
-                        <span class="stat-label">{{ $t('index.physicalCount') }}:</span>
-                        <span class="stat-value">{{ libraryStats.physical_count }}</span>
-                    </div>
+                    <template v-if="allowPhysicalBooks">
+                        <div class="stat-separator">|</div>
+                        <div class="stat-group">
+                            <span class="stat-label">{{ $t('index.physicalCount') }}:</span>
+                            <span class="stat-value">{{ libraryStats.physical_count }}</span>
+                        </div>
+                    </template>
                     <div class="stat-separator">|</div>
                     <div class="stat-group">
                         <span class="stat-label">{{ $t('index.monthNewBooks') }}:</span>
                         <span class="stat-value month-new">
                             {{ $t('index.ebookCount') }} {{ libraryStats.month_ebook_count }}
-                            + {{ $t('index.physicalCount') }} {{ libraryStats.month_physical_count }}
+                            <template v-if="allowPhysicalBooks">+ {{ $t('index.physicalCount') }} {{ libraryStats.month_physical_count }}</template>
                         </span>
                     </div>
                 </div>
@@ -154,6 +156,9 @@ export default {
         },
         indexPage() {
             return this.$store.state.sys && this.$store.state.sys.indexPage;
+        },
+        allowPhysicalBooks() {
+            return !!(this.$store.state.sys && this.$store.state.sys.allow && this.$store.state.sys.allow.physical_books);
         },
     },
     watch: {
