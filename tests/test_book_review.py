@@ -178,16 +178,16 @@ class TestBookReviewHandler(TestWithUserLogin):
         d = self.json("/api/book/%d/review" % BID_EPUB, method="POST", body=json.dumps({"rating": 5}))
         self.assertEqual(d["err"], "review.disabled")
 
-    def test_review_banned_user_blocks_post(self):
+    def test_allow_review_false_blocks_post(self):
         db = get_db()
         reader = db.query(Reader).filter_by(id=1).one()
-        reader.review_banned = True
+        reader.allow_review = False
         db.commit()
         try:
             d = self.json("/api/book/%d/review" % BID_EPUB, method="POST", body=json.dumps({"rating": 5}))
             self.assertEqual(d["err"], "review.banned")
         finally:
-            reader.review_banned = False
+            reader.allow_review = True
             db.commit()
 
     def test_reviews_list_and_social_stats(self):

@@ -149,7 +149,7 @@ class AsyncService(metaclass=SingletonType):
                 ALTER TABLE readers ADD COLUMN show_home_recommendations BOOLEAN DEFAULT 1
             """))
             self.session.execute(text("""
-                ALTER TABLE readers ADD COLUMN review_banned BOOLEAN DEFAULT 0
+                ALTER TABLE readers ADD COLUMN allow_review BOOLEAN DEFAULT 1
             """))
             changed = True
         return changed

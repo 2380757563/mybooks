@@ -122,7 +122,7 @@ class Reader(Base, SQLAlchemyMixin):
     push_count = Column(Integer, default=0, nullable=False)  # 累计推送次数，仅 action=push 事件；不回填历史数据，从功能上线时刻起累计
     allow_statistic = Column(Boolean, default=True, nullable=False)  # 是否采集该用户的阅读/下载统计，默认采集（opt-out）
     show_home_recommendations = Column(Boolean, default=True, nullable=False)  # 首页展示其他用户推荐，见 plan/Social_Reading_Plan.md
-    review_banned = Column(Boolean, default=False, nullable=False)  # 是否被管理员禁止发表评论
+    allow_review = Column(Boolean, default=True, nullable=False)  # 是否允许发表评论（管理员可禁止）
 
     def __str__(self):
         return "<id=%d, username=%s, email=%s, admin:%d>" % (

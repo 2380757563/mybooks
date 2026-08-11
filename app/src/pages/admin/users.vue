@@ -123,10 +123,10 @@
                             <v-list-item-title> {{ $t('admin.users.set_admin') }} </v-list-item-title>
                         </v-list-item>
                         <v-list-item
-                            v-if="item.review_banned"
+                            v-if="item.allow_review === false"
                             @click="
-                                setuser(item.id, { review_banned: false });
-                                item.review_banned = false;
+                                setuser(item.id, { allow_review: true });
+                                item.allow_review = true;
                             "
                         >
                             <v-list-item-title> {{ $t('admin.users.unban_review') }} </v-list-item-title>
@@ -134,8 +134,8 @@
                         <v-list-item
                             v-else
                             @click="
-                                setuser(item.id, { review_banned: true });
-                                item.review_banned = true;
+                                setuser(item.id, { allow_review: false });
+                                item.allow_review = false;
                             "
                         >
                             <v-list-item-title> {{ $t('admin.users.ban_review') }} </v-list-item-title>

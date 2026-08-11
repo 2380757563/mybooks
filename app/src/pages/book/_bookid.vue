@@ -1399,13 +1399,13 @@ export default {
             // 评价功能总开关（管理员在"浏览与阅读"里关闭时，整个评论区都不展示）
             return this.$store.state.sys?.allow?.book_review !== false;
         },
-        reviewBanned: function () {
-            return this.$store.state.user?.review_banned === true;
+        allowReview: function () {
+            return this.$store.state.user?.allow_review !== false;
         },
         canSubmitReview: function () {
             // 已被禁止发表评论：评论区仍展示（含自己的历史评论），但不能再新增/编辑，
             // 见 plan/Social_Reading_Plan.md §2.4b
-            return this.canReview && !this.reviewBanned;
+            return this.canReview && this.allowReview;
         },
         hasOwnReview: function () {
             return !!(this.myReview && this.myReview.id);

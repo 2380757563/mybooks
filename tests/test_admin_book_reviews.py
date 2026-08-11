@@ -58,16 +58,16 @@ class TestAdminBookReviews(TestWithUserLogin):
 
 
 class TestAdminUserReviewBan(TestWithUserLogin):
-    def test_toggle_review_banned(self):
-        d = self.json("/api/admin/users", method="POST", body=json.dumps({"id": 2, "review_banned": True}))
+    def test_toggle_allow_review(self):
+        d = self.json("/api/admin/users", method="POST", body=json.dumps({"id": 2, "allow_review": False}))
         self.assertEqual(d["err"], "ok")
 
         d = self.json("/api/admin/users")
         user2 = next(u for u in d["users"]["items"] if u["id"] == 2)
-        self.assertTrue(user2["review_banned"])
+        self.assertFalse(user2["allow_review"])
 
-        d = self.json("/api/admin/users", method="POST", body=json.dumps({"id": 2, "review_banned": False}))
+        d = self.json("/api/admin/users", method="POST", body=json.dumps({"id": 2, "allow_review": True}))
         self.assertEqual(d["err"], "ok")
         d = self.json("/api/admin/users")
         user2 = next(u for u in d["users"]["items"] if u["id"] == 2)
-        self.assertFalse(user2["review_banned"])
+        self.assertTrue(user2["allow_review"])

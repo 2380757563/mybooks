@@ -152,7 +152,7 @@ class AdminUsers(BaseHandler):
                 "push_count": reading_counts.get((user.id, Reading.ACTION_PUSH), 0),
                 "download_count": user.download_count or 0,
                 "total_reading_seconds": user.total_reading_seconds or 0,
-                "review_banned": user.review_banned,
+                "allow_review": user.allow_review,
             }
             if enable_vip_quota:
                 d["vipquota"] = user.vipquota or 0
@@ -205,8 +205,8 @@ class AdminUsers(BaseHandler):
         if "admin" in data:
             user.admin = data["admin"]
 
-        if "review_banned" in data:
-            user.review_banned = bool(data["review_banned"])
+        if "allow_review" in data:
+            user.allow_review = bool(data["allow_review"])
 
         if user.admin is False and self.user_id() == user.id:
             return {

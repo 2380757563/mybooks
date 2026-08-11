@@ -68,7 +68,7 @@ class BookReviewHandler(BaseHandler):
     def post(self, id):
         if not BookReviewService.is_enabled():
             return {"err": "review.disabled", "msg": _("评论功能未启用")}
-        if getattr(self.current_user, "review_banned", False):
+        if not getattr(self.current_user, "allow_review", True):
             return {"err": "review.banned", "msg": _("你已被禁止发表评论")}
         book = self.get_book(int(id), raise_exception=False)
         if not book:
