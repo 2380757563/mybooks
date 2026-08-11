@@ -7,26 +7,37 @@ webserver/services/book_review_service.py; see plan/Social_Reading_Plan.md
 §2.4/§5.1. Admin moderation endpoints are in webserver/handlers/admin.py.
 """
 
-import datetime
 import logging
 
 import tornado.escape
 
+from webserver import loader
 from webserver.handlers.base import BaseHandler, auth, js
 from webserver.i18n import _
 from webserver.models import BookReview, Reader
 from webserver.services.book_review_service import BookReviewService
 
-_RANGE_TO_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+CONF = loader.get_settings()
 
 
-def _serialize_review(row: BookReview, reader, viewer_reader_id=None) -> dict:
+def _reader_avatar_url(site_url: str, reader) -> str:
+    """同 webserver/handlers/book.py 的 Index._reader_avatar_url：拼成基于 host 的绝对路径，
+    避免前端按当前页面路径（如 /book/xxx）相对解析成 /book/avatar/1.png。"""
+    if not reader or not reader.avatar:
+        return ""
+    if reader.avatar.startswith("http"):
+        gravatar_url = "https://www.gravatar.com"
+        return reader.avatar.replace("http://", "https://").replace(gravatar_url, CONF.get("avatar_service", ""))
+    return site_url + "/avatar/%s" % reader.avatar
+
+
+def _serialize_review(site_url: str, row: BookReview, reader, viewer_reader_id=None) -> dict:
     return {
         "id": row.id,
         "book_id": row.book_id,
         "reader_id": row.reader_id,
         "nickname": (getattr(reader, "name", None) or getattr(reader, "username", None) or "") if reader else "",
-        "avatar": getattr(reader, "avatar", "") if reader else "",
+        "avatar": _reader_avatar_url(site_url, reader),
         "rating": row.rating,
         "comment": row.comment or "",
         "status": row.status,
@@ -35,13 +46,6 @@ def _serialize_review(row: BookReview, reader, viewer_reader_id=None) -> dict:
         # 用于列表里展示编辑图标（见 app/src/components/BookReviewList.vue）
         "is_own": viewer_reader_id is not None and row.reader_id == viewer_reader_id,
     }
-
-
-def _get_int_argument(handler, name, default):
-    try:
-        return int(handler.get_argument(name, default))
-    except (TypeError, ValueError):
-        return default
 
 
 class BookSocialStatsHandler(BaseHandler):
@@ -61,7 +65,7 @@ class BookReviewHandler(BaseHandler):
         row = BookReviewService.get_own(self.sqlite_session, int(id), self.user_id())
         if row is None:
             return {"err": "ok", "review": None}
-        return {"err": "ok", "review": _serialize_review(row, self.current_user)}
+        return {"err": "ok", "review": _serialize_review(self.site_url, row, self.current_user)}
 
     @js
     @auth
@@ -85,7 +89,7 @@ class BookReviewHandler(BaseHandler):
 
         row = BookReviewService.upsert(self.sqlite_session, int(id), self.user_id(), rating, comment)
         logging.info("[book_review] user %s reviewed book %s: rating=%s", self.user_id(), id, rating)
-        return {"err": "ok", "review": _serialize_review(row, self.current_user), "msg": _("评价已提交")}
+        return {"err": "ok", "review": _serialize_review(self.site_url, row, self.current_user), "msg": _("评价已提交")}
 
     @js
     @auth
@@ -99,28 +103,17 @@ class BookReviewHandler(BaseHandler):
 class BookReviewListHandler(BaseHandler):
     @js
     def get(self, id):
-        """评论卡片列表，见 plan §2.4c：支持日期范围筛选 + 分页，当前用户置顶。"""
+        """评论卡片列表，见 plan §2.4c：不做日期筛选/分页，只取最近更新的最多 50 条，当前用户置顶。"""
         book_id = int(id)
-        page = max(1, _get_int_argument(self, "page", 1))
-        page_size = min(50, max(1, _get_int_argument(self, "page_size", 20)))
-        range_ = self.get_argument("range", "all")
-        since = None
-        if range_ in _RANGE_TO_DAYS:
-            since = datetime.datetime.now() - datetime.timedelta(days=_RANGE_TO_DAYS[range_])
-        elif range_ != "all":
-            return {"err": "params.invalid", "msg": _("非法的 range 参数")}
-
         viewer_id = self.current_user.id if self.current_user else None
-        rows, total = BookReviewService.list_for_book(
-            self.sqlite_session, book_id, viewer_reader_id=viewer_id, since=since, page=page, page_size=page_size
-        )
+        rows, total = BookReviewService.list_for_book(self.sqlite_session, book_id, viewer_reader_id=viewer_id)
         readers = {}
         if rows:
             reader_ids = {r.reader_id for r in rows}
             for reader in self.sqlite_session.query(Reader).filter(Reader.id.in_(reader_ids)).all():
                 readers[reader.id] = reader
-        reviews = [_serialize_review(r, readers.get(r.reader_id), viewer_id) for r in rows]
-        return {"err": "ok", "total": total, "page": page, "page_size": page_size, "reviews": reviews}
+        reviews = [_serialize_review(self.site_url, r, readers.get(r.reader_id), viewer_id) for r in rows]
+        return {"err": "ok", "total": total, "reviews": reviews}
 
 
 def routes():

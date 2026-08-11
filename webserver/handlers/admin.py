@@ -304,8 +304,13 @@ class AdminBookReviews(BaseHandler):
         data = tornado.escape.json_decode(self.request.body or b"{}")
         review_id = data.get("id")
         action = data.get("action")
-        if not review_id or action not in ("approve", "hide", "restore"):
+        if not review_id or action not in ("approve", "hide", "restore", "delete"):
             return {"err": "params.invalid", "msg": _("参数错误")}
+        if action == "delete":
+            # 物理删除，见 plan §2.4c：不同于"隐藏"，删除后不可恢复、也不会再出现在任何列表里
+            if not BookReviewService.hard_delete(self.sqlite_session, int(review_id)):
+                return {"err": "params.invalid", "msg": _("评论不存在")}
+            return {"err": "ok", "msg": _("已删除")}
         row = BookReviewService.moderate(self.sqlite_session, int(review_id), action)
         if row is None:
             return {"err": "params.invalid", "msg": _("评论不存在")}

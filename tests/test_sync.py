@@ -71,6 +71,25 @@ class TestSyncServiceStorage(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(run())
 
+    def test_push_drops_notes_that_carry_a_foreign_uid(self):
+        """own=0 拉取会把别人的共读 note 混进客户端本地数据；客户端保存/推送时有概率原样带回来，
+        这些条目必须被过滤掉，不能落进当前用户自己的 reading_records 行里（见 push() 实现）。"""
+        async def run():
+            await MyReaderSyncService.push(104, {
+                "notes": [{"id": "n1", "book_hash": "sync-hashC", "updated_at": 1, "note": "mine"}],
+            })
+            result = await MyReaderSyncService.push(104, {
+                "notes": [{"id": "n2", "book_hash": "sync-hashC", "updated_at": 2, "note": "not mine", "uid": 999}],
+            })
+            self.assertNotIn("notes", result)  # 整批都被过滤掉，没有实际生效的变更
+
+            MyReaderSyncService.flush_now()
+            db = ReadingRecord._session()
+            rows = db.query(ReadingRecord).filter_by(reader_id=104, book_hash="sync-hashC", kind="notes").all()
+            self.assertEqual([r.record_id for r in rows], ["n1"])  # n2 没有被存进来
+
+        asyncio.get_event_loop().run_until_complete(run())
+
     def test_pull_is_visible_before_flush(self):
         async def run():
             await MyReaderSyncService.push(103, {"books": [{"id": "b1", "book_hash": "sync-hashB", "updated_at": 1}]})

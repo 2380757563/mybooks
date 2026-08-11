@@ -244,7 +244,16 @@ class MyReaderSyncService:
                 if not key:
                     logging.debug("[sync] note record without id for user %s, book %s", uid, book_hash)
                     continue
-                if not incoming.get("uid"):
+                incoming_uid = incoming.get("uid")
+                if incoming_uid and incoming_uid != uid:
+                    # own=0 拉取会把其他用户的共读 notes 一并混入客户端本地数据，客户端保存/推送时
+                    # 有概率把这些别人的条目原样带回来；这里按 uid 过滤掉，避免把别人的 note 误存成
+                    # 当前用户自己的一条记录（reader_id 仍是 uid，但 payload.uid 会挂着别人的身份）。
+                    logging.debug(
+                        "[sync] drop note %s for user %s book %s: belongs to uid %s", key, uid, book_hash, incoming_uid
+                    )
+                    continue
+                if not incoming_uid:
                     # 需求要求 notes 内每一项数据都带 uid，标注是谁做的；调用方没传时兜底补当前用户
                     incoming = dict(incoming)
                     incoming["uid"] = uid

@@ -50,6 +50,22 @@ class TestAdminBookReviews(TestWithUserLogin):
         approved = self.json("/api/admin/book-reviews?status=approved")
         self.assertTrue(any(r["id"] == review_id for r in approved["reviews"]))
 
+    def test_delete_is_physical_and_irreversible(self):
+        d = self.json("/api/book/%d/review" % BID_TXT, method="POST", body=json.dumps({"rating": 5, "comment": ""}))
+        review_id = d["review"]["id"]
+
+        d = self.json("/api/admin/book-reviews", method="POST", body=json.dumps({"id": review_id, "action": "delete"}))
+        self.assertEqual(d["err"], "ok")
+
+        # 物理删除：不出现在任意 status 过滤下（不同于 hide，hide 后还能在 status=hidden 里查到）
+        for status in ("", "pending", "approved", "hidden"):
+            listing = self.json("/api/admin/book-reviews?status=%s" % status)
+            self.assertFalse(any(r["id"] == review_id for r in listing["reviews"]))
+
+        # 再次删除同一条：查无此评论
+        d = self.json("/api/admin/book-reviews", method="POST", body=json.dumps({"id": review_id, "action": "delete"}))
+        self.assertEqual(d["err"], "params.invalid")
+
     def test_moderate_rejects_unknown_action(self):
         d = self.json("/api/book/%d/review" % BID_EPUB, method="POST", body=json.dumps({"rating": 5}))
         review_id = d["review"]["id"]

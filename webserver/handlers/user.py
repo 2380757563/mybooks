@@ -496,7 +496,7 @@ class UserInfo(BaseHandler):
         if user.avatar:
             if user.avatar.startswith("http"):
                 gravatar_url = "https://www.gravatar.com"
-                d["avatar"] = user.avatar.replace("http://", "https://").replace(gravatar_url, CONF["avatar_service"])
+                d["avatar"] = user.avatar.replace("http://", "https://").replace(gravatar_url, CONF.get("avatar_service", ""))
             else:
                 d["avatar"] = self.site_url + "/avatar/%s" % user.avatar
         if user.extra:

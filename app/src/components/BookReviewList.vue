@@ -6,14 +6,6 @@
                     <v-icon left>mdi-comment-text-multiple-outline</v-icon>
                     {{ $t('book.reviewsTitle') }}
                     <v-spacer></v-spacer>
-                    <v-select
-                        v-model="range"
-                        :items="rangeOptions"
-                        dense
-                        hide-details
-                        style="max-width: 160px"
-                        @change="onFilterChange"
-                    ></v-select>
                     <v-tooltip bottom v-if="!loading && !hasOwnReview && canSubmit">
                         <template v-slot:activator="{ on, attrs }">
                             <v-btn icon color="primary" class="ml-2" v-bind="attrs" v-on="on" @click="$emit('add')">
@@ -56,7 +48,7 @@
                                         >{{ $t('book.reviewPending') }}</v-chip>
                                         <v-spacer></v-spacer>
                                         <v-icon v-if="r.is_own && canSubmit" small class="ml-1" @click="$emit('edit')">mdi-pencil</v-icon>
-                                        <v-icon v-if="isAdmin" small class="ml-1" color="red" @click="hide(r)">
+                                        <v-icon v-if="isAdmin" small class="ml-1" color="red" @click="remove(r)">
                                             mdi-delete-outline
                                         </v-icon>
                                     </div>
@@ -68,19 +60,9 @@
                                         dense
                                         small
                                     ></v-rating>
-                                    <p v-if="r.comment" class="mb-0 mt-1" style="white-space: pre-wrap; word-break: break-word">
-                                        {{ r.comment }}
-                                    </p>
+                                    <p v-if="r.comment" class="mb-0 mt-1 text-left" style="white-space: pre-wrap; word-break: break-word">{{ r.comment }}</p>
                                 </div>
                             </div>
-                        </div>
-                        <div class="text-center mt-2" v-if="totalPages > 1">
-                            <v-pagination
-                                v-model="page"
-                                :length="totalPages"
-                                :total-visible="5"
-                                @input="load"
-                            ></v-pagination>
                         </div>
                     </template>
                 </v-card-text>
@@ -113,45 +95,24 @@ export default {
         return {
             reviews: [],
             total: 0,
-            page: 1,
-            pageSize: 10,
-            range: "all",
             loading: false,
         };
-    },
-    computed: {
-        rangeOptions() {
-            return [
-                { text: this.$t("book.reviewRangeWeek"), value: "7d" },
-                { text: this.$t("book.reviewRangeMonth"), value: "30d" },
-                { text: this.$t("book.reviewRangeQuarter"), value: "90d" },
-                { text: this.$t("book.reviewRangeAll"), value: "all" },
-            ];
-        },
-        totalPages() {
-            return Math.max(1, Math.ceil(this.total / this.pageSize));
-        },
     },
     watch: {
         bookId: {
             immediate: true,
             handler() {
-                this.page = 1;
                 this.load();
             },
         },
     },
     methods: {
-        onFilterChange() {
-            this.page = 1;
-            this.load();
-        },
         async load() {
             if (!this.bookId) return;
             this.loading = true;
             try {
-                const query = `range=${this.range}&page=${this.page}&page_size=${this.pageSize}`;
-                const rsp = await this.$backend(`/book/${this.bookId}/reviews?${query}`);
+                // 不做日期筛选/分页，后端只返回最近更新的最多 50 条
+                const rsp = await this.$backend(`/book/${this.bookId}/reviews`);
                 if (rsp.err === "ok") {
                     this.reviews = rsp.reviews || [];
                     this.total = rsp.total || 0;
@@ -162,14 +123,16 @@ export default {
                 this.loading = false;
             }
         },
-        async hide(r) {
+        async remove(r) {
+            // 物理删除，不可恢复，删除后不再展示（区别于管理后台"用户评论"页的可恢复"隐藏"）
+            if (!confirm(this.$t("book.reviewDeleteConfirm"))) return;
             try {
                 const rsp = await this.$backend("/admin/book-reviews", {
                     method: "POST",
-                    body: JSON.stringify({ id: r.id, action: "hide" }),
+                    body: JSON.stringify({ id: r.id, action: "delete" }),
                 });
                 if (rsp.err === "ok") {
-                    this.$alert("success", rsp.msg || this.$t("book.reviewHidden"));
+                    this.$alert("success", rsp.msg || this.$t("book.reviewDeleted"));
                     this.load();
                 } else {
                     this.$alert("error", rsp.msg || this.$t("message.operationFailed"));

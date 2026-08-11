@@ -101,23 +101,34 @@ class BookReviewService:
         return row
 
     @classmethod
+    def hard_delete(cls, db, review_id: int) -> bool:
+        """管理员物理删除一条评论（不同于 §2.4b 用户自己的软删除）：直接从表中移除，
+        不再作为"隐藏"状态出现在任何地方，也无法恢复。"""
+        row = db.query(BookReview).filter_by(id=review_id).one_or_none()
+        if row is None:
+            return False
+        book_id = row.book_id
+        db.delete(row)
+        db.commit()
+        _stats_cache.invalidate(_stats_key(book_id))
+        return True
+
+    @classmethod
     def list_for_book(
-        cls, db, book_id: int, viewer_reader_id: Optional[int] = None,
-        since: Optional[datetime.datetime] = None, page: int = 1, page_size: int = 20,
+        cls, db, book_id: int, viewer_reader_id: Optional[int] = None, limit: int = 50,
     ) -> Tuple[List[BookReview], int]:
         """普通用户可见的评论：approved 的都能看；未登录/其他人的 pending、hidden 都看不到，
-        但当前登录用户自己的 pending/hidden 那条（如果有）例外可见，方便自己确认审核状态。"""
+        但当前登录用户自己的 pending/hidden 那条（如果有）例外可见，方便自己确认审核状态。
+        不做日期筛选/分页，只取最近更新的 `limit` 条（见 plan §2.4c）。"""
         q = db.query(BookReview).filter(BookReview.book_id == book_id, BookReview.deleted_at.is_(None))
-        if since is not None:
-            q = q.filter(BookReview.update_time >= since)
         conds = [BookReview.status == BookReview.STATUS_APPROVED]
         if viewer_reader_id is not None:
             conds.append(BookReview.reader_id == viewer_reader_id)
         q = q.filter(or_(*conds))
         total = q.count()
-        rows = q.order_by(BookReview.update_time.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        rows = q.order_by(BookReview.update_time.desc()).limit(limit).all()
         if viewer_reader_id is not None:
-            # 当前用户的评价置顶（若命中当前这一页）
+            # 当前用户的评价置顶（若命中这最近 limit 条）
             rows.sort(key=lambda r: 0 if r.reader_id == viewer_reader_id else 1)
         return rows, total
 

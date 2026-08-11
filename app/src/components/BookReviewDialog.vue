@@ -48,7 +48,7 @@ export default {
     },
     data() {
         return {
-            rating: 0,
+            rating: 8,
             comment: "",
             saving: false,
             loading: false,
@@ -80,7 +80,8 @@ export default {
                     this.rating = rsp.review.rating || 0;
                     this.comment = rsp.review.comment || "";
                 } else {
-                    this.rating = 0;
+                    // 新评论默认 8 星，减少用户还要先点一下评分的操作
+                    this.rating = 8;
                     this.comment = "";
                 }
             } catch (e) {
