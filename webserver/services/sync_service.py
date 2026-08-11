@@ -12,7 +12,7 @@ just-pushed data immediately, even before the next flush.
 
 See plan/Social_Reading_Plan.md §5.2/§7 for the full design and the legacy
 (file-based) → DB migration plan implemented by `migrate_legacy_data()`.
-@author: PoxenStudio, 2026-06/2026-08
+@author: PoxenStudio, 2026-06
 """
 
 import asyncio

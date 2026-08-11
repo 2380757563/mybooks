@@ -388,6 +388,25 @@ class TestSyncHandler(TestWithUserLogin):
         d = self.json(f"/api/sync?since=0&type=notes&book={book_hash}&own=0")
         self.assertEqual([r["id"] for r in d["notes"]], ["nX"])
 
+    def test_own_defaults_from_show_other_annotations_preference(self):
+        # 不传 own 时按用户偏好决定：show_other_annotations 默认 True -> 等价 own=0（能看到别人的）
+        book_hash = "cloud-90011-epub"
+        asyncio.get_event_loop().run_until_complete(
+            MyReaderSyncService.push(998, {"notes": [{"id": "nY", "book_hash": book_hash, "updated_at": 1, "note": "other"}]})
+        )
+        MyReaderSyncService.flush_now()
+
+        d = self.json(f"/api/sync?since=0&type=notes&book={book_hash}")
+        self.assertEqual([r["id"] for r in d["notes"]], ["nY"])
+
+        # 关闭偏好后，不传 own 时应等价 own=1（看不到别人的）
+        self.json("/api/user/update", method="POST", body=json.dumps({"show_other_annotations": False}))
+        try:
+            d = self.json(f"/api/sync?since=0&type=notes&book={book_hash}")
+            self.assertEqual(d["notes"], [])
+        finally:
+            self.json("/api/user/update", method="POST", body=json.dumps({"show_other_annotations": True}))
+
     def test_disabled_feature_blocks_requests(self):
         main.CONF["ENABLE_DATA_SYNC"] = False
         d = self.json("/api/sync?since=0")

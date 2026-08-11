@@ -866,6 +866,7 @@
     "resendActivationEmail": "重新发送激活邮件",
     "allow_sending_mail": "接收新书提醒邮件",
     "show_home_recommendations": "首页展示其他用户推荐",
+    "show_other_annotations": "阅读时显示其他用户的批注",
     "allow_statistic": "允许收集我的阅读及下载数据",
     "password": "密码",
     "modifyPassword": "点击修改",

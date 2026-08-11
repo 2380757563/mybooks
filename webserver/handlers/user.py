@@ -97,6 +97,10 @@ class UserUpdate(BaseHandler):
         if "allow_sending_mail" in data:
             user.extra["allow_sending_mail"] = bool(data.get("allow_sending_mail"))
 
+        if "show_other_annotations" in data:
+            # 是否在阅读时显示其他用户的批注/划线，见 plan/Social_Reading_Plan.md §2.2
+            user.extra["show_other_annotations"] = bool(data.get("show_other_annotations"))
+
         if "allow_statistic" in data and CONF.get("ALLOW_USER_DISABLE_STATISTIC", False):
             # 服务端二次校验总开关，避免绕过前端隐藏直接改这个字段
             user.allow_statistic = bool(data.get("allow_statistic"))
@@ -499,6 +503,8 @@ class UserInfo(BaseHandler):
                 d["avatar"] = user.avatar.replace("http://", "https://").replace(gravatar_url, CONF.get("avatar_service", ""))
             else:
                 d["avatar"] = self.site_url + "/avatar/%s" % user.avatar
+        # 与 kindle_email 一样，不论 detail 与否都返回，见 plan/Social_Reading_Plan.md §2.2
+        d["show_other_annotations"] = (user.extra or {}).get("show_other_annotations", True)
         if user.extra:
             d["kindle_email"] = user.extra.get("kindle_email", "")
             if detail:

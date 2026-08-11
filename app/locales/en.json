@@ -865,6 +865,7 @@
     "resendActivationEmail": "Resend activation email",
     "allow_sending_mail": "Receive new book email notifications",
     "show_home_recommendations": "Show other users' recommendations on the home page",
+    "show_other_annotations": "Show other users' annotations while reading",
     "allow_statistic": "Allow collecting my reading and download statistics",
     "password": "Password",
     "modifyPassword": "Click to modify",
