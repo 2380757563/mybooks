@@ -547,6 +547,8 @@
     "friend_links": "Links",
     "book_tags": "Book Category",
     "book_tags_description": "Configure the preset categories on the 'Groups' page. When adding a book, if the book title or author name appears in the following categories, the corresponding tag will be automatically added.",
+    "book_nav": "Category Navigation",
+    "book_nav_duplicate_error": "Duplicate category names: {names}. Please fix them before saving.",
     "email_service": "EMail",
     "email_service_description": "Required by email registration, sending to kindle.",
     "smtp_server": "SMTP Server (Ex: smtp.126.com)",

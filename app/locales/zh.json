@@ -704,6 +704,7 @@
     "book_tags": "书籍分类",
     "book_tags_description": "配置自定义书籍分类，每行一个分类。或以\"分类=标签\"的形式配置分类对应的标签。例如：\n分类=标签1/标签2，对应分类的标签会在标签分类中分组显示。",
     "book_nav": "分类导航",
+    "book_nav_duplicate_error": "分类名称重复：{names}，请修改后再保存",
     "friend_links": "友情链接",
     "internet_book_sources": "互联网书籍信息源",
     "auto_fill_meta": "自动从互联网拉取新书的书籍信息",
