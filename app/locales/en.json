@@ -1505,6 +1505,8 @@
     "hint": "Find and replace text in the body of TXT / EPUB books, with plain text or regex mode. Replaced files are saved as a new book; the original is never modified.",
     "selectBook": "Search and select a book",
     "noResults": "No books found",
+    "formatLabel": "Format to replace (a new book is generated from the selected format)",
+    "formatOnly": "This book only has {format}, so the replacement will apply to {format}.",
     "modePlain": "Plain text",
     "modeRegex": "Regex",
     "cheatTitle": "Regex quick reference",

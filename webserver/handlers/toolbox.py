@@ -781,12 +781,13 @@ class AdminTextReplacePreview(BaseHandler):
         pattern = (data.get("pattern") or "").strip()
         replacement = data.get("replacement") or ""
         use_regex = bool(data.get("use_regex", False))
+        fmt = (data.get("format") or "").strip().upper()
 
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
 
         try:
-            result = TextReplaceTool().preview(int(book_id), pattern, replacement, use_regex)
+            result = TextReplaceTool().preview(int(book_id), pattern, replacement, use_regex, fmt)
         except RuntimeError as err:
             return {"err": "text_replace.preview_failed", "msg": str(err)}
 
@@ -803,6 +804,7 @@ class AdminTextReplaceRun(BaseHandler):
         replacement = data.get("replacement") or ""
         use_regex = bool(data.get("use_regex", False))
         suffix = (data.get("suffix") or "").strip()
+        fmt = (data.get("format") or "").strip().upper()
 
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
@@ -813,7 +815,7 @@ class AdminTextReplaceRun(BaseHandler):
         if tool.is_running():
             return {"err": "task.running", "msg": _("已有正文替换任务正在执行，请稍后再试")}
 
-        tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id())
+        tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id(), fmt)
         return {"err": "ok", "msg": _("正文替换任务已启动，注意查看消息通知中的处理结果")}
 
 

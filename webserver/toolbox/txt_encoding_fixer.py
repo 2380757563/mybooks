@@ -136,6 +136,11 @@ class TxtEncodingFixerTool(BaseTool):
             progress_callback(40)
 
             text, report = encoding_detect.decode_with_report(data)
+            if report.get("irreversible"):
+                error_message = _("乱码链路不可逆（字节级信息已毁），无法自动修复")
+                self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
+                logging.error("[TxtEncodingFixerTool] Irreversible encoding chain for book_id=%d", book_id)
+                return
             if report["unrecoverable"]:
                 error_message = _("文件疑似多重误读乱码（反转循环），无法自动修复")
                 self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
