@@ -963,6 +963,30 @@ export default {
             label: "settings.enable_homepage_reading_stats",
             type: "checkbox",
           },
+          {
+            icon: "mdi-star-outline",
+            key: "ENABLE_BOOK_REVIEW",
+            label: "settings.enable_book_review",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-shield-check-outline",
+            key: "REVIEW_REQUIRES_APPROVAL",
+            label: "settings.review_requires_approval",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-thumb-up-outline",
+            key: "ENABLE_BOOK_RECOMMEND_TO_OTHERS",
+            label: "settings.enable_book_recommend_to_others",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-note-multiple-outline",
+            key: "ENABLE_SHARED_NOTES",
+            label: "settings.enable_shared_notes",
+            type: "checkbox",
+          },
         ]
       },
       {

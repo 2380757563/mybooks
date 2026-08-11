@@ -20,7 +20,7 @@ from webserver.services.book_review_service import BookReviewService
 _RANGE_TO_DAYS = {"7d": 7, "30d": 30, "90d": 90}
 
 
-def _serialize_review(row: BookReview, reader) -> dict:
+def _serialize_review(row: BookReview, reader, viewer_reader_id=None) -> dict:
     return {
         "id": row.id,
         "book_id": row.book_id,
@@ -31,6 +31,9 @@ def _serialize_review(row: BookReview, reader) -> dict:
         "comment": row.comment or "",
         "status": row.status,
         "update_time": row.update_time.isoformat() if row.update_time else None,
+        # 前端目前没有拿到当前用户数字 id 的稳定途径，由后端直接判断是否为"我的评价"，
+        # 用于列表里展示编辑图标（见 app/src/components/BookReviewList.vue）
+        "is_own": viewer_reader_id is not None and row.reader_id == viewer_reader_id,
     }
 
 
@@ -116,7 +119,7 @@ class BookReviewListHandler(BaseHandler):
             reader_ids = {r.reader_id for r in rows}
             for reader in self.sqlite_session.query(Reader).filter(Reader.id.in_(reader_ids)).all():
                 readers[reader.id] = reader
-        reviews = [_serialize_review(r, readers.get(r.reader_id)) for r in rows]
+        reviews = [_serialize_review(r, readers.get(r.reader_id), viewer_id) for r in rows]
         return {"err": "ok", "total": total, "page": page, "page_size": page_size, "reviews": reviews}
 
 

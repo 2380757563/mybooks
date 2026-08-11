@@ -122,6 +122,12 @@
                 class="mt-0"
               ></v-checkbox>
               <v-checkbox
+                v-model="user.show_home_recommendations"
+                :label="$t('user.show_home_recommendations')"
+                hide-details
+                class="mt-0"
+              ></v-checkbox>
+              <v-checkbox
                 v-if="user.allow_user_disable_statistic"
                 v-model="user.allow_statistic"
                 :label="$t('user.allow_statistic')"
@@ -459,6 +465,7 @@ export default {
         podcast_token: "",
         allow_statistic: true,
         allow_user_disable_statistic: false,
+        show_home_recommendations: true,
         extra: {
           allow_sending_mail: true
         },
@@ -680,6 +687,7 @@ export default {
         podcast_token: this.user.podcast_token,
         allow_sending_mail: this.user.extra.allow_sending_mail,
         allow_statistic: this.user.allow_statistic,
+        show_home_recommendations: this.user.show_home_recommendations,
       };
 
       this.$backend("/user/update", {

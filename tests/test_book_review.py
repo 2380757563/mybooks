@@ -184,6 +184,7 @@ class TestBookReviewHandler(TestWithUserLogin):
         d = self.json("/api/book/%d/reviews" % BID_EPUB)
         self.assertEqual(d["total"], 1)
         self.assertEqual(d["reviews"][0]["rating"], 9)
+        self.assertTrue(d["reviews"][0]["is_own"])  # mocked current_user 提交的那条
 
         d = self.json("/api/book/%d/social-stats" % BID_EPUB)
         self.assertEqual(d["recommend_count"], 1)

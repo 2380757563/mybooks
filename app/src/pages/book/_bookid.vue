@@ -478,6 +478,24 @@
                                         </template>
                                         <span>{{ $t('readingState.favoriteHint') }}</span>
                                     </v-tooltip>
+                                    <v-tooltip v-if="canSubmitReview" bottom>
+                                        <template v-slot:activator="{ on, attrs }">
+                                            <v-btn
+                                                icon
+                                                small
+                                                class="ml-1"
+                                                @click="openReviewDialog"
+                                                :color="hasOwnReview ? 'primary' : 'grey'"
+                                                v-bind="attrs"
+                                                v-on="on"
+                                            >
+                                                <v-icon>
+                                                    {{ hasOwnReview ? 'mdi-thumb-up' : 'mdi-thumb-up-outline' }}
+                                                </v-icon>
+                                            </v-btn>
+                                        </template>
+                                        <span>{{ $t('book.reviewHint') }}</span>
+                                    </v-tooltip>
                                     <v-tooltip bottom>
                                         <template v-slot:activator="{ on, attrs }">
                                             <v-btn
@@ -557,6 +575,8 @@
                             </div>
                             <v-rating v-model="book.rating" color="yellow accent-4" length="10" readonly dense
                                       small></v-rating>
+                            <!-- 阅读信息：在读/收藏/推荐人数，三项都为 0 时组件本身不渲染 -->
+                            <book-social-info :book-id="book.id" ref="socialInfo"></book-social-info>
                             <!-- Reading state display -->
                             <div v-if="book.state && book.state.read_state === this.READING_STATE.READING" class="mt-2">
                                 <v-chip
@@ -769,6 +789,24 @@
             </v-card>
         </v-col>
     </v-row>
+
+    <!-- 评论：一人一条，当前用户置顶，管理员可隐藏，见 plan/Social_Reading_Plan.md §2.4c -->
+    <book-review-list
+        v-if="canReview"
+        :book-id="book.id"
+        :is-admin="isAdmin"
+        :has-own-review="hasOwnReview"
+        :can-submit="canSubmitReview"
+        ref="reviewList"
+        @edit="openReviewDialog"
+        @add="openReviewDialog"
+    ></book-review-list>
+    <book-review-dialog
+        v-if="canSubmitReview"
+        v-model="reviewDialogOpen"
+        :book-id="book.id"
+        @saved="onReviewSaved"
+    ></book-review-dialog>
 
     <!-- 推荐图书列表 -->
     <v-row v-if="suggestionBooks.length > 0" class="mt-6">
@@ -1317,12 +1355,18 @@
 
 <script>
 import BookCards from "~/components/BookCards.vue";
+import BookSocialInfo from "~/components/BookSocialInfo.vue";
+import BookReviewList from "~/components/BookReviewList.vue";
+import BookReviewDialog from "~/components/BookReviewDialog.vue";
 import QRCode from "qrcode";
 import { languageOptions } from "~/utils/languageCodes";
 
 export default {
     components: {
         BookCards,
+        BookSocialInfo,
+        BookReviewList,
+        BookReviewDialog,
     },
     computed: {
         showUserInfo() {
@@ -1347,6 +1391,24 @@ export default {
         },
         isWants: function () {
             return this.book.state && this.book.state.wants === 1;
+        },
+        isAdmin: function () {
+            return this.$store.state.user?.is_admin === true;
+        },
+        canReview: function () {
+            // 评价功能总开关（管理员在"浏览与阅读"里关闭时，整个评论区都不展示）
+            return this.$store.state.sys?.allow?.book_review !== false;
+        },
+        reviewBanned: function () {
+            return this.$store.state.user?.review_banned === true;
+        },
+        canSubmitReview: function () {
+            // 已被禁止发表评论：评论区仍展示（含自己的历史评论），但不能再新增/编辑，
+            // 见 plan/Social_Reading_Plan.md §2.4b
+            return this.canReview && !this.reviewBanned;
+        },
+        hasOwnReview: function () {
+            return !!(this.myReview && this.myReview.id);
         },
         readingStateButtonText: function () {
             if (!this.book.state) return this.$t('readingState.setReading');
@@ -1705,6 +1767,8 @@ export default {
         kindle_sender: "",
         favoriteLoading: false,
         wantsLoading: false,
+        reviewDialogOpen: false,
+        myReview: null,
         readingStateLoading: false,
         dialog_download: false,
         // 转换中等待对话框
@@ -1839,6 +1903,7 @@ export default {
         // 异步加载推荐图书
         this.loadSuggestionBooks();
         this.loadSameNameBooks();
+        this.loadMyReview();
         // 先加载设备列表，等待完成后再加载设备偏好
         await this.getSettings();
         // 从localStorage加载上次使用的设备选项（在devices加载完成后）
@@ -1941,6 +2006,28 @@ export default {
             } else {
                 this.dialog_download = true;
             }
+        },
+        async loadMyReview() {
+            if (!this.canReview || this.$store.state.user?.is_login !== true) return;
+            try {
+                const rsp = await this.$backend(`/book/${this.book.id}/review`);
+                if (rsp.err === 'ok') {
+                    this.myReview = rsp.review || null;
+                }
+            } catch (e) {
+                // 静默失败，只影响 like 图标的高亮状态，不影响其它功能
+            }
+        },
+        openReviewDialog() {
+            if (!this.canSubmitReview) return;
+            this.reviewDialogOpen = true;
+        },
+        onReviewSaved(review) {
+            this.myReview = review || this.myReview;
+            this.$nextTick(() => {
+                this.$refs.socialInfo?.refresh();
+                this.$refs.reviewList?.refresh();
+            });
         },
         async toggleFavorite() {
             if (this.favoriteLoading) return;

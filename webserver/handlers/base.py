@@ -1122,7 +1122,10 @@ class BaseHandler(web.RequestHandler):
                 "read": CONF["ALLOW_GUEST_READ"],
                 "physical_books": CONF.get("ENABLE_PHYSICAL_BOOKS", True),
                 "upload": CONF.get("ALLOW_GUEST_UPLOAD", False),
-                "sync": CONF.get("ENABLE_DATA_SYNC", False)
+                "sync": CONF.get("ENABLE_DATA_SYNC", False),
+                "book_review": CONF.get("ENABLE_BOOK_REVIEW", True),
+                "book_recommend": CONF.get("ENABLE_BOOK_RECOMMEND_TO_OTHERS", True),
+                "shared_notes": CONF.get("ENABLE_SHARED_NOTES", True),
             },
             "indexPage": CONF.get("INDEX_PAGE_TYPE", "index"),
             "defaultPageSize": CONF.get("DEFAULT_PAGE_SIZE", 60),
