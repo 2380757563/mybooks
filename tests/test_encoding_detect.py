@@ -149,6 +149,24 @@ class TestMojibake(unittest.TestCase):
         text, _ = decode_with_report(data)
         self.assertEqual(text, mid)
 
+    def test_ansi_latin1_mojibake_recovery(self):
+        # UTF-8 被按 ANSI/Latin-1 误读后另存为 UTF-8（è…çš„ 型）：反转链 latin-1 对恢复
+        src = "第一章　序章\n夜色渐深，他站在窗前，望着远处灯火阑珊的城市。"
+        data = src.encode("utf-8").decode("latin-1").encode("utf-8")
+        r = detect_encoding(data)
+        self.assertTrue(r["mojibake"], r["reasons"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, src)
+
+    def test_double_ansi_mojibake_recovery(self):
+        # 双层 ANSI 误读：中间层为纯 latin-1 区间（可读性低）须允许过渡继续反转
+        src = "第一章　序章\n夜色渐深，他站在窗前，望着远处灯火阑珊的城市。"
+        data = src.encode("utf-8").decode("latin-1").encode("utf-8").decode("latin-1").encode("utf-8")
+        r = detect_encoding(data)
+        self.assertTrue(r["mojibake"], r["reasons"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, src)
+
 
 class TestIdempotency(unittest.TestCase):
     """幂等性：正常 UTF-8 中文必须原样输出，绝不能反转成乱码。
@@ -262,9 +280,67 @@ class TestRobustness(unittest.TestCase):
         self.assertTrue(r["garbage"])
 
     def test_utf16be_without_bom(self):
-        # UTF-16BE 无 BOM（高位 0x00）：判垃圾拒绝，不崩溃
+        # UTF-16BE 无 BOM：靠"车道结构校验"识别（高字节车道集中于合法高字节集合）
         r = detect_encoding("你好世界".encode("utf-16-be"))
-        self.assertTrue(r["garbage"])
+        self.assertEqual(r["encoding"], "utf-16-be")
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report("你好世界".encode("utf-16-be"))
+        self.assertEqual(text, "你好世界")
+
+    def test_utf16le_without_bom(self):
+        r = detect_encoding("你好世界".encode("utf-16-le"))
+        self.assertEqual(r["encoding"], "utf-16-le")
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report("你好世界".encode("utf-16-le"))
+        self.assertEqual(text, "你好世界")
+
+    def test_single_gbk_char_no_cycle(self):
+        # 合法 GBK 单字：不得因反转 A↔B 摇摆被误判"多重误读循环"而拒绝
+        r = detect_encoding("你".encode("gb18030"))
+        self.assertEqual(r["encoding"], "gb18030")
+        self.assertFalse(r["garbage"])
+        self.assertFalse(r["unrecoverable"])
+        text, _ = decode_with_report("你".encode("gb18030"))
+        self.assertEqual(text, "你")
+
+    def test_head_byte_loss_repair(self):
+        # 头部丢 2 字节（丢换行+首字首字节，游离续字节开头）：头部修剪恢复
+        data = "第一章\u3000序章\n夜色渐深。".encode("utf-8")[2:]
+        r = detect_encoding(data)
+        self.assertFalse(r["garbage"])
+        self.assertTrue(r.get("head_trimmed"))
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, "一章\u3000序章\n夜色渐深。")
+
+    def test_random_corruption_repair(self):
+        # 随机腐蚀 0.1% 字节：宽松替换解码兜底（损伤可控），不整本拒绝
+        import random
+        rng = random.Random(7)
+        data = bytearray("人工智能的发展历程，包括机器学习与深度学习。" * 40 + "全书正文。" * 20, "utf-8")
+        for pos in rng.sample(range(len(data)), max(1, int(len(data) * 0.001))):
+            data[pos] ^= 0xFF
+        r = detect_encoding(bytes(data))
+        self.assertFalse(r["garbage"])
+        self.assertTrue(r.get("lossy"))
+        text, _ = decode_with_report(bytes(data))
+        self.assertGreaterEqual(text.count("\ufffd"), 1)
+        self.assertIn("机器学习", text)
+
+    def test_nul_injection_repair(self):
+        # 低密度 NUL 注入（每 500 字节一个）：NUL 剥离后还原，不整本拒绝
+        base = "人工智能的发展历程。" * 100
+        data = b""
+        step = 0
+        for ch in base.encode("utf-8"):
+            data += bytes([ch])
+            step += 1
+            if step % 500 == 0:
+                data += b"\x00"
+        r = detect_encoding(data)
+        self.assertFalse(r["garbage"])
+        self.assertTrue(r.get("nul_stripped"))
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, base)
 
     def test_large_input_sampled(self):
         # 大输入：检测在 2MB 采样上进行，结果正确且不慢
@@ -293,6 +369,67 @@ class TestRobustness(unittest.TestCase):
     def test_nul_byte_gb18030(self):
         r = detect_encoding("你好\x00世界".encode("gb18030"))
         self.assertTrue(r["garbage"])
+
+    def test_utf16le_ascii_without_bom(self):
+        # 纯英文 UTF-16LE 无 BOM（0x00 占比 50%）：不得误走"二进制/NUL 剥离"通道，
+        # round-trip 字节级必须 100% 一致
+        src = "The quick brown fox jumps over the lazy dog."
+        data = src.encode("utf-16-le")
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "utf-16-le")
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, src)
+        out, _ = fix_to_utf8(data)
+        self.assertEqual(out.decode("utf-8").encode("utf-16-le"), data)
+
+    def test_all_spaces_no_newline(self):
+        # 1024 个连续空格（无换行）：必须原样通过, 不得误判 UTF-16/GBK 或加 BOM
+        data = b" " * 1024
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "utf-8")
+        self.assertFalse(r["garbage"])
+        out, _ = fix_to_utf8(data)
+        self.assertEqual(out, data)
+
+    def test_shiftjis_kana_detected(self):
+        # 纯日文平假名（无 ASCII 锚点）：0x82A0 系字节在 GB18030 中是合法冷僻汉字,
+        # 不得被误译为中文——须识别为 shift_jis
+        jp = "これは日本語のテキストです。読みやすい文章を書いています。\n" * 50
+        data = jp.encode("shift_jis")
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "shift_jis", r["reasons"])
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, jp)
+
+    def test_euckr_hangul_detected(self):
+        ko = "이것은 한국어 텍스트입니다. 읽기 쉬운 문장을 쓰고 있습니다.\n" * 50
+        data = ko.encode("euc_kr")
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "euc_kr", r["reasons"])
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, ko)
+
+    def test_latin1_western_precheck(self):
+        # 西文 UTF-8 被逐字节按 Latin-1 误读后另存（Ã© 型）: 结构签名预检还原
+        src = "café résumé déjà vu — naïve façade, coeur de la ville.\n" * 20
+        data = src.encode("utf-8").decode("latin-1").encode("utf-8")
+        r = detect_encoding(data)
+        self.assertTrue(r["mojibake"], r["reasons"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, src)
+        out, _ = fix_to_utf8(data)
+        self.assertEqual(out, src.encode("utf-8"))
+
+    def test_irreversible_chain_refused(self):
+        # GBK 系双层乱码: 还原链引入大量替换符, 字节级信息已毁 —— 必须标记 irreversible
+        src = "第一章\u3000序章\n夜色渐深，他站在窗前。\n" * 300
+        data = (src.encode("utf-8").decode("gb18030", errors="replace").encode("utf-8")
+                .decode("gb18030", errors="replace").encode("utf-8"))
+        r = detect_encoding(data)
+        self.assertTrue(r.get("irreversible"), r["reasons"])
 
 
 if __name__ == "__main__":

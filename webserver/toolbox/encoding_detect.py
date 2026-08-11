@@ -5,11 +5,17 @@
 1. **BOM 优先**：UTF-8 BOM / UTF-16 BOM / UTF-32 BOM 直接判定；
 2. **候选编码严格解码打分**：UTF-8 / GB18030 / BIG5 逐个 strict 解码，
    以可读性评分（中文字符占比、替换符、控制字符、常见乱码区）排序；
+   无 BOM UTF-16LE/BE 通过"车道结构校验"（高字节车道集中于合法高字节集合）
+   后参与竞争；
 3. **chardet 三段采样**：开头 / 中间 / 结尾各取样本，chardet 可用时参与投票；
 4. **mojibake 反转链**：对首选解码结果尝试常见乱码反转
    （``text.encode(误读编码).decode(真实编码)``），可读性显著提升时采纳，
-   并标记 ``mojibake=True`` 供前端提示；
-5. **可读性复检**：反转结果与直解结果比较后取最优。
+   并标记 ``mojibake=True`` 供前端提示；覆盖 GBK/BIG5 系 + ANSI/Latin-1 系
+   （含多层误读），过短文本（<8 字符）跳过反转防循环误判；
+5. **可读性复检**：反转结果与直解结果比较后取最优；
+6. **有损兜底**（仅在常规方案判垃圾时）：头部坏字节修剪 → NUL 剥离重检 →
+   宽松替换解码（损伤可控才采纳），产出带 ``lossy / damage_ratio /
+   head_trimmed / nul_stripped`` 标记的部分恢复文本。
 
 对外主要接口：:func:`detect_encoding`（返回检测报告 dict）、
 :func:`decode_with_report`（按报告解码出最终文本）。
@@ -22,8 +28,11 @@ try:
 except ImportError:  # chardet 缺失时退化为纯规则检测
     chardet = None
 
-# 参与候选打分的编码（strict 解码）
-CANDIDATE_ENCODINGS = ("utf-8", "gb18030", "big5")
+# 参与候选打分的编码（strict 解码）。
+# shift_jis / euc_kr 用于日韩书籍识别：其字节在 GB18030 中往往恰好构成合法
+# 双字节序列（如 0x82A0 系平假名映射为冷僻汉字），若不入候选会被整体误译成
+# 中文；识别依赖脚本一致性加分（见 _script_bonus），中文文件不受影响。
+CANDIDATE_ENCODINGS = ("utf-8", "gb18030", "big5", "shift_jis", "euc_kr")
 # BOM → 编码
 _BOM_TABLE = (
     (b"\xef\xbb\xbf", "utf-8-sig"),
@@ -36,7 +45,11 @@ _BOM_TABLE = (
 # 乱码反转链：对解码文本尝试 ``text.encode(中间编码).decode(真实编码)`` 组合，
 # 可读性显著提升时采纳。常见场景：原编码字节被程序误读（如 BIG5 被按 GB18030 读）
 # 后以另一种编码（多为 UTF-8）写盘。
+# latin-1/cp1252 对置于最前：ANSI 误读（è…çš„ 型）的乱码文本全部字符 < U+0100，
+# 只有它们能通过 ``encode('latin-1')``，正常中文文本必然编码失败自动跳过，零误伤。
 _MOJIBAKE_PAIRS = (
+    ("latin-1", "utf-8"),   # UTF-8 字节被按 ANSI/Latin-1 误读（è…çš„ 型）
+    ("cp1252", "utf-8"),    # UTF-8 字节被按 Windows-1252 误读
     ("gb18030", "big5"),    # BIG5 字节被按 GBK/GB18030 误读
     ("gb18030", "utf-8"),   # UTF-8 字节被按 GBK/GB18030 误读
     ("big5", "utf-8"),      # UTF-8 字节被按 BIG5 误读
@@ -44,6 +57,10 @@ _MOJIBAKE_PAIRS = (
     ("utf-8", "gb18030"),   # GBK 字节被按 UTF-8 误读（存为乱码 UTF-8）
     ("utf-8", "big5"),      # BIG5 字节被按 UTF-8 误读
 )
+
+# 乱码反转的最小文本长度：过短文本（如单字）在任意双字节编码间几乎必然可逆，
+# 会导致 A↔B 摇摆被误判为"多重误读循环"而拒绝整本书（合法单字文件被拒的 bug）。
+MIN_MOJIBAKE_LEN = 8
 
 # 不可读字符（替换符 / 私用区 / 代理区）
 _UNREADABLE_RE = re.compile(
@@ -57,6 +74,9 @@ _MOJIBAKE_CHAR_RE = re.compile(
 # 控制字符（保留 \n \r \t）
 _CONTROL_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _CJK_RE = re.compile("[\u3400-\u4dbf\u4e00-\u9fff]")
+# 日文假名（平假名+片假名）与韩文谚文音节——用于日韩编码的脚本一致性加分
+_KANA_RE = re.compile("[\u3040-\u30ff]")
+_HANGUL_RE = re.compile("[\uac00-\ud7af]")
 
 SAMPLE_CHARS = 800  # 报告中的可读性样本长度
 SAMPLE_LIMIT = 2 * 1024 * 1024  # 检测采样上限：候选打分 / chardet / 反转链只在前缀上进行，
@@ -79,6 +99,28 @@ def _common_ratio(text):
     if not sample:
         return 0.0
     return sum(1 for ch in sample if ch in _COMMON_CHARS) / len(sample)
+
+
+def _script_bonus(enc, text):
+    """编码-脚本一致性加分：shift_jis 解释按假名占比、euc_kr 解释按谚文占比
+    给予最高 +25 的加成。GB18030 对日韩字节的误译结果是冷僻汉字（无假名/谚文），
+    拿不到加分；真实日韩文本则借此在与中文候选同分时胜出。"""
+    if enc not in ("shift_jis", "euc_kr"):
+        return 0.0
+    sample = text[:2000]
+    n = len(sample)
+    if not n:
+        return 0.0
+    if enc == "shift_jis":
+        ratio = len(_KANA_RE.findall(sample)) / n
+    else:
+        ratio = len(_HANGUL_RE.findall(sample)) / n
+    return min(25.0, ratio * 50.0)
+
+
+def _plan_total(enc, text):
+    """统一方案评分：可读性 + 常用字加成 + 编码-脚本一致性加分。"""
+    return _score_total(text) + _script_bonus(enc, text)
 
 
 def _score_total(text):
@@ -156,15 +198,46 @@ def _chardet_vote(data):
 
 
 def _decode_candidates(data):
-    """对候选编码逐个 strict 解码（尾部截断自动回退），返回 [(encoding, text, score)] 按得分降序。"""
+    """对候选编码逐个 strict 解码（尾部截断自动回退），返回 [(encoding, text, score)] 按得分降序。
+
+    无 BOM UTF-16LE/BE 仅在通过"车道结构校验"时参与竞争：Python 的 UTF-16
+    strict 解码对任意偶数长字节流都不会报错，若不设门槛会把 GBK/BIG5 等
+    正常文件误判成"可读"的错位 UTF-16 文本。
+    """
     results = []
     for enc in CANDIDATE_ENCODINGS:
         text = _strict_decode_tail(data, enc)
         if text is None:
             continue
+        # shift_jis 含半角片假名单字节区（0xA1-0xDF），任意孤立高字节都"可解码"；
+        # 过短文本（如截断的 GBK 首字节 0xC4）会被误判为半个假名——要求至少 4 字符
+        if enc in ("shift_jis", "euc_kr") and len(text) < 4:
+            continue
         results.append((enc, text, _readability_score(text)))
+    for enc in ("utf-16-le", "utf-16-be"):
+        if _utf16_lane_ok(data, enc):
+            text = _strict_decode_tail(data, enc)
+            if text is not None:
+                results.append((enc, text, _readability_score(text)))
     results.sort(key=lambda r: r[2], reverse=True)
     return results
+
+
+def _utf16_lane_ok(data, enc):
+    """无 BOM UTF-16 车道结构校验：文本型 UTF-16 的高字节车道应集中在
+    ASCII 高位(0x00) / 通用标点(0x20) / CJK 符号区(0x30-0x3F) /
+    CJK 汉字(0x4E-0x9F) / 全角区(0xFF) 等合法高字节集合。
+
+    正常 UTF-8 / GBK / BIG5 字节流的车道字节落在该集合的比例远低于
+    阈值（UTF-8 仅 ~20-30%），真实中文/ASCII 文本的 UTF-16 则达 90%+。
+    """
+    lane = data[1::2] if enc == "utf-16-le" else data[0::2]
+    if len(lane) < 4:
+        return False
+    good = sum(
+        1 for b in lane
+        if b == 0x00 or b == 0x20 or 0x30 <= b <= 0x3F or 0x4E <= b <= 0x9F or b == 0xFF)
+    return good / len(lane) >= 0.85
 
 
 def _strict_decode_tail(data, enc):
@@ -184,16 +257,37 @@ def _strict_decode_tail(data, enc):
     return None
 
 
+def _is_latin1_intermediate(text):
+    """是否为纯 latin-1 区间文本（全部字符 < U+0100）。
+
+    ANSI 误读的乱码文本全部由 latin-1 字符构成（含大量 C1 控制符，可读性仅 ~35，
+    过不了 60 分的单步门槛）；这类中间态允许继续反转，最终结果仍需可读性达标才采纳。
+    正常中文/英文文本（含任意 CJK 或 >U+00FF 字符）不满足，不会被误放行。
+    """
+    if not text:
+        return False
+    return all(ord(ch) < 0x100 for ch in text[:2000])
+
+
 def _try_mojibake_recovery(text, max_rounds=3):
     """迭代乱码反转：每轮尝试 ``text.encode(中间编码).decode(真实编码)`` 组合，
     对结果继续反转（支持双重/多重误读）；``visited`` 防止 A→B→A 式循环。
 
-    :return: ((recovered_text, mid_enc, real_enc, score) | None, cycle)
+    单步门槛：可读性 >= 60 视为可信出口；纯 latin-1 中间态（ANSI 误读层）允许过渡，
+    不当作出口采纳。过短文本（< MIN_MOJIBAKE_LEN）直接跳过反转——单字在任意
+    双字节编码间几乎必然可逆，强行反转会摇摆成环被误判为深度误读。
+
+    :return: ((recovered_text, mid_enc, real_enc, score, chain) | None, cycle)
+        chain 为按序应用的 (mid_enc, real_enc) 步骤列表（供全量解码逐层重放，
+        支持多层反转链——单层假设会在 ANSI 双层等场景断链）。
         cycle=True 表示检测到反转循环（深度误读，最终结果不可信）。
     """
-    best = None
+    if len(text) < MIN_MOJIBAKE_LEN:
+        return None, False
+    best = None  # (recovered_text, mid_enc, real_enc, score, chain)
     cycle = False
     current = text
+    chain = []
     visited = {text}
     for _ in range(max_rounds):
         found = None
@@ -202,11 +296,11 @@ def _try_mojibake_recovery(text, max_rounds=3):
                 raw = current.encode(mid_enc)
             except (UnicodeEncodeError, LookupError):
                 continue
-            recovered = _strict_decode(raw, real_enc)
+            recovered = _strict_decode_tail(raw, real_enc)
             if recovered is None or recovered == current:
                 continue  # 解码失败或无变化（纯 ASCII 在任意编码下等价）
             score = _readability_score(recovered)
-            if score >= 60:
+            if score >= 60 or _is_latin1_intermediate(recovered):
                 found = (recovered, mid_enc, real_enc, score)
                 break
         if found is None:
@@ -220,12 +314,162 @@ def _try_mojibake_recovery(text, max_rounds=3):
                 return best, True
             return None, True
         visited.add(rec_text)
+        chain.append((mid_enc, real_enc))
         current = rec_text
         # 高可读性 + 常用字占比显著 → 可信出口，立即停止
         if rec_score >= 90 and _common_ratio(rec_text) > 0.3:
-            return (rec_text, mid_enc, real_enc, rec_score), False
-        best = rec_text, mid_enc, real_enc, rec_score
+            return (rec_text, mid_enc, real_enc, rec_score, list(chain)), False
+        best = rec_text, mid_enc, real_enc, rec_score, list(chain)
     return best, cycle
+
+
+def _western_like(text):
+    """西文特征判定：非空白字符中"ASCII 字母 + U+00C0-U+00FF"占比 >= 0.8。
+
+    用于区分"还原后的西文文本"（éèñ/café 型，合法西文字母）与"仍带乱码的
+    latin-1 中间层"（中文 UTF-8 的 latin-1 显示含大量 U+0080-U+00BF 符号/控制符，
+    字母占比极低）。空白/标点不计入分母（正常西文文本空格标点占 ~20%）。"""
+    sample = text[:2000]
+    n = len(sample)
+    if n < 16:
+        return False
+    letters = sum(1 for ch in sample
+                  if ("a" <= ch <= "z") or ("A" <= ch <= "Z") or 0x00C0 <= ord(ch) <= 0x00FF)
+    non_ws = sum(1 for ch in sample if not ch.isspace())
+    if not non_ws:
+        return False
+    return letters / non_ws >= 0.8
+
+
+def _latin1_western_precheck(data):
+    """西文 latin-1 误读预检（B9）：纯结构信号，不依赖中文可读性评分。
+
+    UTF-8 双字节字符的首字节是 0xC2-0xDF，被按 Latin-1 误读后显示为
+    U+00C2-U+00DF（Ã/Â 型）；因此 "UTF-8 字节流被按 latin-1 逐字节解码再
+    以 UTF-8 存盘" 的文件，解码后文本中 U+00C0-U+00DF 占比显著（通常 >30%），
+    而正常西文（éèñ = U+00E0-U+00FF）或中文文本几乎不出现该区间。
+
+    还原按 fixpoint 迭代（支持多层误读），最终结果须呈西文特征
+    （_western_like），防止把中文类乱码的中间层误采纳。
+
+    :return: 还原后的文本；非西文误读场景返回 None。
+    """
+    try:
+        head = _strict_decode_tail(data[:SAMPLE_LIMIT], "utf-8")
+    except Exception:
+        head = None
+    if not head:
+        return None
+    sample = head[:2000]
+    n = len(sample)
+    if n < 16:
+        return None
+    lead_display = sum(1 for ch in sample if 0x00C0 <= ord(ch) <= 0x00DF)
+    if lead_display / n < 0.04:
+        return None
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    rec = text
+    for _ in range(5):
+        try:
+            nxt = rec.encode("latin-1").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            break  # 已还原到含非 latin-1 字符的真实文本（如 — 或中文），停止迭代
+        if nxt == rec:
+            break
+        rec = nxt
+    if rec == text or not _western_like(rec):
+        return None
+    return rec
+
+
+def _try_lossy_recovery(data):
+    """有损兜底：常规方案判垃圾 / 无候选时启用，依次尝试三种部分恢复。
+
+    1. 头部坏字节修剪（无损）：丢弃开头 1..8 字节后重新严格解码——文件头被
+       截断/损坏（游离续字节、半截 BOM）时，正文仍可无损还原；
+    2. NUL 剥离后重检（无损）：低密度 NUL（<=5%）视为传输污染，剥离后内容
+       往往是完整原文；
+    3. 宽松替换解码（有损）：utf-8 / gb18030 以 errors='replace' 解码，仅当
+       损伤可控（替换符占比 <=5%、控制符占比 <=2%、可读性 >=70）才采纳，
+       用于随机字节损坏但正文完好的文件。
+
+    :return: (text, report) 或 None（三者均不满足 → 维持垃圾判定拒绝）。
+    """
+    # 1) 头部修剪（无损 strict）
+    #    门槛：可读性 >=80 且 常用字占比 >=0.25 且 修剪量 <=1% 数据。
+    #    GBK/BIG5 无自同步结构，剪掉头部字节后错位配对可能拼出"统计可读"的
+    #    CJK 垃圾（浣犲ソ 型），常用字占比可将其排除；修剪量限制防止把
+    #    完好的小文件（如含 NUL 的短文本）误判成头部损坏。
+    max_cut = max(1, int(len(data) * 0.01))
+    for cut in range(1, min(9, max_cut) + 1):
+        for enc in CANDIDATE_ENCODINGS:
+            try:
+                text = _strict_decode_tail(data[cut:], enc)
+            except Exception:
+                continue
+            if text is None:
+                continue
+            score = _readability_score(text)
+            if score >= 80 and _common_ratio(text) >= 0.25:
+                return _lossy_report(
+                    text, encoding=enc, head_trimmed=True, head_cut=cut,
+                    reason="头部损坏：丢弃前 %d 字节后按 %s 解码（可读性 %.0f/100）"
+                    % (cut, enc, score))
+    # 2) NUL 剥离后重检（低密度 NUL 视为污染，剥离即还原）
+    if b"\x00" in data and data.count(b"\x00") / max(1, len(data)) <= 0.05:
+        cleaned = data.replace(b"\x00", b"")
+        if cleaned:
+            try:
+                sub_text, sub_rep = _analyze(cleaned)
+            except Exception:
+                sub_rep = None
+            if sub_rep and not sub_rep["garbage"] and sub_rep["confidence"] >= 0.8:
+                sub_rep["nul_stripped"] = True
+                sub_rep["reasons"] = [
+                    "剥离 %d 个 NUL 字节后重新检测：%s" % (data.count(b"\x00"), sub_rep["encoding"])
+                ] + sub_rep["reasons"]
+                return sub_text, sub_rep
+    # 3) 宽松替换解码（有损，损伤可控才采纳）
+    #    门槛：替换符占比 <=5% 且 控制符占比 <=2% 且 可读性 >=70 且 常用字占比 >=0.15。
+    #    常用字门槛排除"错位配对型垃圾"（锟斤拷/莽聸聴 类字形合法但语义全无，
+    #    统计可读性虚高，而真实中文文本常用字命中率 >40%）。
+    for enc in ("utf-8", "gb18030"):
+        try:
+            text = data.decode(enc, errors="replace")
+        except Exception:
+            continue
+        if not text:
+            continue
+        sample_n = min(2000, len(text))
+        if sample_n == 0:
+            continue
+        ratio = text.count("\ufffd") / len(text)
+        score = _readability_score(text)
+        control = len(_CONTROL_RE.findall(text[:2000])) / sample_n
+        if ratio <= 0.05 and score >= 70 and control <= 0.02 and _common_ratio(text) >= 0.15:
+            return _lossy_report(
+                text, encoding=enc, lossy=True, damage_ratio=round(ratio, 4),
+                reason="有损解码兜底：按 %s 替换解码，损伤 %.2f%%（替换符 %d 处）"
+                % (enc, ratio * 100, text.count("\ufffd")))
+    return None
+
+
+def _lossy_report(text, encoding, reason, **flags):
+    """构造有损恢复的报告（garbage=False，附损伤依据）。"""
+    score = _readability_score(text)
+    return text, {
+        "encoding": encoding,
+        "confidence": round(min(1.0, score / 100.0), 2),
+        "mojibake": False,
+        "garbage": False,
+        "unrecoverable": False,
+        "sample": text[:SAMPLE_CHARS],
+        "reasons": [reason],
+        **flags,
+    }
 
 
 def _analyze(data):
@@ -257,10 +501,25 @@ def _analyze(data):
 
     sample = data[:SAMPLE_LIMIT]
 
+    # 1.5 西文 latin-1 误读预检（Ã© 型结构签名, 先于候选打分, 不依赖中文评分）
+    western = _latin1_western_precheck(data)
+    if western is not None:
+        reasons.append("检测到西文 latin-1 误读（Ã© 型签名），已按 UTF-8 还原")
+        w_score = _readability_score(western)
+        return western, {
+            "encoding": "utf-8", "confidence": round(min(1.0, w_score / 100.0), 2),
+            "mojibake": True, "garbage": False, "unrecoverable": False,
+            "sample": western[:SAMPLE_CHARS], "reasons": reasons}
+
     # 2. 候选编码 strict 解码打分（采样上，尾部截断自动回退）
     candidates = _decode_candidates(sample)
     if not candidates:
         reasons.append("所有候选编码均无法严格解码，疑似二进制或混用编码")
+        recovered = _try_lossy_recovery(data)
+        if recovered:
+            text, rep = recovered
+            rep["reasons"] = reasons + rep["reasons"]
+            return text, rep
         return data.decode("utf-8", errors="replace"), {
             "encoding": "utf-8", "confidence": 0.0, "mojibake": False,
             "garbage": True, "unrecoverable": False,
@@ -276,14 +535,14 @@ def _analyze(data):
     #    反转起点必须覆盖所有候选：误读文件常以 UTF-8 存盘（直解 utf-8 是
     #    乱码），但其分数可能低于 gb18030 候选的错解，只反转 candidates[0]
     #    会漏掉正确的恢复路径。
-    options = []  # (enc, text, mojibake, mid, real, orig_cand_enc)
+    options = []  # (enc, text, mojibake, mid, real, orig_cand_enc, chain)
     cycle_any = False
     for cand_enc, cand_text, cand_score in candidates:
-        options.append((cand_enc, cand_text, False, None, None, cand_enc))
+        options.append((cand_enc, cand_text, False, None, None, cand_enc, []))
         recovered, cycle = _try_mojibake_recovery(cand_text)
         if recovered is not None:
-            rt, mid, real, rs = recovered
-            options.append((real, rt, True, mid, real, cand_enc))
+            rt, mid, real, rs, chain = recovered
+            options.append((real, rt, True, mid, real, cand_enc, chain))
         cycle_any = cycle_any or cycle
 
     # 方案选择：受保护门槛——若 UTF-8 直解可信（readability >= 60），说明文件
@@ -293,35 +552,36 @@ def _analyze(data):
     # 总分打平时直解优先（保守）。
     utf8_direct = next((o for o in options if o[0] == "utf-8" and not o[2]), None)
     if utf8_direct is not None and _readability_score(utf8_direct[1]) >= 60:
-        floor = _score_total(utf8_direct[1]) + 10.0
+        floor = _plan_total("utf-8", utf8_direct[1]) + 10.0
 
         def _eff(o):
             if o[0] == "utf-8" and not o[2]:
-                return _score_total(o[1])
-            t = _score_total(o[1])
+                return _plan_total(o[0], o[1])
+            t = _plan_total(o[0], o[1])
             # 非 UTF-8 方案：总分未显著超过 UTF-8 直解（+10）即视为无效
             return t if t >= floor else -1.0
 
-        enc, text, mojibake, mid_enc, real_enc, cand_enc = max(
-            options, key=lambda o: (_eff(o), 1 if not o[2] else 0))
+        best_opt = max(options, key=lambda o: (_eff(o), 1 if not o[2] else 0))
+        enc, text, mojibake, mid_enc, real_enc, cand_enc, chain = best_opt
     else:
-        enc, text, mojibake, mid_enc, real_enc, cand_enc = max(
-            options, key=lambda o: (_score_total(o[1]), 1 if not o[2] else 0))
+        best_opt = max(options, key=lambda o: (_plan_total(o[0], o[1]), 1 if not o[2] else 0))
+        enc, text, mojibake, mid_enc, real_enc, cand_enc, chain = best_opt
     score = _readability_score(text)
     reasons.append("候选解码：%s（可读性 %.0f/100）" % (cand_enc, score))
     if mojibake:
         reasons.append("乱码反转恢复：按 %s 重读后为 %s（可读性 %.0f/100）"
                        % (mid_enc, real_enc, score))
     elif cycle_any:
-        # 反转候选可达但构成循环（A→B→A）且无可信出口：深度误读
-        reasons.append("检测到乱码反转循环，疑似多重误读，无法自动恢复")
+        # 反转候选可达但构成循环（A→B→A）：仅当文件本身呈现乱码特征时判不可恢复，
+        # 正常文本的候选环不构成拒绝理由（见下方 unrecoverable 门槛）
+        reasons.append("检测到乱码反转候选循环（疑似多重误读，视可读性判定是否拒绝）")
 
-    unrecoverable = bool(cycle_any) and not mojibake
-
-    # 5. 全量解码最终方案（仅一次）
+    # 5. 全量解码最终方案（仅一次）；反转链按序逐层重放（支持多层误读）
     try:
         if mojibake:
-            full_text = data.decode(cand_enc).encode(mid_enc).decode(real_enc)
+            full_text = data.decode(cand_enc)
+            for mid, real in chain:
+                full_text = full_text.encode(mid).decode(real)
             score = _readability_score(full_text)
         else:
             full_text = data.decode(enc)
@@ -336,12 +596,41 @@ def _analyze(data):
             "sample": "", "reasons": reasons}
 
     confidence = min(1.0, score / 100.0)
+
+    # 不可逆性探测：最终文本若含大量替换符（误读层映射损失 / 直解替损），
+    # 字节级信息已毁——输出只会是"带洞的乱码"，应由 fix() 明确拒修而非
+    # 产出半成品让用户误存（如 GBK 系双层乱码，实测还原文本含数万替换符）。
+    irreversible = False
+    fffd = full_text.count("\ufffd")
+    if fffd > max(50, len(full_text) // 200):
+        irreversible = True
+        reasons.append("最终文本含 %d 个替换符，字节级信息不可逆，拒绝修复" % fffd)
+
+    # 循环判定只应作用于"看起来像乱码"的文件：可读性差，或 CJK 密集但常用字极少
+    # （语义级乱码特征，如 鍙岄噸 类字形全合法但语义全无）。
+    # 正常文本（ASCII 为主 / 中英混合）即使反转候选恰好构成 A↔B 环也不得误拒——
+    # 否则合法小文件（如含少量中文的 ASCII 文本）会被误判"多重误读"整体拒绝。
+    full_sample = full_text[:2000]
+    cjk_ratio = len(_CJK_RE.findall(full_sample)) / max(1, len(full_sample))
+    mojibake_ish = score < 60 or (cjk_ratio > 0.3 and _common_ratio(full_text) < 0.15)
+    unrecoverable = bool(cycle_any) and not mojibake and mojibake_ish
+
+    # 6. 有损兜底：常规方案判垃圾（可读性 < 30）时尝试部分恢复，
+    #    仍无法恢复才维持垃圾判定（由 fix() 拒绝，绝不产出整篇乱码）
+    if score < 30:
+        recovered = _try_lossy_recovery(data)
+        if recovered:
+            text, rep = recovered
+            rep["reasons"] = reasons + rep["reasons"]
+            return text, rep
+
     return full_text, {
         "encoding": enc,
         "confidence": round(confidence, 2),
         "mojibake": mojibake,
         "garbage": score < 30,
         "unrecoverable": unrecoverable,
+        "irreversible": irreversible,
         "sample": full_text[:SAMPLE_CHARS],
         "reasons": reasons,
     }
@@ -349,6 +638,8 @@ def _analyze(data):
 
 def _has_cycle_candidate(text):
     """是否存在可 strict 反转的候选（供循环判定：反转可达但不可信）。"""
+    if len(text) < MIN_MOJIBAKE_LEN:
+        return False
     for mid_enc, real_enc in _MOJIBAKE_PAIRS:
         try:
             raw = text.encode(mid_enc)
