@@ -129,19 +129,26 @@ def _score_total(text):
 
 
 def _readability_score(text):
-    """0~100 可读性评分：中文书籍文本得分应显著高于乱码结果。"""
+    """0~100 可读性评分：中文书籍文本得分应显著高于乱码结果。
+
+    西文豁免：合法西文文本（ASCII 字母 + éèñ 等 U+00C0-U+00FF 字母为主，
+    由 :func:`_western_like` 判定）的拉丁补充区是正常字母，不得按乱码扣分——
+    否则法语等合法文本的 utf-8 直解会被 GB18030 错解（凭 CJK 加分）反超成
+    汉字垃圾。误读型乱码（Ã© 型，含大量 U+0080-U+00BF 符号）特征不满足，
+    不受豁免影响。
+    """
     if not text:
         return 0.0
-    length = len(text)
     sample = text[:2000]
     n = len(sample)
     if n == 0:
         return 0.0
 
+    western = _western_like(text)
     replace_count = len(_UNREADABLE_RE.findall(sample))
     control_count = len(_CONTROL_RE.findall(sample))
     cjk_count = len(_CJK_RE.findall(sample))
-    mojibake_count = len(_MOJIBAKE_CHAR_RE.findall(sample))
+    mojibake_count = 0 if western else len(_MOJIBAKE_CHAR_RE.findall(sample))
 
     # 可读字符 = 常规字符（非替换/非控制/非乱码字形）
     readable = n - replace_count - control_count - mojibake_count
@@ -230,7 +237,11 @@ def _utf16_lane_ok(data, enc):
 
     正常 UTF-8 / GBK / BIG5 字节流的车道字节落在该集合的比例远低于
     阈值（UTF-8 仅 ~20-30%），真实中文/ASCII 文本的 UTF-16 则达 90%+。
+
+    编码结构特征在文件头即完备，车道统计在采样前缀上进行，避免对
+    数十 MB 文件做纯 Python 全量逐字节扫描。
     """
+    data = data[:SAMPLE_LIMIT]
     lane = data[1::2] if enc == "utf-16-le" else data[0::2]
     if len(lane) < 4:
         return False
@@ -494,10 +505,22 @@ def _analyze(data):
     for bom, enc in _BOM_TABLE:
         if data.startswith(bom):
             text = data.decode(enc, errors="replace").lstrip("\ufeff")
-            reasons.append("检测到 BOM，编码确定为 %s" % enc)
-            return text, {"encoding": enc, "confidence": 1.0, "mojibake": False,
-                          "garbage": False, "unrecoverable": False,
-                          "sample": text[:SAMPLE_CHARS], "reasons": reasons}
+            # BOM 内容自洽性校验: 若按 BOM 声称的编码解码产生大量替换符，或解读出的
+            # 文本既无常用中文又非西文（错配 BOM 常把 utf-8 内容错读成随机 CJK 垃圾，
+            # 替换符反而极少，如 UTF-16 BOM + UTF-8 内容），说明 BOM 与字节流错配
+            # （如 UTF-8 BOM + UTF-16 内容 / UTF-16 BOM + UTF-8 内容）。
+            # 此时剥离该 BOM 前缀后继续检测，避免全文错位且误报"修复成功"。
+            fffd_ratio = text.count("\ufffd") / max(1, len(text))
+            coherent = (fffd_ratio <= 0.05
+                        and (_common_ratio(text) >= 0.15 or _western_like(text)))
+            if coherent:
+                reasons.append("检测到 BOM，编码确定为 %s" % enc)
+                return text, {"encoding": enc, "confidence": 1.0, "mojibake": False,
+                              "garbage": False, "unrecoverable": False,
+                              "sample": text[:SAMPLE_CHARS], "reasons": reasons}
+            reasons.append("检测到 %s BOM 但内容不自洽（替换符 %.1f%%），剥离该 BOM 前缀后继续"
+                           % (enc, fffd_ratio * 100))
+            data = data[len(bom):]
 
     sample = data[:SAMPLE_LIMIT]
 
@@ -600,11 +623,13 @@ def _analyze(data):
     # 不可逆性探测：最终文本若含大量替换符（误读层映射损失 / 直解替损），
     # 字节级信息已毁——输出只会是"带洞的乱码"，应由 fix() 明确拒修而非
     # 产出半成品让用户误存（如 GBK 系双层乱码，实测还原文本含数万替换符）。
+    # 门槛：替换符 >=20 且 占比 >1%（小文件导出少量洞可容忍，带损部分恢复仍优于拒修）。
     irreversible = False
     fffd = full_text.count("\ufffd")
-    if fffd > max(50, len(full_text) // 200):
+    if fffd >= 20 and fffd > max(1, len(full_text) // 100):
         irreversible = True
-        reasons.append("最终文本含 %d 个替换符，字节级信息不可逆，拒绝修复" % fffd)
+        reasons.append("最终文本含 %d 个替换符(%.1f%%)，字节级信息不可逆，拒绝修复"
+                       % (fffd, 100.0 * fffd / max(1, len(full_text))))
 
     # 循环判定只应作用于"看起来像乱码"的文件：可读性差，或 CJK 密集但常用字极少
     # （语义级乱码特征，如 鍙岄噸 类字形全合法但语义全无）。
@@ -634,21 +659,6 @@ def _analyze(data):
         "sample": full_text[:SAMPLE_CHARS],
         "reasons": reasons,
     }
-
-
-def _has_cycle_candidate(text):
-    """是否存在可 strict 反转的候选（供循环判定：反转可达但不可信）。"""
-    if len(text) < MIN_MOJIBAKE_LEN:
-        return False
-    for mid_enc, real_enc in _MOJIBAKE_PAIRS:
-        try:
-            raw = text.encode(mid_enc)
-        except (UnicodeEncodeError, LookupError):
-            continue
-        rec = _strict_decode(raw, real_enc)
-        if rec is not None and rec != text:
-            return True
-    return False
 
 
 def detect_encoding(data):

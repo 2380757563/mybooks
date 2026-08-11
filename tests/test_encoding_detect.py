@@ -431,6 +431,44 @@ class TestRobustness(unittest.TestCase):
         r = detect_encoding(data)
         self.assertTrue(r.get("irreversible"), r["reasons"])
 
+    def test_bom_mismatch_utf8bom_utf16_content(self):
+        # UTF-8 BOM + UTF-16 内容: 不得按 utf-8-sig 错读全文, 应剥离 BOM 后识别 utf-16
+        src = "第一章\u3000序章\n夜色渐深，他站在窗前。\n" * 200
+        data = b"\xef\xbb\xbf" + src.encode("utf-16")
+        r = detect_encoding(data)
+        self.assertFalse(r["garbage"], r["reasons"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, src)
+
+    def test_bom_mismatch_utf16bom_utf8_content(self):
+        # UTF-16 BOM + UTF-8 内容: 不得按 utf-16 错读成随机 CJK, 应剥离 BOM 后识别 utf-8
+        src = "第一章\u3000序章\n夜色渐深，他站在窗前。\n" * 200
+        data = b"\xff\xfe" + src.encode("utf-8")
+        r = detect_encoding(data)
+        self.assertFalse(r["garbage"], r["reasons"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, src)
+
+    def test_french_text_not_misjudged(self):
+        # 合法西文（法语, 含重音）: é 等是合法字母, 不得被 GB18030 错解成汉字
+        fr = "Voici un texte fran\u00e7ais avec des accents \u00e9 \u00e8 \u00ea \u00e0 \u00e7 \u00f9.\n" * 50
+        data = fr.encode("utf-8")
+        r = detect_encoding(data)
+        self.assertEqual(r["encoding"], "utf-8", r["reasons"])
+        self.assertFalse(r["garbage"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, fr)
+
+    def test_french_accent_dense_not_rejected(self):
+        # 重音密集西文: 不得因"乱码区字符占比高"被误判垃圾/多重误读拒修
+        fr = ("\u00e9\u00e8\u00ea\u00e0\u00e7\u00f9\u00e9\u00e8\u00ea\u00e0\u00e7\u00f9 " * 200) + "\n"
+        data = fr.encode("utf-8")
+        r = detect_encoding(data)
+        self.assertFalse(r["garbage"])
+        self.assertFalse(r["unrecoverable"])
+        text, _ = decode_with_report(data)
+        self.assertEqual(text, fr)
+
 
 if __name__ == "__main__":
     unittest.main()
