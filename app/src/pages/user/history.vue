@@ -6,6 +6,9 @@
                 <legend>{{ $t('history.readingStats') }}</legend>
                 <v-divider class="mb-4"></v-divider>
             </v-col>
+            <v-col cols=12>
+                <reading-stats-banner :show-title="false" />
+            </v-col>
             <v-col cols=6 sm=3>
                 <v-card class="pa-3 text-center stats-card gradient-bg-primary">
                     <v-card-title class="justify-center pa-2">
@@ -105,8 +108,11 @@
 </template>
 
 <script>
+import ReadingStatsBanner from '~/components/ReadingStatsBanner.vue';
+
 export default {
     components: {
+        ReadingStatsBanner,
     },
     computed: {
         history: function() {
