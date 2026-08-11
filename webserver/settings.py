@@ -103,6 +103,10 @@ settings = {
     "WEBDAV_SYNC_FOLDER": False,
     "ENABLE_DATA_SYNC": True,
     "MYREADER_SYNC_PATH": "/data/sync/",
+    "ENABLE_SHARED_NOTES": True,          # 阅读时可查看其他用户的划线与笔记，见 plan/Social_Reading_Plan.md
+    "SYNC_DB_FLUSH_INTERVAL_SEC": 5,      # reading_records 批量落库周期（秒）
+    "SYNC_SHARED_NOTES_MAX_USERS": 20,    # 共读场景单本书最多返回多少个不同用户的 notes
+    "SYNC_LEGACY_MIGRATION_DONE": False,  # 旧版 sync 文件（books/configs/notes.json）是否已全部迁移入库
     "ALLOW_USER_DISABLE_STATISTIC": False,
     "READING_STATS_FLUSH_INTERVAL_SEC": 5,
     "ENABLE_HOMEPAGE_READING_STATS": True,

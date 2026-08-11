@@ -291,6 +291,7 @@ def make_app():
     try:
         models.bind_session(ScopedSession)
         init_social(models.Base, ScopedSession, CONF)
+        models.ensure_new_tables(engine)
     except Exception as e:
         logging.error(f"Error binding session: {e}")
         logging.error(traceback.format_exc())
@@ -500,6 +501,10 @@ def make_app():
     # 见 document/Reading_Stats_Design.md §11.4
     atexit.register(ReadingStatsService.stop)
 
+    from webserver.services.sync_service import MyReaderSyncService
+    MyReaderSyncService.start()
+    atexit.register(MyReaderSyncService.stop)
+
     return app
 
 
@@ -546,6 +551,17 @@ def main():
         logging.error(f"Error making app: {e}")
         logging.error(traceback.format_exc())
         sys.exit(1)
+
+    from webserver.services.sync_service import MyReaderSyncService
+    if MyReaderSyncService.is_enabled() and not CONF.get("SYNC_LEGACY_MIGRATION_DONE", False):
+        # 不停机迁移旧版 <MYREADER_SYNC_PATH>/<uid>/<book_hash>/{kind}.json 文件到
+        # reading_records 表，见 plan/Social_Reading_Plan.md §7.1。只在真正的服务器启动
+        # 路径上跑一次（不在 make_app() 里，避免测试/工具脚本调用 make_app() 时意外扫描
+        # 本机磁盘上的旧同步目录）；扫描本身对已迁移完的用户是 O(1) 的空目录判断。
+        try:
+            MyReaderSyncService.migrate_legacy_data()
+        except Exception:
+            logging.error("[sync] legacy data migration failed, will retry on next startup", exc_info=True)
 
     logging.info("Starting server...")
     logging.debug("Max upload size set to: %d bytes", get_upload_size())

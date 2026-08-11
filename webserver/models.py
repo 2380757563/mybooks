@@ -4,13 +4,15 @@
 import datetime
 import hashlib
 import logging
+import re
 import time
 import json
 import os
+import zlib
 from webserver.i18n import _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.orm import relationship, declarative_base
 from webserver.constants import BOOK_TYPE_EBOOK
@@ -587,6 +589,58 @@ class Reading(Base, SQLAlchemyMixin):
         self.date = date or self.update_time.date()
 
 
+# MyBooks 云端书籍的 book_hash 形如 "cloud-8502-epub"，8502 是 Calibre book_id；
+# 与 webserver/services/reading_stats_service.py::_CLOUD_BOOK_HASH_RE 保持一致（含义相同，
+# 避免相互 import 造成循环依赖，两处各自维护一份同样的正则）。
+_CLOUD_BOOK_HASH_RE = re.compile(r"^cloud-(\d+)-[a-zA-Z0-9]+$")
+
+
+def parse_book_id_from_reading_record_hash(book_hash):
+    """把 `book_hash` 换算成 ReadingRecord.book_id：
+
+    - 云端书籍（`cloud-<id>-<fmt>`）：返回真实的正整数 Calibre book_id。
+    - 本地/无法识别的 book_hash：返回一个稳定的负数占位值（同一 book_hash 每次算出来的
+      结果一致），保证：① 恒为负数，天然不会撞上真实 book_id（恒为正）；② 跨用户共读查询
+      只需加 `book_id > 0` 条件即可自动排除所有本地书籍，不需要额外的"是否本地书籍"标记列。
+      见 document/../plan/Social_Reading_Plan.md §5.2。
+    """
+    if book_hash:
+        m = _CLOUD_BOOK_HASH_RE.match(book_hash)
+        if m:
+            return int(m.group(1))
+    return -(zlib.crc32((book_hash or "").encode("utf-8")) & 0x7FFFFFFF) or -1
+
+
+# 用户阅读器数据同步记录（books/configs/notes 三类），替代原先按
+# <MYREADER_SYNC_PATH>/<uid>/<book_hash>/{kind}.json 的文件存储方案。
+# 详见 plan/Social_Reading_Plan.md §5.2、§7，以及 webserver/services/sync_service.py。
+class ReadingRecord(Base, SQLAlchemyMixin):
+    __tablename__ = "reading_records"
+
+    KIND_BOOKS = "books"
+    KIND_CONFIGS = "configs"
+    KIND_NOTES = "notes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reader_id = Column(Integer, ForeignKey("readers.id"), nullable=False)
+    book_hash = Column(String(64), nullable=False)      # 原始 book_hash，记录身份仍以它为准
+    book_id = Column(Integer, nullable=False)           # 从 book_hash 提取的整型 id，供跨用户查询走整型索引
+    kind = Column(String(16), nullable=False)           # books | configs | notes
+    record_id = Column(String(64), nullable=False)      # books/configs: 固定用 book_hash 占位；notes: 记录自带的 id
+    uid = Column(Integer, nullable=False)                # 冗余存一份 reader_id，同时也是要求写入 payload 内的 "uid"
+    payload = Column(MutableDict.as_mutable(JSONType), nullable=False, default={})  # 记录原始 JSON 内容
+    updated_at = Column(BigInteger, nullable=False)      # 毫秒时间戳，来自 payload.updated_at，冗余出来做索引/排序
+    deleted_at = Column(BigInteger, nullable=True)       # 同上，冗余自 payload.deleted_at
+
+    reader = relationship(Reader)
+
+    __table_args__ = (
+        UniqueConstraint("reader_id", "book_hash", "kind", "record_id", name="ux_reading_record"),
+        Index("ix_reading_record_lookup", "reader_id", "kind", "updated_at"),
+        Index("ix_reading_record_book_kind", "book_id", "kind", "updated_at"),
+    )
+
+
 class Device(Base, SQLAlchemyMixin):
     """用户阅读设备"""
 
@@ -755,3 +809,13 @@ class Memo(Base, SQLAlchemyMixin):
 
 def user_syncdb(engine):
     Base.metadata.create_all(engine)
+
+
+# 表结构随功能迭代新增的表，不希望依赖运维方手动重新执行 `--syncdb` 才能用上
+# （`docker/start.sh` 每次启动都会跑 --syncdb，但手工部署/测试环境不一定会），
+# 在正常的 make_app() 启动路径里也顺带补建一次，checkfirst=True 天然幂等。
+_NEW_TABLES_AUTO_ENSURE = (ReadingRecord,)
+
+
+def ensure_new_tables(engine):
+    Base.metadata.create_all(engine, tables=[m.__table__ for m in _NEW_TABLES_AUTO_ENSURE], checkfirst=True)

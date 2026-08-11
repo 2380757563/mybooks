@@ -34,8 +34,14 @@ class SyncHandler(BaseHandler):
         if type_ and type_ not in MyReaderSyncService.KINDS:
             return {"err": "params.invalid", "msg": _("非法的 type 参数")}
         book_hash = self.get_argument("book", None)
+        own = self.get_argument("own", "1")
+        if own not in ("0", "1"):
+            return {"err": "params.invalid", "msg": _("非法的 own 参数")}
 
-        return MyReaderSyncService.pull(self.current_user.id, int(since), type_, book_hash)
+        # own=1（默认）只返回自己的记录；own=0 时额外并入其他用户的 notes（受
+        # ENABLE_SHARED_NOTES 开关与 book 参数约束），具体组装逻辑都在 MyReaderSyncService
+        # 内部完成，这里只是把参数原样透传下去。
+        return MyReaderSyncService.pull(self.current_user.id, int(since), type_, book_hash, int(own))
 
     @js
     @auth
