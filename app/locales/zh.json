@@ -574,6 +574,7 @@
     "reviewDeleted": "已删除",
     "reviewDeleteConfirm": "确定要删除这条评论吗？删除后无法恢复。",
     "readingCount": "在读 {count} 人",
+    "finishedCount": "读完 {count} 人",
     "favoriteCount": "收藏 {count} 人",
     "recommendCount": "推荐 {count} 人",
     "reviewsTitle": "评论",

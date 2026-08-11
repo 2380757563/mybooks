@@ -780,6 +780,7 @@
     "reviewDeleted": "Deleted",
     "reviewDeleteConfirm": "Delete this review? This cannot be undone.",
     "readingCount": "{count} reading",
+    "finishedCount": "{count} finished",
     "favoriteCount": "{count} favorited",
     "recommendCount": "{count} recommend",
     "reviewsTitle": "Reviews",

@@ -15,7 +15,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy import or_
 
 from webserver import loader
-from webserver.models import READ_STATE_READING, BookReview, ReadingRecord, ReadingState
+from webserver.models import READ_STATE_FINISHED, READ_STATE_READING, BookReview, ReadingRecord, ReadingState
 from webserver.services.cache import TTLCache
 
 CONF = loader.get_settings()
@@ -147,6 +147,9 @@ class BookReviewService:
             reading_count = db.query(ReadingState).filter(
                 ReadingState.book_id == book_id, ReadingState.read_state == READ_STATE_READING
             ).count()
+            finished_count = db.query(ReadingState).filter(
+                ReadingState.book_id == book_id, ReadingState.read_state == READ_STATE_FINISHED
+            ).count()
             favorite_count = db.query(ReadingState).filter(ReadingState.book_id == book_id, ReadingState.favorite == 1).count()
             recommend_count = 0
             if cls.recommend_enabled():
@@ -155,7 +158,12 @@ class BookReviewService:
                     BookReview.status == BookReview.STATUS_APPROVED,
                     BookReview.deleted_at.is_(None),
                 ).count()
-            return {"reading_count": reading_count, "favorite_count": favorite_count, "recommend_count": recommend_count}
+            return {
+                "reading_count": reading_count,
+                "finished_count": finished_count,
+                "favorite_count": favorite_count,
+                "recommend_count": recommend_count,
+            }
 
         return _stats_cache.get_or_set(_stats_key(book_id), _STATS_TTL_SEC, _load)
 

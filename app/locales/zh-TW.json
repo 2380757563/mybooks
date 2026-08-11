@@ -573,6 +573,7 @@
     "reviewDeleted": "已刪除",
     "reviewDeleteConfirm": "確定要刪除這條評論嗎？刪除後無法恢復。",
     "readingCount": "在讀 {count} 人",
+    "finishedCount": "讀完 {count} 人",
     "favoriteCount": "收藏 {count} 人",
     "recommendCount": "推薦 {count} 人",
     "reviewsTitle": "評論",

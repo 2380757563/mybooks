@@ -124,8 +124,6 @@ export default {
             }
         },
         async remove(r) {
-            // 物理删除，不可恢复，删除后不再展示（区别于管理后台"用户评论"页的可恢复"隐藏"）
-            if (!confirm(this.$t("book.reviewDeleteConfirm"))) return;
             try {
                 const rsp = await this.$backend("/admin/book-reviews", {
                     method: "POST",

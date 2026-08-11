@@ -2100,6 +2100,7 @@ export default {
                 // 确定要设置的新状态
                 let newReadState;
                 let successMessage;
+                const oldReadState = this.book.state ? this.book.state.read_state : this.READING_STATE.UNREAD;
 
                 if (!this.book.state || this.book.state.read_state === this.READING_STATE.UNREAD) {
                     // 未读 -> 设为在读
@@ -2130,6 +2131,8 @@ export default {
                     if (newReadState === this.READING_STATE.READING) {
                         this.book.state.wants = 0; // 在读后自动移除待读状态
                     }
+                    // 按状态变化量直接修正右侧"在读/读完"人数展示，不必重新查后台
+                    this.$refs.socialInfo?.applyReadStateDelta(oldReadState, newReadState);
 
                     // 显示成功提示
                     this.$alert('success', successMessage);

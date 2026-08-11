@@ -511,6 +511,10 @@ class AdminSettings(BaseHandler):
             "ENABLE_AUTHOR_INFO",
             "ALLOW_USER_DISABLE_STATISTIC",
             "ENABLE_HOMEPAGE_READING_STATS",
+            "ENABLE_BOOK_REVIEW",
+            "REVIEW_REQUIRES_APPROVAL",
+            "ENABLE_BOOK_RECOMMEND_TO_OTHERS",
+            "ENABLE_SHARED_NOTES",
         ]
 
         current_icon = CONF.get(
