@@ -23,6 +23,7 @@
               </p>
             </template>
 
+            <div class="pl-6" v-if="card.fields && card.fields.length">
             <template v-for="f in card.fields">
               <v-checkbox
                 small
@@ -155,6 +156,7 @@
                 </template>
               </v-text-field>
             </template>
+            </div>
 
             <template v-for="b in card.buttons">
               <v-btn :key="b.label" @click="run(b.action)" color="primary"
@@ -1135,7 +1137,7 @@ export default {
         subtitle: "settings.book_tags_description",
         fields: [
           {
-            icon: "person",
+            icon: "mdi-tag-outline",
             key: "BOOK_NAV",
             type: "textarea",
             label: "settings.book_nav",
