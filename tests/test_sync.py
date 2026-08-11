@@ -238,6 +238,35 @@ class TestSyncServiceStorage(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(run())
 
+    def test_shared_notes_include_author_nickname_and_avatar(self):
+        """myreader 需要在共读批注上显示是谁写的（见 document/MyReader_Embedded_WebApp.md
+        多用户批注需求），跨用户 note 必须带上作者的 nickname/avatar，自己的 note 不需要。"""
+        async def run():
+            book_hash = "cloud-90004-epub"
+            other = models.Reader(username="shared-author", name="Alice", avatar="alice.png",
+                                   create_time=None, update_time=None)
+            db = get_db()
+            db.add(other)
+            db.commit()
+            other_id = other.id
+
+            await MyReaderSyncService.push(120, {"notes": [
+                {"id": "n1", "book_hash": book_hash, "updated_at": 10, "note": "mine"},
+            ]})
+            await MyReaderSyncService.push(other_id, {"notes": [
+                {"id": "n2", "book_hash": book_hash, "updated_at": 10, "note": "theirs"},
+            ]})
+            MyReaderSyncService.flush_now()
+
+            shared = MyReaderSyncService.pull(120, since=0, type_="notes", book_hash=book_hash, own=0)
+            mine = next(r for r in shared["notes"] if r["id"] == "n1")
+            theirs = next(r for r in shared["notes"] if r["id"] == "n2")
+            self.assertNotIn("author", mine)
+            self.assertEqual(theirs["author"]["nickname"], "Alice")
+            self.assertIn("alice.png", theirs["author"]["avatar"])
+
+        asyncio.get_event_loop().run_until_complete(run())
+
     def test_shared_notes_disabled_by_setting(self):
         async def run():
             book_hash = "cloud-90003-epub"

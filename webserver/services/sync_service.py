@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import tornado.ioloop
 
 from webserver import loader
-from webserver.models import ReadingRecord, Reading, parse_book_id_from_reading_record_hash
+from webserver.models import ReadingRecord, Reading, Reader, parse_book_id_from_reading_record_hash
 from webserver.services.reading_stats_service import ReadingStatsService, parse_book_id_from_hash
 
 CONF = loader.get_settings()
@@ -186,7 +186,39 @@ class MyReaderSyncService:
         for row in rows:
             if row.uid not in allowed_uids and len(allowed_uids) < max_users:
                 allowed_uids.add(row.uid)
-        return [row.payload for row in rows if row.uid in allowed_uids and cls._changed_since(row.payload, since)]
+        authors = cls._authors_by_id(db, allowed_uids)
+        result = []
+        for row in rows:
+            if row.uid not in allowed_uids or not cls._changed_since(row.payload, since):
+                continue
+            payload = dict(row.payload)
+            author = authors.get(row.uid)
+            if author:
+                payload["author"] = author
+            result.append(payload)
+        return result
+
+    @classmethod
+    def _authors_by_id(cls, db, uids: Set[int]) -> Dict[int, dict]:
+        """{uid: {"nickname", "avatar"}} for the given reader ids — attached to
+        cross-user notes so myreader can show who wrote them (see
+        plan/Social_Reading_Plan.md §2.2 实施调整). Avatar URL built the same
+        way as UserInfo handler (webserver/handlers/user.py), but from CONF's
+        `site_url` since this isn't a request handler."""
+        if not uids:
+            return {}
+        readers = db.query(Reader).filter(Reader.id.in_(uids)).all()
+        out = {}
+        for reader in readers:
+            avatar = ""
+            if reader.avatar:
+                if reader.avatar.startswith("http"):
+                    gravatar_url = "https://www.gravatar.com"
+                    avatar = reader.avatar.replace("http://", "https://").replace(gravatar_url, CONF.get("avatar_service", ""))
+                else:
+                    avatar = CONF.get("site_url", "") + "/avatar/%s" % reader.avatar
+            out[reader.id] = {"nickname": reader.name or "", "avatar": avatar}
+        return out
 
     @classmethod
     def pull(cls, uid, since: int, type_: Optional[str] = None, book_hash: Optional[str] = None, own: int = 1) -> dict:
