@@ -296,7 +296,7 @@
       "addTag": "Add Tag",
       "uncategorized": "Uncategorized",
       "actions": "Actions",
-      "deleteBook": "Delete Book",
+      "deleteBook": "Delete",
       "updateAllMeta": "Update Books according to file name format",
       "updateAllDynamicCover": "Batch update dynamic cover if no cover",
       "resetAllDynamicCover": "Restore original book cover from file",

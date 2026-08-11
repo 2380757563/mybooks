@@ -412,25 +412,14 @@
             </template>
 
             <template v-slot:item.actions="{ item }">
-                <v-menu offset-y right>
-                    <template v-slot:activator="{ on }">
-                        <v-btn
-                            color="primary"
-                            :small="!$vuetify.breakpoint.xs"
-                            :x-small="$vuetify.breakpoint.xs"
-                            :icon="$vuetify.breakpoint.xs"
-                            v-on="on"
-                        >
-                            <v-icon :small="!$vuetify.breakpoint.xs" :x-small="$vuetify.breakpoint.xs">more_vert</v-icon>
-                            <span v-if="!$vuetify.breakpoint.xs">{{ $t('admin.books.actions') }}</span>
-                        </v-btn>
-                    </template>
-                    <v-list dense>
-                        <v-list-item @click="deleteBook(item)">
-                            <v-list-item-title>{{ $t('admin.books.deleteBook') }}</v-list-item-title>
-                        </v-list-item>
-                    </v-list>
-                </v-menu>
+                <v-btn
+                    color="warning"
+                    :small="!$vuetify.breakpoint.xs"
+                    @click="deleteBook(item)"
+                >
+                    <v-icon :small="!$vuetify.breakpoint.xs">delete</v-icon>
+                    <span >{{ $t('admin.books.deleteBook') }}</span>
+                </v-btn>
             </template>
             <template v-slot:footer.page-text>
                 <div class="d-flex align-center" style="gap: 4px;">
@@ -1234,18 +1223,6 @@ export default {
         max-width: 100px;
     }
 
-    /* 封面图片在小屏幕上保持30x40的固定尺寸 */
-    .v-data-table .v-image {
-        min-width: 30px !important;
-        max-width: 30px !important;
-        width: 30px !important;
-        min-height: 40px !important;
-        max-height: 40px !important;
-        height: 40px !important;
-        margin-left: auto !important;
-        display: block !important;
-    }
-
     /* 确保图片单元格也有合适的宽度和右对齐 - 桌面端表格 */
     .v-data-table td:has(.v-image) {
         width: 100% !important;
@@ -1268,85 +1245,80 @@ export default {
         padding-bottom: 12px !important;
     }
 
-    /* 移动端表格行 */
+    /* 移动端表格行 - 紧凑高度约 20px */
     .v-data-table__mobile-row {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
-        padding: 8px 12px !important;
+        justify-content: center !important;
+        min-height: 20px !important;
+        padding: 0 6px !important;
         margin-bottom: 0 !important;
         border-bottom: none !important;
         width: 100% !important;
         min-width: auto !important;
     }
 
-    /* 移动端表格标题 */
+    /* 隐藏字段标题，移动端只显示数据内容 */
     .v-data-table__mobile-row__header {
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        margin-right: 12px !important;
-        min-width: 70px !important;
-        color: rgba(0,0,0,0.7) !important;
-        flex-shrink: 0 !important;
+        display: none !important;
     }
 
-    /* 移动端表格单元格内容 */
+    /* 移动端表格单元格内容 - 居中对齐 */
     .v-data-table__mobile-row__cell {
         font-size: 14px !important;
         flex: 1 !important;
         word-break: break-word !important;
         min-width: 0 !important;
         padding: 0 !important;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
     }
 
-    /* 封面图片所在行的特殊处理 */
-    .v-data-table__mobile-row:nth-child(2) {
+    /* 隐藏每行的多选框（Vuetify 在 mobile 模式下渲染为含 .v-simple-checkbox 的行） */
+    .v-data-table__mobile-row:has(.v-simple-checkbox) {
+        display: none !important;
+    }
+
+    /* 封面图片所在行 - 高度 120px，居中对齐 */
+    .v-data-table__mobile-row:has(.v-image) {
         width: 100% !important;
         min-width: 100% !important;
-        min-height: 100px !important;
-        align-items: flex-start !important;
+        min-height: 120px !important;
+        height: 120px !important;
+        align-items: center !important;
+        justify-content: center !important;
         padding: 12px !important;
     }
 
     /* 封面图片所在行的内容 */
-    .v-data-table__mobile-row:nth-child(2) .v-data-table__mobile-row__cell {
+    .v-data-table__mobile-row:has(.v-image) .v-data-table__mobile-row__cell {
         flex: 1 !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        min-height: 100px !important;
+        min-height: 120px !important;
     }
 
-    /* 封面图片 */
-    .v-data-table__mobile-row:nth-child(2) .v-data-table__mobile-row__cell .v-image {
-        min-width: 100px !important;
-        max-width: 120px !important;
-        width: 100px !important;
-        min-height: 160px !important;
-        max-height: 160px !important;
-        height: 160px !important;
+    /* 封面图片所在行的链接 - 居中 */
+    .v-data-table__mobile-row:has(.v-image) .v-data-table__mobile-row__cell a {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: auto !important;
+    }
+
+    /* 封面图片 - 居中显示，尺寸适配 120px 行高（3:4 比例） */
+    .v-data-table__mobile-row:has(.v-image) .v-data-table__mobile-row__cell .v-image {
+        min-width: 90px !important;
+        max-width: 90px !important;
+        width: 90px !important;
+        min-height: 120px !important;
+        max-height: 120px !important;
+        height: 120px !important;
         margin: 0 !important;
-    }
-
-    /* 为不同类型的字段设置不同的最小宽度 */
-    .v-data-table__mobile-row:nth-child(1) .v-data-table__mobile-row__header {
-        min-width: 50px !important;
-    }
-
-    .v-data-table__mobile-row:nth-child(3) .v-data-table__mobile-row__header {
-        min-width: 40px !important;
-    }
-
-    .v-data-table__mobile-row:nth-child(4) .v-data-table__mobile-row__header {
-        min-width: 60px !important;
-    }
-
-    .v-data-table__mobile-row:nth-child(5) .v-data-table__mobile-row__header {
-        min-width: 60px !important;
-    }
-
-    .v-data-table__mobile-row:nth-child(6) .v-data-table__mobile-row__header {
-        min-width: 60px !important;
     }
 
     /* Chip组件在小屏幕上保持合适大小 */

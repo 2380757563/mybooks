@@ -294,7 +294,7 @@
       "addTag": "新增標籤",
       "uncategorized": "未分類",
       "actions": "操作",
-      "deleteBook": "刪除此書",
+      "deleteBook": "刪除",
       "updateAllMeta": "更新庫中目錄及文件格式",
       "updateAllDynamicCover": "為無封面書籍生成封面",
       "resetAllDynamicCover": "恢復圖書文件內置的封面",
