@@ -68,7 +68,7 @@ settings = {
         d = self.set_store_path()
         py = os.path.join(d, filename)
         pyc = os.path.join(d, filename + "c")
-        logging.error("saving settings file: %s" % py)
+        logging.info("saving settings file: %s" % py)
         with open(py, "w", encoding="utf-8") as f:
             f.write(code)
         try:

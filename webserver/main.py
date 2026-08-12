@@ -395,6 +395,7 @@ def make_app():
     logging.info(f"The installed version is {CONF.get("installed_version", "NONE")}, {"" if is_upgrade else "no"} need to check or upgrade table structure.")
     need_sync_item_time = AsyncService().setup(book_db, ScopedSession, need_check_db=is_upgrade)
     if is_upgrade and CONF.get("installed", False):
+        logging.info("Need to save the setting for initialized version")
         SettingsSaver().save_extra_settings(CONF)
 
     logging.info("Now, Running...")
@@ -554,7 +555,7 @@ def main():
         sys.exit(1)
 
     from webserver.services.sync_service import MyReaderSyncService
-    if MyReaderSyncService.is_enabled() and not CONF.get("SYNC_LEGACY_MIGRATION_DONE", False):
+    if CONF.get("installed", False) and MyReaderSyncService.is_enabled() and not CONF.get("SYNC_LEGACY_MIGRATION_DONE", False):
         # 不停机迁移旧版 <MYREADER_SYNC_PATH>/<uid>/<book_hash>/{kind}.json 文件到
         # reading_records 表，见 plan/Social_Reading_Plan.md §7.1。只在真正的服务器启动
         # 路径上跑一次（不在 make_app() 里，避免测试/工具脚本调用 make_app() 时意外扫描
