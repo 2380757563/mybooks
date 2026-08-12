@@ -361,12 +361,13 @@ class BookCategoryBatch(BaseHandler):
         category = data.get(COLUMN_CATEGORY, "").strip()
         author = data.get("author", "").strip()
         tag = data.get("tag", "").strip()
+        series = data.get("series", "").strip()
 
         if not category:
             return {"err": "params.category.empty", "msg": _("分类不能为空")}
 
-        if not author and not tag:
-            return {"err": "params.invalid", "msg": _("必须指定作者或标签")}
+        if not author and not tag and not series:
+            return {"err": "params.invalid", "msg": _("必须指定作者、标签或丛书")}
 
         # Find books
         book_ids = set()
@@ -392,10 +393,22 @@ class BookCategoryBatch(BaseHandler):
                 logging.error(f"Error searching books by tag {tag}: {e}")
                 return {"err": "internal", "msg": _("搜索标签书籍失败")}
 
+        if series:
+            # Search by series
+            try:
+                query = f'series:="{series}"'
+                ids = self.calibre_db_cache.search(query)
+                book_ids.update(ids)
+            except Exception as e:
+                logging.error(f"Error searching books by series {series}: {e}")
+                return {"err": "internal", "msg": _("搜索丛书书籍失败")}
+
         if not book_ids:
             return {"err": "ok", "msg": _("未找到符合条件的书籍"), "count": 0}
 
-        logging.info(f"Batch updating category to '{category}' for {len(book_ids)} books (Author: {author}, Tag: {tag})")
+        logging.info(
+            f"Batch updating category to '{category}' for {len(book_ids)} books (Author: {author}, Tag: {tag}, Series: {series})"
+        )
 
         count = 0
         try:

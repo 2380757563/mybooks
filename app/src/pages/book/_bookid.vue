@@ -663,7 +663,7 @@
                                     dark
                                     color="indigo"
                                     v-if="book.series"
-                                    :to="'/series/' + encodeURIComponent(book.series)"
+                                    :to="{ path: '/series', query: { name: encodeURIComponent(book.series) } }"
                                 >
                                     <v-icon>explore</v-icon>
                                     {{ $t('book.series') }}: {{ book.series }} {{ book.series_index ? '(#' + book.series_index + ')' : '' }}
