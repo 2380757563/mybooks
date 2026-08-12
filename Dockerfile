@@ -31,6 +31,10 @@ RUN mkdir -p /app-ssr/ /app-static/ && \
 FROM docker.1ms.run/poxenstudio/mybooks_base:latest AS test
 RUN pip install flake8 pytest --break-system-packages
 COPY webserver/ /var/www/mybooks/webserver/
+COPY third-party/foliate-js/ /var/www/mybooks/third-party/foliate-js/
+# CFI batch generator (webserver/services/cfi_gen/, see plan/WeChatReading_Annotation_Import_Plan.md §4.3) —
+# npm ci here, not at COPY time, so it's reproducible from the committed package-lock.json.
+RUN cd /var/www/mybooks/webserver/services/cfi_gen && npm ci --omit=dev
 COPY tests/ /var/www/mybooks/tests/
 CMD ["pytest", "/var/www/mybooks/tests"]
 
@@ -73,6 +77,8 @@ RUN mkdir -p /data/log/nginx/ && \
 COPY server.py /var/www/mybooks/
 COPY docker/ /var/www/mybooks/docker/
 COPY webserver/ /var/www/mybooks/webserver/
+COPY third-party/foliate-js/ /var/www/mybooks/third-party/foliate-js/
+RUN cd /var/www/mybooks/webserver/services/cfi_gen && npm ci --omit=dev
 COPY conf/nginx/ssl.* /data/books/ssl/
 COPY conf/nginx/mybooks.conf /etc/nginx/conf.d/
 COPY conf/supervisor/mybooks.conf /etc/supervisor/conf.d/

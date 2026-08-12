@@ -632,7 +632,7 @@ export default {
                         { icon: "mdi-library-shelves", href: "/admin/books", text: "appHeader.bookManagement", color: "primary"},
                         { icon: "mdi-notebook", href: "/admin/all-expected", text: "expected.allPageTitle", color: "green"},
                         { icon: "mdi-message-text-outline", href: "/admin/user-memos", text: "memos.pageTitle", color: "blue"},
-                        { icon: "mdi-comment-text-multiple-outline", href: "/admin/book-reviews", text: "adminBookReviews.pageTitle", color: "deep-orange"},
+                        ...(this.sys.allow.book_review ? [{ icon: "mdi-comment-text-multiple-outline", href: "/admin/book-reviews", text: "adminBookReviews.pageTitle", color: "deep-orange"}] : []),
                         { icon: "mdi-math-log", href: "/admin/syslog", text: "appHeader.syslog", color: "#FB9795"},
                         { icon: "mdi-toolbox-outline", href: "/admin/toolbox", text: "appHeader.toolbox", color: "#FB9795"},
                         { icon: "mdi-rhombus-split", href: "/admin/resources", text: "appHeader.resources", color: "teal"},

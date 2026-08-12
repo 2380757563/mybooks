@@ -1,0 +1,15 @@
+{
+  "name": "mybooks-cfi-gen",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Batch EPUB CFI generator for the WeChat-Reading annotation import pipeline. Invoked as a child process from webserver/services/cfi_gen/launcher.py (one process per book, one JSON request/response over stdin/stdout). Not a public package, never published.",
+  "type": "module",
+  "main": "cfi_batch.mjs",
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "jsdom": "^28.1.0"
+  }
+}
