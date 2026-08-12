@@ -2767,6 +2767,48 @@ class BookRead(BaseHandler):
         return {"err": "ok", "msg": _("正在执行转换任务，请稍候..."), "data": {"status": "converting"}}
 
 
+class BookFilePath(BaseHandler):
+    """
+    Internal-only lookup: given a bookId + format, returns the book's physical
+    path on disk. Used exclusively by MyReader's same-container embedded
+    reader (see document/MyReader_Embedded_WebApp.md §13) — MyReader's
+    `/api/mybooks/local-file` route calls this server-to-server (bypassing
+    nginx entirely via MYBOOKS_INTERNAL_ORIGIN, same pattern as WhoAmI) to
+    resolve the path itself, so the browser-facing `/reader-embed/open`
+    redirect only ever carries bookId + format, never the raw filesystem path.
+
+    Restricted to loopback-only callers in conf/nginx/mybooks.conf — this
+    leaks actual server disk layout, which is more sensitive than WhoAmI's
+    "who are you" response, so (unlike WhoAmI) it is NOT meant to be reachable
+    from outside the container even by an authenticated caller.
+    """
+    @js
+    def get(self, bid):
+        if not CONF["ALLOW_GUEST_READ"] and not self.current_user:
+            return {"err": "user.need_login", "msg": _("请先登录")}
+
+        if self.current_user:
+            if self.current_user.can_read():
+                if not self.current_user.is_active():
+                    return {"err": "user.no_permission", "msg": _("无权在线阅读，请先登录注册邮箱激活账号。")}
+            else:
+                return {"err": "user.no_permission", "msg": _("无权在线阅读")}
+
+        book = self.get_book(bid, raise_exception=False)
+        if not book:
+            return {"err": "params.book.invalid", "msg": _("书籍已不存在")}
+
+        fmt_arg = self.get_argument("format", "").lower()
+        if fmt_arg not in ("epub", "pdf"):
+            return {"err": "params.format.invalid", "msg": _("格式参数无效")}
+
+        fpath = book.get("fmt_%s" % fmt_arg)
+        if not fpath:
+            return {"err": "params.format.unavailable", "msg": _("该格式不存在")}
+
+        return {"err": "ok", "data": {"path": fpath}}
+
+
 class TxtRead(BaseHandler):
     @js
     @auth
@@ -3617,6 +3659,7 @@ def routes():
         (r"/api/book/([0-9]+)/mailto", BookSendToMail),
         (r"/read/([0-9]+)", BookRead),
         (r"/api/book/([0-9]+)/read", BookRead),
+        (r"/api/book/([0-9]+)/filepath", BookFilePath),
         (r"/api/read/txt/([0-9]+)", TxtRead),
         (r"/api/book/txt/parser", BookTxtParser),
         (r"/api/book/([0-9]+)/convert", BookConverter),
