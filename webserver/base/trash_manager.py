@@ -90,6 +90,48 @@ class TrashManager:
             TrashManager.TRASH_SIZES_CACHE["ts"] = 0
 
     @staticmethod
+    def list_trash_books(cache):
+        """列出 Calibre 回收站中的书籍条目（不含单独删除的格式文件）"""
+        books, _formats = cache.list_trash_entries()
+        return [
+            {
+                "book_id": b.book_id,
+                "title": b.title,
+                "author": b.author,
+                "deleted_at": b.mtime,
+            }
+            for b in sorted(books, key=lambda x: x.mtime, reverse=True)
+        ]
+
+    @staticmethod
+    def restore_trash_books(cache, book_ids):
+        """从回收站恢复书籍，返回 (成功的book_id列表, {失败的book_id: 错误信息})"""
+        ok, failed = [], {}
+        for book_id in book_ids:
+            try:
+                cache.move_book_from_trash(book_id)
+                ok.append(book_id)
+            except Exception as e:
+                logging.error("从回收站恢复书籍 %s 失败: %s", book_id, e)
+                failed[book_id] = str(e)
+        TrashManager.clear_trash_cache()
+        return ok, failed
+
+    @staticmethod
+    def purge_trash_books(cache, book_ids):
+        """彻底删除回收站中的书籍条目，返回 (成功的book_id列表, {失败的book_id: 错误信息})"""
+        ok, failed = [], {}
+        for book_id in book_ids:
+            try:
+                cache.delete_trash_entry(book_id, "b")
+                ok.append(book_id)
+            except Exception as e:
+                logging.error("彻底删除回收站书籍 %s 失败: %s", book_id, e)
+                failed[book_id] = str(e)
+        TrashManager.clear_trash_cache()
+        return ok, failed
+
+    @staticmethod
     def clear_trashs():
         errors = []
         trash_path = os.path.abspath(TrashManager.TRASH_PATH)

@@ -46,6 +46,7 @@ from webserver.constants import (
     BOOK_TYPE_PHYSICAL,
     BOOK_TYPE_EBOOK,
     ENABLE_OPDS_SERVICE,
+    AUTO_FILL_META,
 )
 from webserver.i18n import apply_localized_default_settings
 
@@ -1303,6 +1304,80 @@ class AdminTrashClear(BaseHandler):
         return {"err": "ok", "msg": _("已清理Calibre回收站及上传目录")}
 
 
+class AdminTrashBooks(BaseHandler):
+    @js
+    @auth
+    def get(self):
+        if not self.admin_user:
+            return {"err": "permission.not_admin", "msg": _("当前用户非管理员, 无权操作")}
+        with self.db_lock:
+            books = TrashManager.list_trash_books(self.calibre_db_cache)
+        return {"err": "ok", "books": books}
+
+
+class AdminTrashBooksRestore(BaseHandler):
+    @js
+    @auth
+    def post(self):
+        if not self.admin_user:
+            return {"err": "permission.not_admin", "msg": _("当前用户非管理员, 无权操作")}
+        req = tornado.escape.json_decode(self.request.body)
+        book_ids = req.get("book_ids", [])
+        if not book_ids:
+            return {"err": "params.error", "msg": _("参数错误")}
+        with self.db_lock:
+            ok, failed = TrashManager.restore_trash_books(self.calibre_db_cache, book_ids)
+            if ok:
+                self.calibre_db.data.books_added(tuple(ok))
+        for book_id in ok:
+            self._recreate_item_for_restored_book(book_id)
+        if failed:
+            return {
+                "err": "error" if not ok else "partial",
+                "msg": _("部分书籍恢复失败: %s") % failed,
+                "restored": ok,
+                "failed": failed,
+            }
+        return {"err": "ok", "msg": _("已恢复选中的书籍"), "restored": ok}
+
+    def _recreate_item_for_restored_book(self, book_id):
+        """从回收站恢复书籍后，参照 BookUpload 补建 Item 记录并触发元数据刮削（不发送邮件提醒）"""
+        try:
+            existing_item = self.sqlite_session.query(Item).filter(Item.book_id == book_id).first()
+            if not existing_item:
+                item = Item()
+                item.book_id = book_id
+                item.collector_id = self.user_id()
+                self.sqlite_session.add(item)
+                self.sqlite_session.commit()
+            if CONF.get(AUTO_FILL_META, False):
+                AutoFillService().auto_fill(book_id)
+        except Exception as e:
+            logging.error("恢复书籍 %s 后补建Item/刮削失败: %s", book_id, e)
+
+
+class AdminTrashBooksPurge(BaseHandler):
+    @js
+    @auth
+    def post(self):
+        if not self.admin_user:
+            return {"err": "permission.not_admin", "msg": _("当前用户非管理员, 无权操作")}
+        req = tornado.escape.json_decode(self.request.body)
+        book_ids = req.get("book_ids", [])
+        if not book_ids:
+            return {"err": "params.error", "msg": _("参数错误")}
+        with self.db_lock:
+            ok, failed = TrashManager.purge_trash_books(self.calibre_db_cache, book_ids)
+        if failed:
+            return {
+                "err": "error" if not ok else "partial",
+                "msg": _("部分条目删除失败: %s") % failed,
+                "purged": ok,
+                "failed": failed,
+            }
+        return {"err": "ok", "msg": _("已彻底删除选中的条目"), "purged": ok}
+
+
 class AdminStamp(BaseHandler):
     @js
     @auth
@@ -1659,6 +1734,9 @@ def routes():
         (r"/api/admin/tasks/running", AdminRunningTasks),
         (r"/api/admin/trash/size", AdminTrashSize),
         (r"/api/admin/trash/clear", AdminTrashClear),
+        (r"/api/admin/trash/books", AdminTrashBooks),
+        (r"/api/admin/trash/books/restore", AdminTrashBooksRestore),
+        (r"/api/admin/trash/books/purge", AdminTrashBooksPurge),
         (r"/api/admin/restart", AdminRestartServer),
         (r"/api/admin/stamp", AdminStamp),
         (r"/api/library/stats", LibraryStats),

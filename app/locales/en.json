@@ -448,6 +448,7 @@
     "trash_clear_confirm_message": "Are you sure you want to clear the trash bin and upload directory? This action cannot be reverted.",
     "trash_clear_confirm_button": "Confirm Clear",
     "trash_unknown": "Unknown",
+    "trash_books_goto_management": "View/restore deleted books →",
     "thanksTo": "Special Thanks",
     "thanksToDesc": "Special thanks to friends who sponsored and actively helped",
     "basic_info": "Basic Information",
@@ -968,6 +969,7 @@
     "searchComments": "Comments",
     "searchTags": "Tags",
     "searchSeries": "Series",
+    "trashManagement": "Trash management",
     "feedback": "Feedback",
     "feedbackDialogTitle": "Contact Us",
     "feedbackScanQrCode": "Scan QR code to follow our WeChat account and send us feedback",
@@ -1301,6 +1303,22 @@
     "replySubmit": "Submit",
     "actionNew": "New Memo",
     "colReply": "Reply"
+  },
+  "adminTrash": {
+    "pageTitle": "Trash management",
+    "description": "Deleted books are first moved into the Calibre trash bin (library/.caltrash), which is automatically purged 7 days later by default. View, restore, or permanently delete them here.",
+    "colId": "Book ID",
+    "colTitle": "Title",
+    "colAuthor": "Author",
+    "selectedCount": "{count} selected",
+    "restoreSelected": "Restore selected",
+    "purgeSelected": "Delete permanently",
+    "refresh": "Refresh",
+    "empty": "No books in the trash bin",
+    "restoreSuccess": "Selected books have been restored",
+    "purgeConfirmTitle": "Delete permanently",
+    "purgeConfirmMessage": "Are you sure you want to permanently delete the selected {count} book(s)? Unlike restoring, this cannot be undone.",
+    "purgeConfirmButton": "Confirm delete"
   },
   "adminBookReviews": {
     "pageTitle": "User Reviews",

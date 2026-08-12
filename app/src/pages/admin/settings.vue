@@ -685,6 +685,11 @@
                 >
                   <v-icon>delete</v-icon>{{ $t("settings.trash_clear_button") }}
                 </v-btn>
+                <p class="mt-2">
+                  <nuxt-link to="/admin/trash">{{
+                    $t("settings.trash_books_goto_management")
+                  }}</nuxt-link>
+                </p>
               </div>
             </template>
             <template v-if="card.show_stamp">
@@ -796,6 +801,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
 
     <v-dialog v-model="restartConfirmDialog" max-width="400" persistent>
       <v-card>

@@ -663,6 +663,7 @@
     "trash_clear_confirm_message": "确定要清理回收站(library/.caltrash)及上传目录(upload)吗？此操作不可恢复。",
     "trash_clear_confirm_button": "确认清理",
     "trash_unknown": "未知",
+    "trash_books_goto_management": "查看/恢复已删除书籍 →",
     "thanksTo": "特别感谢",
     "thanksToDesc": "特别感谢资助过项目，以及积极反馈过产品建议的朋友。因为有你们，MyBooks才变得更好！",
     "basic_info": "基础信息",
@@ -968,6 +969,7 @@
     "searchComments": "简介",
     "searchTags": "标签",
     "searchSeries": "丛书",
+    "trashManagement": "回收站管理",
     "feedback": "反馈问题",
     "feedbackDialogTitle": "联系我们",
     "feedbackScanQrCode": "扫码关注公众号，私信反馈问题",
@@ -1302,6 +1304,22 @@
     "replySubmit": "提交",
     "actionNew": "新建留言",
     "colReply": "管理员回复"
+  },
+  "adminTrash": {
+    "pageTitle": "回收站管理",
+    "description": "已删除的书籍会先进入 Calibre 回收站（library/.caltrash），默认 7 天后自动清理。可在此查看、恢复或彻底删除。",
+    "colId": "书籍ID",
+    "colTitle": "书名",
+    "colAuthor": "作者",
+    "selectedCount": "已选中 {count} 项",
+    "restoreSelected": "恢复选中",
+    "purgeSelected": "彻底删除",
+    "refresh": "刷新",
+    "empty": "回收站中暂无书籍",
+    "restoreSuccess": "已恢复选中的书籍",
+    "purgeConfirmTitle": "彻底删除",
+    "purgeConfirmMessage": "确定要彻底删除选中的 {count} 本书吗？此操作不可恢复，与恢复到书库不同，删除后将无法再找回。",
+    "purgeConfirmButton": "确认删除"
   },
   "adminBookReviews": {
     "pageTitle": "用户评论",
