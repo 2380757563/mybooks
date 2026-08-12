@@ -258,6 +258,76 @@ class MyBooksAPI:
             json=body
         )
 
+    def push_notes(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Import third-party annotations (e.g. WeChat Reading highlights/thoughts)
+        into a book's reading records via server-side full-text CFI resolution.
+
+        Args:
+            book_id (int, required): MyBooks book ID (must have an EPUB format)
+            anchors (array, required): each item:
+                id (str, required): stable id from the source system (e.g. WeChat
+                    Reading bookmarkId/reviewId) — used to build an idempotent
+                    record id, safe to call repeatedly with the same anchors.
+                text (str, optional): the highlighted/quoted original text to
+                    search for. Omit for a chapter-/book-level note with no
+                    precise anchor (falls back to a chapter-start bookmark).
+                chapterHint (str, optional): source chapter title, used to help
+                    locate a chapter-start position when `text` is omitted.
+                note (str, optional): the user's own thought/comment text.
+                color (str, optional): highlight color, default "yellow".
+                style (str, optional): "highlight"/"underline"/"squiggly", default "highlight".
+                createdAt (int, optional): ms epoch timestamp from the source system.
+                source (str, optional): provenance tag, default "wxread".
+            on_ambiguous (str, optional): "error" (default) or "first_match" —
+                behavior when the anchor text matches more than once in the book.
+            dry_run (bool, optional): default true. true = only resolve and return
+                a report, write nothing; false = also write the resolved notes.
+                ALWAYS call with dry_run=true first, show the caller the report
+                (how many resolved/ambiguous/no_match), and only call again with
+                dry_run=false after explicit confirmation — never write blind.
+            force (bool, optional): default false. Re-syncing is automatically
+                deduplicated server-side — an anchor whose `text`/`chapterHint`
+                haven't changed since a previous import reuses its stored `cfi`
+                instead of being re-searched (results[].reused: true marks this).
+                Only set force=true if you actually need everything re-resolved
+                from scratch (e.g. the book's EPUB file itself was replaced) —
+                do not set it on routine re-syncs, the dedup already handles those.
+        """
+        book_id = args.get("book_id")
+        anchors = args.get("anchors")
+        if not book_id:
+            return {"status": "error", "message": "book_id is required"}
+        if not anchors:
+            return {"status": "error", "message": "anchors is required and must be non-empty"}
+
+        body = {
+            "book_id": book_id,
+            "anchors": anchors,
+            "on_ambiguous": args.get("on_ambiguous", "error"),
+            "dry_run": args.get("dry_run", True),
+            "force": args.get("force", False),
+        }
+        return self._call_with_auto_relogin("POST", "/api/sync/import", json=body)
+
+    def clear_imported_notes(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove all annotations `push_notes` previously imported for one book
+        (current user only) — a "start over" escape hatch, NOT the normal way
+        to handle a re-sync (push_notes already dedups automatically; see its
+        docstring). Only use this if the user explicitly asks to undo/reset an
+        import, e.g. because it was run with wrong data or bad on_ambiguous
+        matches.
+
+        Args:
+            book_id (int, required): MyBooks book ID
+        """
+        book_id = args.get("book_id")
+        if not book_id:
+            return {"status": "error", "message": "book_id is required"}
+
+        return self._call_with_auto_relogin("POST", "/api/sync/import/clear", json={"book_id": book_id})
+
     def book_fill(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """
         Auto-fill book info from online sources (admin only).
@@ -780,6 +850,7 @@ class MyBooksAPI:
             available_tools = [
                 "get_user_info", "library_stats", "reading_stats",
                 "search_books", "search_by_category", "get_book", "edit_book",
+                "push_notes", "clear_imported_notes",
                 "book_fill", "save_meta_to_file", "mailto", "send_to_device", "categories",
                 "list_authors", "get_author_books", "book_upload",
                 "book_add_by_isbn", "wants", "list_wants", "favorite",

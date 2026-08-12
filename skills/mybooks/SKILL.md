@@ -3,7 +3,7 @@ name: mybooks
 homepage: https://www.mybooks.top
 allowed-tools: Bash(python3:*)
 metadata: {"clawdbot":{},"openclaw":{"requires":{"bins":["python3"],"env":["MYBOOKS_HOST","MYBOOKS_USER","MYBOOKS_PASSWORD"]}}}
-description: "MyBooks(PoxenStudio/Talebook)是个人书库管理系统，提供电子书及实体书管理，包括存储、分类、搜索和元数据管理功能。你可以帮助用户：查询书库统计信息和阅读统计,搜索/浏览书籍,获取书籍详情,更新书籍元数据（书名、作者、标签、分类、简介等）,自动联网填充书籍信息,发送书籍到邮箱或阅读器设备,上传电子书或通过ISBN添加实体书,管理阅读状态（想读/在读/已读/收藏）,查看作者信息和分类信息,以及MiMo TTS有声书功能（配置TTS API、EPUB转有声书、查询转换进度、克隆音色与语音提示词管理，需管理员权限）等"
+description: "MyBooks(PoxenStudio/Talebook)是个人书库管理系统，提供电子书及实体书管理，包括存储、分类、搜索和元数据管理功能。你可以帮助用户：查询书库统计信息和阅读统计,搜索/浏览书籍,获取书籍详情,更新书籍元数据（书名、作者、标签、分类、简介等）,自动联网填充书籍信息,发送书籍到邮箱或阅读器设备,上传电子书或通过ISBN添加实体书,管理阅读状态（想读/在读/已读/收藏）,查看作者信息和分类信息,导入第三方阅读App的划线与想法（如微信读书，需配合微信读书 skill 读取原始数据）,以及MiMo TTS有声书功能（配置TTS API、EPUB转有声书、查询转换进度、克隆音色与语音提示词管理，需管理员权限）等"
 ---
 
 # MyBooks
@@ -280,6 +280,128 @@ export MYBOOKS_SSL_VERIFY="false"   # 如服务器使用自签名证书，设为
 ```json
 { "err": "ok", "msg": "更新成功", "books": [42] }
 ```
+
+---
+
+### `push_notes` — 导入第三方批注（微信读书等）
+
+**使用场景**：把从其他阅读 App（目前是微信读书）读到的划线/想法，通过服务端全文检索定位到 MyBooks 书库里对应 EPUB 书籍的正文位置，写入这本书的阅读记录。详细方案见 `plan/WeChatReading_Annotation_Import_Plan.md`。
+
+**前提**：目标书籍必须已经在 MyBooks 书库里，且**必须有 EPUB 格式**（定位算法依赖 EPUB 的正文结构，其它格式不支持）。
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `book_id` | int | ✅ | — | 书籍 ID（须为 EPUB 格式） |
+| `anchors` | array | ✅ | — | 待导入的批注列表，见下 |
+| `anchors[].id` | string | ✅ | — | 来源系统里的稳定 ID（如微信读书的 `bookmarkId`/`reviewId`），用于生成幂等的记录 ID——同样的 `anchors` 重复调用不会重复导入 |
+| `anchors[].text` | string | ❌ | — | 划线/引用的原文，用于全文检索定位；不传则视为"无原文锚点"（章节点评/整本书评），会退化为"挂在章节开头"的书签 |
+| `anchors[].chapterHint` | string | ❌ | — | 来源系统里的章节标题，`text` 未提供时用于定位章节起始位置 |
+| `anchors[].note` | string | ❌ | — | 用户写的想法/点评正文 |
+| `anchors[].color` | string | ❌ | `"yellow"` | 高亮颜色 |
+| `anchors[].style` | string | ❌ | `"highlight"` | `highlight`/`underline`/`squiggly` |
+| `anchors[].createdAt` | int | ❌ | 当前时间 | 来源系统里的创建时间（毫秒时间戳） |
+| `anchors[].source` | string | ❌ | `"wxread"` | 来源标记 |
+| `on_ambiguous` | string | ❌ | `"error"` | 原文在书里检索到多处命中时的处理：`"error"`=不写入、标记为歧义待复核；`"first_match"`=取第一个命中位置写入 |
+| `dry_run` | bool | ❌ | `true` | `true`=只做检索定位、返回预览报告，不写入；`false`=同时写入。**务必先用 `dry_run:true` 看一遍报告、跟用户确认后再用 `dry_run:false` 提交，不要一步到位直接写入** |
+| `force` | bool | ❌ | `false` | 重复导入默认会**自动判重**：某条 `anchors[].id` 如果 `text`/`chapterHint` 跟上次导入时一样，直接复用上次的定位结果，不会重新跑检索（响应里对应条目会带 `"reused": true`）。`force:true` 会跳过判重、强制重新定位所有条目——只有书籍文件本身被替换过这种场景才需要，**日常重复同步不要传这个参数**，判重本身就是为了处理"微信读书上有新批注后再次同步"这种情况设计的 |
+
+**再次同步（判重）说明**：微信读书没有增量接口，每次都会拿到全量划线/想法列表。直接把全量列表再传一遍给 `push_notes` 是安全且推荐的做法——服务端会按 `anchors[].id` 匹配上次导入的记录，`text`/`chapterHint` 没变的条目不会重新定位（省时间，也避免同一条批注每次定位到略有不同的位置），只有新增的、或者原文本身变了的条目才会真正重新检索。如果只是想法/评论内容改了但划线原文没变，也会被识别为"位置没变、内容更新"，只更新想法文本，不重新定位。
+
+**执行脚本**：
+```bash
+# 第一步：预览（默认 dry_run:true），不会写入任何数据
+<skill-installation-path>/scripts/mybooks_api.py push_notes '{
+  "book_id": 42,
+  "anchors": [
+    {"id": "wx-bm-1001", "text": "他手里拿着两大块磁铁", "note": "开篇的魔幻现实主义笔法"},
+    {"id": "wx-review-2001", "chapterHint": "第一章"}
+  ]
+}'
+
+# 第二步：跟用户确认预览报告无误后，正式写入
+<skill-installation-path>/scripts/mybooks_api.py push_notes '{
+  "book_id": 42,
+  "anchors": [
+    {"id": "wx-bm-1001", "text": "他手里拿着两大块磁铁", "note": "开篇的魔幻现实主义笔法"},
+    {"id": "wx-review-2001", "chapterHint": "第一章"}
+  ],
+  "dry_run": false
+}'
+```
+
+**响应示例**（预览，`dry_run:true`）：
+```json
+{
+  "err": "ok",
+  "book_id": 42,
+  "book_hash": "cloud-42-epub",
+  "dry_run": true,
+  "results": [
+    { "id": "wx-bm-1001", "status": "ok", "cfi": "epubcfi(/6/10!/4/4/2,/19:17,/21:4)", "matchCount": 1 },
+    { "id": "wx-review-2001", "status": "ok", "cfi": "epubcfi(/6/8!/4)", "degraded": "chapter_start" }
+  ]
+}
+```
+
+**响应示例**（提交，`dry_run:false`，额外带 `pushed`）：
+```json
+{
+  "err": "ok",
+  "book_id": 42,
+  "book_hash": "cloud-42-epub",
+  "dry_run": false,
+  "results": [ /* 同上 */ ],
+  "pushed": { "notes": [ /* 写入后的最终记录，字段与 GET /api/sync 一致 */ ] }
+}
+```
+
+**`results[].status` 取值**：
+| 值 | 含义 | 建议处理 |
+|----|------|----------|
+| `"ok"` | 定位成功，`cfi` 有值 | 展示给用户确认；`degraded:"chapter_start"` 表示这是退化的章节级书签，不是精确定位，需要提示用户区分 |
+| `"no_match"` | 原文在书里没有检索到 | 大概率两边不是同一版本的书，或原文被来源系统二次编辑过；列入失败清单，不会写入 |
+| `"ambiguous"` | 原文命中了多处（`matchCount` > 1），且 `on_ambiguous="error"` | 列入歧义清单，需要人工复核；不会写入 |
+| `"error"` | 该条内部处理出错（如 CFI 生成失败） | 列入失败清单，不会写入 |
+
+**常见错误**：
+| `err` 值 | 含义 |
+|----------|------|
+| `"params.book.invalid"` | 书籍不存在 |
+| `"book.no_epub"` | 书籍没有 EPUB 格式，或找不到 EPUB 文件 |
+| `"sync.import.failed"` | 服务端批注定位流程整体失败（如 CFI 子进程异常）——不同于单条 `status:"error"`，这是整批请求都没有结果 |
+| `"sync.disabled"` | 服务端数据同步功能未启用 |
+
+---
+
+### `clear_imported_notes` — 清空某本书已导入的批注（重置用，非日常操作）
+
+**使用场景**：撤销/重置某本书通过 `push_notes` 导入的全部批注——比如导入用错了数据、或者 `on_ambiguous:"first_match"` 选错了位置，用户明确要求"重新导入一遍"。**不要**把这个当成处理"再次同步"的常规手段——`push_notes` 本身已经会自动判重（见上），日常重复同步应该直接再调一次 `push_notes`，不需要先清空。
+
+**范围**：只会清除当前登录用户通过 `push_notes` 导入的批注（`id` 带 `wxread-` 前缀的），不影响这本书上其他人的批注，也不影响用户自己在 MyReader 里手动做的批注。
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `book_id` | int | ✅ | 书籍 ID |
+
+**执行脚本**：
+```bash
+<skill-installation-path>/scripts/mybooks_api.py clear_imported_notes '{"book_id":42}'
+```
+
+**响应示例**：
+```json
+{ "err": "ok", "book_id": 42, "book_hash": "cloud-42-epub", "cleared": 5 }
+```
+
+**常见错误**：
+| `err` 值 | 含义 |
+|----------|------|
+| `"params.book.invalid"` | 书籍不存在 |
+| `"sync.disabled"` | 服务端数据同步功能未启用 |
 
 ---
 
@@ -1063,6 +1185,14 @@ export MYBOOKS_SSL_VERIFY="false"   # 如服务器使用自签名证书，设为
 ├─ "把修改后的元数据也写入电子书文件本身" / "同步元数据到文件"
 │   → save_meta_to_file（仅 epub/azw3/pdf，需管理员或书籍所有者权限）
 │
+├─ "把我在微信读书上的划线/想法导入这本书" / "导入第三方批注"
+│   → 先确认目标书是 EPUB 格式，再用 push_notes（先 dry_run:true 预览，用户确认后再 dry_run:false 提交）
+│   → 微信读书上有新批注后再次同步：直接把全量列表再传一遍 push_notes 即可，会自动判重，不用先清空
+│
+├─ "撤销/重置这本书导入的批注" / "刚才导入错了，重新来一遍"
+│   → clear_imported_notes（只影响当前用户自己通过 push_notes 导入的批注），然后重新调 push_notes
+│
+
 ├─ "把书发给我的 Kindle / 发到邮箱"
 │   → mailto（发邮箱附件）
 │
@@ -1154,6 +1284,8 @@ MiMo TTS 类型（`api_type=chat_completions`）内置 9 个预置音色：
 | `"user.need_login"` | 未登录或登录态过期 | 脚本自动重登录，仍失败则检查环境变量 |
 | `"permission"` | 无权限 | 说明当前账号权限不足，需管理员协助 |
 | `"params.book.invalid"` | 书籍不存在 | 建议用 `search_books` 重新确认 book_id |
+| `"book.no_epub"` | 书籍没有 EPUB 格式（或找不到 EPUB 文件） | `push_notes` 专属：提示用户该书无法导入批注，仅支持 EPUB |
+| `"sync.import.failed"` | `push_notes` 批注定位流程整体失败 | 与单条 `results[].status:"error"` 不同，是整批请求都没有结果，稍后重试或检查书籍文件是否损坏 |
 | `"task.running"` | 后台有任务在运行 | 等待当前任务完成后重试 |
 | `"book.notfound"` | ISBN 对应的书籍未在网上找到 | 换其他数据源或手动添加 |
 | `"connection.failed"` | 无法连接到设备 | 检查设备 IP 和 WiFi 接收功能是否开启 |
