@@ -179,6 +179,7 @@ export default {
         alert_msg: "please login",
         alert_type: "error",
         languageOptions: languageOptions,
+        cameFromBookDetail: false,
     }),
     computed: {
         pub_year: function () {
@@ -230,6 +231,11 @@ export default {
         //this.$store.commit('navbar', true);
         //this.init(this.$route);
     },
+    beforeRouteEnter(to, from, next) {
+        next(vm => {
+            vm.cameFromBookDetail = from.path === "/book/" + to.params.bid;
+        });
+    },
     beforeRouteUpdate(to, from, next) {
         this.init(to, next);
     },
@@ -252,7 +258,11 @@ export default {
                 .then(rsp => {
                     if (rsp.err === 'ok') {
                         this.$alert("success", this.$t('book.edit.saveSuccess'));
-                        this.$router.push("/book/" + this.book.id);
+                        if (this.cameFromBookDetail) {
+                            this.$router.back();
+                        } else {
+                            this.$router.push("/book/" + this.book.id);
+                        }
                     } else {
                         this.$alert("error", rsp.msg);
                     }

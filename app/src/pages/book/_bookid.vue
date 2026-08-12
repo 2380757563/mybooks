@@ -240,6 +240,10 @@
 
             <v-card v-if="!dialog_refer">
                 <v-toolbar flat dense>
+                    <!-- back -->
+                    <v-btn v-if="!tiny" icon small fab @click="$router.back()">
+                        <v-icon>mdi-arrow-left-circle</v-icon>
+                    </v-btn>
                     <!-- download -->
                     <div class="book-action-btns">
                         <v-btn icon small fab @click="downloadBook" :disabled="!hasCompatibleFormats">
@@ -573,8 +577,7 @@
                                     >{{ '&nbsp;&nbsp;' }}[{{ file.format }} - {{ file.size >= 1048576 ? parseInt(file.size / 1048576) + 'MB' : parseInt(file.size / 1024) + 'KB' }}]</span>
                                 </template>
                             </div>
-                            <v-rating v-model="book.rating" color="yellow accent-4" length="10" readonly dense
-                                      small></v-rating>
+                            <v-rating v-model="book.rating" color="yellow accent-4" length="10" readonly dense small></v-rating>
                             <!-- 阅读信息：在读/收藏/推荐人数，三项都为 0 时组件本身不渲染 -->
                             <book-social-info :book-id="book.id" ref="socialInfo"></book-social-info>
                             <!-- Reading state display -->
