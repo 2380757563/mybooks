@@ -533,7 +533,6 @@
     "enable_txt_to_txtz_plugin": "Enable TXT to TXTZ plugin (converts TXT format books to TXTZ format, TXTZ is an internal format, enabling this will make importing TXT take longer)",
     "epub_viewer": "EPUB Viewer",
     "epubjs": "Epub Reader (Old Version)",
-    "creader": "Candle Reader (Deprecated)",
     "myreader": "MyReader (Full functions, directly synchronize data in MyBooks, recommended)",
     "avatar_service": "Avatar service available at www.gravatar.com or cravatar.cn",
     "max_upload_size": "File upload size limit (e.g., 100MB or 100KB)",

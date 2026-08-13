@@ -2684,8 +2684,7 @@ class BookRead(BaseHandler):
                 return self.html_page("book/" + book_reader, {
                     "book": book,
                     "epub_dir": epub_dir,
-                    "is_ready": (fmt_arg == 'epub'),
-                    "CANDLE_READER_SERVER": CONF["CANDLE_READER_SERVER"],
+                    "is_ready": (fmt_arg == 'epub')
                 })
 
         # 优先阅读epub/azw3/mobi/txt格式
@@ -2705,8 +2704,7 @@ class BookRead(BaseHandler):
             return self.html_page("book/" + book_reader, {
                 "book": book,
                 "epub_dir": epub_dir,
-                "is_ready": (fmt == 'epub'),
-                "CANDLE_READER_SERVER": CONF["CANDLE_READER_SERVER"],
+                "is_ready": (fmt == 'epub')
             })
 
         has_converted_pdf = False

@@ -95,8 +95,7 @@ settings = {
     "ENABLE_STAMP_FEATURE": False,
     "STAMP_POSITION": "bottom-right",
 
-    "EPUB_VIEWER": "epubjs.html",
-    "CANDLE_READER_SERVER": "https://brs.talebook.org",
+    "EPUB_VIEWER": "MyReader",
     "PDF_VIEWER": "/static/pdfjs/web/viewer.html?file=%(pdf_url)s",
     "ENABLE_PODCAST_SERVICE": False,
     "ENABLE_WEBDAV_SERVICE": True,

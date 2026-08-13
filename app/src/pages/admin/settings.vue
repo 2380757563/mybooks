@@ -1030,8 +1030,7 @@ export default {
             type: "select",
             items: [
               { text: this.$t("settings.epubjs"), value: "epubjs.html", icon: "mdi-alpha-e-circle-outline" },
-              { text: this.$t("settings.myreader"), value: "MyReader", icon: "mdi-water-outline" },
-              { text: this.$t("settings.creader"), value: "creader.html", icon: "mdi-candle" },
+              { text: this.$t("settings.myreader"), value: "MyReader", icon: "mdi-water-outline" }
             ],
           },
           {

@@ -744,7 +744,6 @@
     "enable_txt_to_txtz_plugin": "启用TXT转TXTZ插件（将TXT格式的书籍转换为TXTZ格式，TXTZ为内部格式，启用后导入TXT耗时较长）",
     "epub_viewer": "EPUB阅读器",
     "epubjs": "EPUB Reader（纯本地, 简洁清爽）",
-    "creader": "Candle Reader（暂时保留，后续会移除）",
     "myreader": "MyReader (完整功能, 多端数据同步，推荐使用)",
     "avatar_service": "可使用www.gravatar.com或cravatar.cn头像服务",
     "max_upload_size": "文件上传字节数限制(例如100MB或100KB）",
