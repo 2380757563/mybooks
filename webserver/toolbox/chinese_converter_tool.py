@@ -14,6 +14,7 @@ import logging
 import os
 import shutil
 import threading
+import time
 import traceback
 from typing import Optional
 
@@ -253,6 +254,17 @@ class ChineseConverterTool(BaseTool):
         if convert_title and mi.authors:
             mi.authors = [engine.convert(a) for a in mi.authors]
             mi.author_sort = None  # 名字已转换，排序键由 calibre 按新名字重算
+        if convert_title:
+            # 简介/出版社/丛书/标签同步转换（简介可能含 HTML：opencc 逐字符
+            # 转换，标签与实体为 ASCII 不受影响）
+            if mi.comments:
+                mi.comments = engine.convert(mi.comments)
+            if mi.publisher:
+                mi.publisher = engine.convert(mi.publisher)
+            if mi.series:
+                mi.series = engine.convert(mi.series)
+            if mi.tags:
+                mi.tags = [engine.convert(t) for t in mi.tags]
         mi.languages = [DIRECTION_LANG.get(direction, "zh")]
         mi.uuid = None  # 新书应使用独立 UUID，避免与原书冲突
 
@@ -310,6 +322,16 @@ class ChineseConverterTool(BaseTool):
             if mi.authors:
                 mi.authors = [engine.convert(a) for a in mi.authors]
                 mi.author_sort = None  # 名字已转换，排序键由 calibre 按新名字重算
+            # 简介/出版社/丛书/标签同步转换（简介可能含 HTML：opencc 逐字符
+            # 转换，标签与实体为 ASCII 不受影响）
+            if mi.comments:
+                mi.comments = engine.convert(mi.comments)
+            if mi.publisher:
+                mi.publisher = engine.convert(mi.publisher)
+            if mi.series:
+                mi.series = engine.convert(mi.series)
+            if mi.tags:
+                mi.tags = [engine.convert(t) for t in mi.tags]
             mi.languages = [DIRECTION_LANG.get(direction, "zh")]
             self.db.set_metadata(book_id, mi, force_changes=True)
             logging.info("[ChineseConverterTool] Updated title/authors/language for book_id=%d", book_id)

@@ -30,7 +30,9 @@
             hide-details
             class="mb-3"
             prepend-inner-icon="mdi-magnify"
-            @keyup.enter="searchLeft"
+            append-outer-icon="mdi-magnify"
+            @keydown.enter.prevent="onEnterLeft"
+            @click:append-outer="searchLeft"
             @click:clear="clearLeft"
           />
           <div class="mft-book-list">
@@ -93,7 +95,9 @@
             hide-details
             class="mb-3"
             prepend-inner-icon="mdi-magnify"
-            @keyup.enter="searchRight"
+            append-outer-icon="mdi-magnify"
+            @keydown.enter.prevent="onEnterRight"
+            @click:append-outer="searchRight"
             @click:clear="clearRight"
           />
           <div class="mft-book-list">
@@ -225,6 +229,16 @@ export default {
     this.$store.commit('navbar', true);
   },
   methods: {
+    // 移动端 IME 组合输入时 Enter 仅确认候选词（isComposing），不得触发搜索；
+    // keydown.enter.prevent 同时尽量阻止虚拟键盘"next"键把焦点跳到下一个输入框
+    onEnterLeft(e) {
+      if (e && e.isComposing) return;
+      this.searchLeft();
+    },
+    onEnterRight(e) {
+      if (e && e.isComposing) return;
+      this.searchRight();
+    },
     async searchLeft() {
       const q = (this.leftQuery || '').trim();
       if (!q) return;
