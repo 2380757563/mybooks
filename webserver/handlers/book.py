@@ -2768,20 +2768,6 @@ class BookRead(BaseHandler):
 
 
 class BookFilePath(BaseHandler):
-    """
-    Internal-only lookup: given a bookId + format, returns the book's physical
-    path on disk. Used exclusively by MyReader's same-container embedded
-    reader (see document/MyReader_Embedded_WebApp.md §13) — MyReader's
-    `/api/mybooks/local-file` route calls this server-to-server (bypassing
-    nginx entirely via MYBOOKS_INTERNAL_ORIGIN, same pattern as WhoAmI) to
-    resolve the path itself, so the browser-facing `/reader-embed/open`
-    redirect only ever carries bookId + format, never the raw filesystem path.
-
-    Restricted to loopback-only callers in conf/nginx/mybooks.conf — this
-    leaks actual server disk layout, which is more sensitive than WhoAmI's
-    "who are you" response, so (unlike WhoAmI) it is NOT meant to be reachable
-    from outside the container even by an authenticated caller.
-    """
     @js
     def get(self, bid):
         if not CONF["ALLOW_GUEST_READ"] and not self.current_user:
@@ -2805,7 +2791,6 @@ class BookFilePath(BaseHandler):
         fpath = book.get("fmt_%s" % fmt_arg)
         if not fpath:
             return {"err": "params.format.unavailable", "msg": _("该格式不存在")}
-
         return {"err": "ok", "data": {"path": fpath}}
 
 
