@@ -1123,14 +1123,18 @@ class BookFavorite(BaseHandler):
     @js
     @auth
     def get(self):
-        """获取当前用户的收藏"""
+        """获取当前用户的收藏（分页）"""
         user_id = self.user_id()
         logging.info("User %d is fetching favorite books." % user_id)
-        # 列出所有收藏书籍
-        reading_states = self.sqlite_session.query(ReadingState).filter(
+        query = self.sqlite_session.query(ReadingState).filter(
             ReadingState.reader_id == user_id,
             ReadingState.favorite == 1
-        ).order_by(ReadingState.favorite_date.desc()).all()
+        )
+        total_cnt = query.count()
+
+        start = self.get_argument_start()
+        delta = CONF.get("DEFAULT_PAGE_SIZE", 60)
+        reading_states = query.order_by(ReadingState.favorite_date.desc()).limit(delta).offset(start).all()
 
         # 批量获取所有书籍
         book_ids = [state.book_id for state in reading_states]
@@ -1150,7 +1154,7 @@ class BookFavorite(BaseHandler):
 
         return {"err": "ok",
                 "title": _("我的收藏"),
-                "total": len(favorite_books),
+                "total": total_cnt,
                 "books": favorite_books}
 
 
@@ -1189,13 +1193,18 @@ class BookWantToRead(BaseHandler):
     @js
     @auth
     def get(self):
-        """获取当前用户对某本书的待读状态"""
+        """获取当前用户的待读书籍（分页）"""
         user_id = self.user_id()
         logging.info("User %d is fetching favorite books." % user_id)
-        reading_states = self.sqlite_session.query(ReadingState).filter(
+        query = self.sqlite_session.query(ReadingState).filter(
             ReadingState.reader_id == user_id,
             ReadingState.wants == 1
-        ).order_by(ReadingState.wants_date.desc()).all()
+        )
+        total_cnt = query.count()
+
+        start = self.get_argument_start()
+        delta = CONF.get("DEFAULT_PAGE_SIZE", 60)
+        reading_states = query.order_by(ReadingState.wants_date.desc()).limit(delta).offset(start).all()
 
         # 批量获取所有书籍
         book_ids = [state.book_id for state in reading_states]
@@ -1215,7 +1224,7 @@ class BookWantToRead(BaseHandler):
 
         return {"err": "ok",
                 "title": _("待读清单"),
-                "total": len(favorite_books),
+                "total": total_cnt,
                 "books": favorite_books}
 
 
@@ -1223,13 +1232,18 @@ class BookReading(BaseHandler):
     @js
     @auth
     def get(self):
-        """获取当前用户的在读书籍"""
+        """获取当前用户的在读书籍（分页）"""
         user_id = self.user_id()
         logging.info("User %d is fetching reading books." % user_id)
-        reading_states = self.sqlite_session.query(ReadingState).filter(
+        query = self.sqlite_session.query(ReadingState).filter(
             ReadingState.reader_id == user_id,
             ReadingState.read_state == 1  # 在读状态
-        ).order_by(ReadingState.read_date.desc()).all()
+        )
+        total_cnt = query.count()
+
+        start = self.get_argument_start()
+        delta = CONF.get("DEFAULT_PAGE_SIZE", 60)
+        reading_states = query.order_by(ReadingState.read_date.desc()).limit(delta).offset(start).all()
 
         # 批量获取所有书籍
         book_ids = [state.book_id for state in reading_states]
@@ -1249,7 +1263,7 @@ class BookReading(BaseHandler):
 
         return {"err": "ok",
                 "title": _("在读书籍"),
-                "total": len(reading_books),
+                "total": total_cnt,
                 "books": reading_books}
 
 
@@ -1338,13 +1352,18 @@ class BookReadDone(BaseHandler):
     @js
     @auth
     def get(self):
-        """获取当前用户的已读完书籍"""
+        """获取当前用户的已读完书籍（分页）"""
         user_id = self.user_id()
         logging.info("User %d is fetching read done books." % user_id)
-        reading_states = self.sqlite_session.query(ReadingState).filter(
+        query = self.sqlite_session.query(ReadingState).filter(
             ReadingState.reader_id == user_id,
             ReadingState.read_state == 2  # 已读完状态
-        ).order_by(ReadingState.read_date.desc()).all()
+        )
+        total_cnt = query.count()
+
+        start = self.get_argument_start()
+        delta = CONF.get("DEFAULT_PAGE_SIZE", 60)
+        reading_states = query.order_by(ReadingState.read_date.desc()).limit(delta).offset(start).all()
 
         # 批量获取所有书籍
         book_ids = [state.book_id for state in reading_states]
@@ -1364,7 +1383,7 @@ class BookReadDone(BaseHandler):
 
         return {"err": "ok",
                 "title": _("已读完书籍"),
-                "total": len(read_done_books),
+                "total": total_cnt,
                 "books": read_done_books}
 
 
