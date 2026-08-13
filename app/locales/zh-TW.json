@@ -25,7 +25,7 @@
   "index": {
     "randomRecommendation": "隨機推薦",
     "newRecommendation": "新書推薦",
-    "socialRecommendation": "他們在推薦",
+    "socialRecommendation": "新評書籍",
     "categoryBrowse": "分類瀏覽",
     "categoryNavigation": "標籤分類",
     "authors": "作者",
@@ -859,7 +859,7 @@
     "reader": "瀏覽與閱讀",
     "enable_book_review": "允許用戶對書籍進行評論及評分",
     "review_requires_approval": "評論需要審核後才能展示（僅在允許評論時生效）",
-    "enable_book_recommend_to_others": "允許用戶向其他用戶推薦書籍",
+    "enable_book_recommend_to_others": "展示其他用戶評論過的書籍",
     "enable_shared_notes": "閱讀時支援查看其他用戶的劃線與筆記"
   },
   "user": {

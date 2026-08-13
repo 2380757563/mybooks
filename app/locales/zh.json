@@ -25,7 +25,7 @@
   "index": {
     "randomRecommendation": "随便推荐",
     "newRecommendation": "新书推荐",
-    "socialRecommendation": "他们在推荐",
+    "socialRecommendation": "新评书籍",
     "categoryBrowse": "分类浏览",
     "categoryNavigation": "标签分类",
     "authors": "作者",
@@ -860,7 +860,7 @@
     "reader": "浏览与阅读",
     "enable_book_review": "允许用户对书籍进行评论及评分",
     "review_requires_approval": "评论需要审核后才能展示（仅在允许评论时生效）",
-    "enable_book_recommend_to_others": "允许用户向别的用户推荐书籍",
+    "enable_book_recommend_to_others": "展示其他用户评论过的书籍",
     "enable_shared_notes": "阅读时支持查看其他用户的划线与笔记"
   },
   "user": {
