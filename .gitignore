@@ -97,6 +97,9 @@ node_modules
 .nuxt
 .config
 package-lock.json
+# npm ci in Dockerfile needs these lockfiles committed for reproducible/offline builds
+!app/package-lock.json
+!webserver/services/cfi_gen/package-lock.json
 .DS_Store
 .vscode
 plan/
