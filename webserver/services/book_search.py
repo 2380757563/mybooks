@@ -118,7 +118,7 @@ class BookSearch:
         return books
 
     @staticmethod
-    def search_best_book():
+    def search_best_book(mi):
         """
         按信息源优先级顺序逐个查询，返回第一个可用的最佳匹配（找到即停止，不再查询后续信息源）
 
