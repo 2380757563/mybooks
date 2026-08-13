@@ -248,6 +248,7 @@
               >
             </template>
 
+            <div class="pl-6" v-if="card.groups && card.groups.length">
             <template v-for="g in card.groups">
               <v-checkbox
                 :key="g.label"
@@ -288,8 +289,10 @@
                 </template>
               </template>
             </template>
+            </div>
 
             <template v-if="card.show_friends">
+              <div class="pl-6">
               <v-row
                 v-for="(friend, idx) in settings.FRIENDS"
                 :key="'friend-' + friend.href"
@@ -328,9 +331,11 @@
                   >
                 </v-col>
               </v-row>
+              </div>
             </template>
 
             <template v-if="card.show_devices">
+              <div class="pl-6">
               <template v-for="(device, idx) in settings.DEVICES">
                 <div :key="'device-' + idx" class="device-item mb-3">
                   <v-row>
@@ -489,10 +494,12 @@
                   </v-btn>
                 </v-col>
               </v-row>
+              </div>
             </template>
 
             <template v-if="card.show_bookbarn">
               <p>{{ $t("settings.book_barn_description") }}</p>
+              <div class="pl-6">
               <v-checkbox
                 small
                 hide-details
@@ -516,10 +523,12 @@
               >
                 <v-icon>key</v-icon>{{ $t("settings.bookbarn_apply_token") }}
               </v-btn>
+              </div>
             </template>
 
             <template v-if="card.show_ai_capabilities">
               <p>{{ $t("settings.ai_capabilities_description") }}</p>
+              <div class="pl-6">
               <v-checkbox
                 small
                 hide-details
@@ -589,10 +598,12 @@
                 class="mb-3"
                 prepend-icon="mdi-scatter-plot-outline"
               ></v-checkbox>
+              </div>
             </template>
 
             <template v-if="card.show_socials">
               <p>{{ $t("settings.socials_description") }}</p>
+              <div class="pl-6">
               <v-combobox
                 v-model="settings.SOCIALS"
                 :items="sns_items"
@@ -657,6 +668,7 @@
                   ></v-text-field>
                 </v-col>
               </v-row>
+              </div>
             </template>
 
             <template v-if="card.show_trash">
@@ -693,6 +705,7 @@
               </div>
             </template>
             <template v-if="card.show_stamp">
+              <div class="pl-6">
               <v-checkbox
                 small
                 hide-details
@@ -748,9 +761,12 @@
                   </v-col>
                 </v-row>
               </div>
+              </div>
             </template>
             <template v-if="card.show_ssl">
+              <div class="pl-6">
               <ssl-manager />
+              </div>
             </template>
           </div>
         </v-card-text>
