@@ -13,6 +13,7 @@ import tornado.escape
 from tornado import web
 from webserver import loader
 from webserver.services.mail import MailService
+from webserver.services.sync_service import MyReaderSyncService
 from webserver.handlers.base import BaseHandler, auth, js
 from webserver.models import Device, ExpectedItem, Memo, Message, Reader, Reading, StickyItem
 
@@ -100,6 +101,13 @@ class UserUpdate(BaseHandler):
         if "show_other_annotations" in data:
             # 是否在阅读时显示其他用户的批注/划线，见 plan/Social_Reading_Plan.md §2.2
             user.extra["show_other_annotations"] = bool(data.get("show_other_annotations"))
+
+        if "share_annotations" in data:
+            # 是否允许自己的笔记/批注被合并给其他用户看到，默认 True；
+            # MyReaderSyncService 合并他人笔记时靠 ShareAnnotationsCache 读取这个开关
+            share_annotations = bool(data.get("share_annotations"))
+            user.extra["share_annotations"] = share_annotations
+            MyReaderSyncService.set_share_annotations(user.id, share_annotations)
 
         if "allow_statistic" in data and CONF.get("ALLOW_USER_DISABLE_STATISTIC", False):
             # 服务端二次校验总开关，避免绕过前端隐藏直接改这个字段
@@ -507,6 +515,7 @@ class UserInfo(BaseHandler):
                 d["avatar"] = self.site_url + "/avatar/%s" % user.avatar
         # 与 kindle_email 一样，不论 detail 与否都返回，见 plan/Social_Reading_Plan.md §2.2
         d["show_other_annotations"] = (user.extra or {}).get("show_other_annotations", True)
+        d["share_annotations"] = (user.extra or {}).get("share_annotations", True)
         if user.extra:
             d["kindle_email"] = user.extra.get("kindle_email", "")
             if detail:

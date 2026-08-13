@@ -134,6 +134,12 @@
                 class="mt-0"
               ></v-checkbox>
               <v-checkbox
+                v-model="user.extra.share_annotations"
+                :label="$t('user.share_annotations')"
+                hide-details
+                class="mt-0"
+              ></v-checkbox>
+              <v-checkbox
                 v-if="user.allow_user_disable_statistic"
                 v-model="user.allow_statistic"
                 :label="$t('user.allow_statistic')"
@@ -475,6 +481,7 @@ export default {
         extra: {
           allow_sending_mail: true,
           show_other_annotations: true,
+          share_annotations: true,
         },
       },
       show_pass: false,
@@ -551,6 +558,9 @@ export default {
           }
           if (rsp.user.extra.show_other_annotations === undefined) {
             rsp.user.extra.show_other_annotations = true;
+          }
+          if (rsp.user.extra.share_annotations === undefined) {
+            rsp.user.extra.share_annotations = true;
           }
           this.user = rsp.user;
         }
@@ -699,6 +709,7 @@ export default {
         allow_statistic: this.user.allow_statistic,
         show_home_recommendations: this.user.show_home_recommendations,
         show_other_annotations: this.user.extra.show_other_annotations,
+        share_annotations: this.user.extra.share_annotations,
       };
 
       this.$backend("/user/update", {

@@ -129,6 +129,38 @@ class ReadingRecordBuffer:
             logging.error("[sync] reading_records flush failed, %d record(s) kept for retry", len(items), exc_info=True)
 
 
+class ShareAnnotationsCache:
+    _disabled_uids: Optional[Set[int]] = None
+    _loaded_at: float = 0.0
+    _REFRESH_INTERVAL_SEC = 600
+
+    @classmethod
+    def _load(cls, db) -> Set[int]:
+        disabled = set()
+        for reader_id, extra in db.query(Reader.id, Reader.extra).all():
+            if extra and extra.get("share_annotations") is False:
+                disabled.add(reader_id)
+        return disabled
+
+    @classmethod
+    def is_disabled(cls, db, uid: int) -> bool:
+        now = time.time()
+        if cls._disabled_uids is None or now - cls._loaded_at > cls._REFRESH_INTERVAL_SEC:
+            cls._disabled_uids = cls._load(db)
+            cls._loaded_at = now
+        return uid in cls._disabled_uids
+
+    @classmethod
+    def set(cls, uid: int, shared: bool) -> None:
+        """Called right after a reader saves their `share_annotations` preference."""
+        if cls._disabled_uids is None:
+            return
+        if shared:
+            cls._disabled_uids.discard(uid)
+        else:
+            cls._disabled_uids.add(uid)
+
+
 class MyReaderSyncService:
     """All storage/merge logic and the WS connection registry for `/api/sync`."""
 
@@ -148,6 +180,13 @@ class MyReaderSyncService:
     @staticmethod
     def is_enabled() -> bool:
         return CONF.get("ENABLE_DATA_SYNC", True)
+
+    @staticmethod
+    def set_share_annotations(uid: int, shared: bool) -> None:
+        """Called by the user-settings handler right after saving
+        `share_annotations`, so `_shared_notes()` picks up the change without
+        waiting for `ShareAnnotationsCache`'s periodic reload."""
+        ShareAnnotationsCache.set(uid, shared)
 
     # ---------------------------------------------------------------- pull
 
@@ -186,8 +225,11 @@ class MyReaderSyncService:
         )
         allowed_uids: Set[int] = set()
         for row in rows:
-            if row.uid not in allowed_uids and len(allowed_uids) < max_users:
-                allowed_uids.add(row.uid)
+            if row.uid in allowed_uids or len(allowed_uids) >= max_users:
+                continue
+            if ShareAnnotationsCache.is_disabled(db, row.uid):
+                continue  # 该用户关闭了「分享我的阅读笔记和批注」，不参与合并
+            allowed_uids.add(row.uid)
         authors = cls._authors_by_id(db, allowed_uids)
         result = []
         for row in rows:

@@ -72,7 +72,7 @@ class Index(BaseHandler):
         return self.site_url + "/avatar/%s" % reader.avatar
 
     def _social_recommend_books(self):
-        """首页"其他用户推荐"：最近 7 天内被评价（且状态通过）的书，见 plan §2.3。
+        """首页"其他用户推荐"：最近 90 天内被评价（且状态通过）的书，见 plan §2.3。
         仅登录且个人偏好 show_home_recommendations=True 时才计算，游客/关闭时返回空列表。"""
         if not CONF.get("ENABLE_BOOK_REVIEW", True):
             return []
@@ -80,7 +80,7 @@ class Index(BaseHandler):
             return []
         if not self.current_user or not getattr(self.current_user, "show_home_recommendations", True):
             return []
-        review_rows = BookReviewService.recent_recommendations(self.sqlite_session, days=7, limit=10)
+        review_rows = BookReviewService.recent_recommendations(self.sqlite_session, days=90, limit=12)
         if not review_rows:
             return []
         rec_books = {b["id"]: b for b in self.get_books(ids=[r.book_id for r in review_rows])}
