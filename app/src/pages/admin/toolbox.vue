@@ -25,13 +25,13 @@
         md="4"
       >
         <v-card
-          class="tool-card pa-2"
+          class="tool-card pa-2 d-flex flex-column"
           rounded="xl"
           outlined
           @click="goToTool(tool)"
-          style="cursor: pointer; border: 2px solid #90CAF9;"
+          style="cursor: pointer; border: 2px solid #90CAF9; height: 100%;"
         >
-          <v-card-text>
+          <v-card-text class="d-flex flex-column flex-grow-1">
             <div class="d-flex align-center mb-3">
               <v-avatar size="56" rounded="lg" class="mr-3">
                 <v-img
@@ -48,10 +48,10 @@
                 <v-chip x-small color="primary" outlined class="mt-1">v{{ tool.revision }}</v-chip>
               </div>
             </div>
-            <div class="text-body-2 grey--text text--darken-1 mb-3" style="min-height: 40px;">
+            <div class="tool-desc text-body-2 grey--text text--darken-1 mb-3">
               {{ tool.description }}
             </div>
-            <div class="d-flex justify-space-between align-center text-caption grey--text">
+            <div class="d-flex justify-space-between align-center text-caption grey--text mt-auto">
               <span><v-icon x-small>mdi-account-outline</v-icon> {{ tool.author }}</span>
               <span v-if="tool.publish_date"><v-icon x-small>mdi-calendar-outline</v-icon> {{ tool.publish_date }}</span>
             </div>
@@ -105,5 +105,15 @@ export default {
 .tool-card:hover {
   box-shadow: 0 6px 20px rgba(144, 202, 249, 0.45) !important;
   transform: translateY(-2px);
+}
+/* 简介固定为 3 行高度：文字不足时占位保持一致，超出时省略号截断 */
+.tool-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.5em * 3);
+  line-height: 1.5em;
 }
 </style>
