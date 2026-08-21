@@ -130,6 +130,15 @@
         ></v-slider>
       </div>
 
+      <!-- 字幕显示区 -->
+      <div class="subtitle-section" v-if="showSubtitle && subtitleCues.length">
+        <div
+          class="subtitle-text"
+          @click="currentCue && seekToCue(currentCue)"
+          :title="$t('audio.subtitle')"
+        >{{ currentCue ? currentCue.text : ' ' }}</div>
+      </div>
+
       <!-- 控制按钮 -->
       <div class="controls-section">
         <div class="main-controls">
@@ -168,6 +177,18 @@
         </div>
 
         <div class="secondary-controls">
+          <!-- 字幕开关 -->
+          <v-btn
+            v-if="subtitleCues.length > 0"
+            icon
+            large
+            @click="toggleSubtitle"
+            class="subtitle-btn"
+            :color="showSubtitle ? 'primary' : ''"
+          >
+            <v-icon>{{ showSubtitle ? 'mdi-subtitles' : 'mdi-subtitles-outline' }}</v-icon>
+          </v-btn>
+
           <!-- 倍速控制 -->
           <v-menu offset-y>
             <template v-slot:activator="{ on, attrs }">
@@ -362,6 +383,12 @@ export default {
       playbackRate: 1,
       playbackRates: [0.5, 1, 1.25, 1.5, 2],
 
+      // 字幕相关
+      subtitleCues: [],
+      currentCueIndex: -1,
+      showSubtitle: true,
+      subtitleCache: {},
+
       // 定时器
       sleepTimer: null,
       sleepTimerInterval: null,
@@ -398,6 +425,13 @@ export default {
       return this.audioFiles[this.currentTrackIndex];
     },
 
+    currentCue() {
+      if (this.currentCueIndex >= 0 && this.currentCueIndex < this.subtitleCues.length) {
+        return this.subtitleCues[this.currentCueIndex];
+      }
+      return null;
+    },
+
     shouldShowAuthors() {
       // 如果作者信息不存在，隐藏
       if (!this.book.authors) {
@@ -414,6 +448,7 @@ export default {
   },
 
   mounted() {
+    this.restoreSubtitlePreference();
     this.initializePlayer();
     this.restorePlaybackPosition();
     this.startProgressSaving();
@@ -446,6 +481,7 @@ export default {
       if (index >= 0 && index < this.audioFiles.length) {
         this.currentTrackIndex = index;
         const audio = this.audioFiles[index];
+        this.loadSubtitle(audio.subtitle);
         const player = this.$refs.audioPlayer;
         if (!player) return;
 
@@ -616,6 +652,8 @@ export default {
         if (this.duration > 0) {
           this.progress = (this.currentTime / this.duration) * 100;
         }
+
+        this.syncSubtitle();
       }
     },
 
@@ -645,6 +683,110 @@ export default {
 
     onPause() {
       this.isPlaying = false;
+    },
+
+    // 字幕方法
+    parseSRT(content) {
+      const cues = [];
+      // 兼容 SRT 的 HH:MM:SS,mmm 与 WebVTT 省略小时的 MM:SS.mmm
+      const timeRe = /(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})\s*-->\s*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/;
+      const blocks = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split(/\n\n+/);
+      for (const block of blocks) {
+        const lines = block.split('\n');
+        const timeLineIdx = lines.findIndex(l => timeRe.test(l));
+        if (timeLineIdx === -1) continue;
+        const m = lines[timeLineIdx].match(timeRe);
+        const start = (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4].padEnd(3, '0')) / 1000;
+        const end = (+(m[5] || 0)) * 3600 + (+m[6]) * 60 + (+m[7]) + (+m[8].padEnd(3, '0')) / 1000;
+        const text = lines.slice(timeLineIdx + 1).join('\n').trim();
+        if (text && end > start) {
+          cues.push({ start, end, text });
+        }
+      }
+      // 防御畸形文件：保证二分查找前提（按开始时间有序）
+      cues.sort((a, b) => a.start - b.start);
+      return cues;
+    },
+
+    async loadSubtitle(url) {
+      this.subtitleCues = [];
+      this.currentCueIndex = -1;
+      if (!url || !process.client) return;
+
+      if (this.subtitleCache[url]) {
+        this.subtitleCues = this.subtitleCache[url];
+        return;
+      }
+
+      try {
+        const resp = await fetch(url, { credentials: 'include' });
+        if (!resp.ok) return;
+        const content = await resp.text();
+        const cues = this.parseSRT(content);
+        this.subtitleCache[url] = cues;
+        // 防止快速切轨时旧请求覆盖新字幕
+        const currentAudio = this.currentAudio;
+        if (currentAudio && currentAudio.subtitle === url) {
+          this.subtitleCues = cues;
+        }
+      } catch (error) {
+        console.error('Failed to load subtitle:', error);
+      }
+    },
+
+    syncSubtitle() {
+      if (!this.subtitleCues.length) return;
+      // 使用播放器绝对时间：普通分章文件与 currentTime 一致；
+      // m4b 内嵌章节共享整条音轨的外挂字幕时，字幕时间轴为绝对时间
+      const player = this.$refs.audioPlayer;
+      const t = player ? player.currentTime : this.currentTime;
+      let lo = 0;
+      let hi = this.subtitleCues.length - 1;
+      let idx = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const c = this.subtitleCues[mid];
+        if (t < c.start) {
+          hi = mid - 1;
+        } else if (t >= c.end) {
+          lo = mid + 1;
+        } else {
+          idx = mid;
+          break;
+        }
+      }
+      if (idx !== this.currentCueIndex) {
+        this.currentCueIndex = idx;
+      }
+    },
+
+    seekToCue(cue) {
+      if (!cue || !this.$refs.audioPlayer) return;
+      // 字幕时间为音轨绝对时间，直接设置即可（分章文件两者等价）
+      this.$refs.audioPlayer.currentTime = cue.start;
+    },
+
+    toggleSubtitle() {
+      this.showSubtitle = !this.showSubtitle;
+      if (process.client) {
+        try {
+          localStorage.setItem('audio_subtitle_enabled', this.showSubtitle ? '1' : '0');
+        } catch (error) {
+          console.error('Error saving subtitle preference:', error);
+        }
+      }
+    },
+
+    restoreSubtitlePreference() {
+      if (!process.client) return;
+      try {
+        const saved = localStorage.getItem('audio_subtitle_enabled');
+        if (saved !== null) {
+          this.showSubtitle = saved === '1';
+        }
+      } catch (error) {
+        console.error('Error restoring subtitle preference:', error);
+      }
     },
 
     // 工具方法
@@ -1206,6 +1348,36 @@ export default {
   margin: 0;
 }
 
+/* 字幕显示区 */
+.subtitle-section {
+  min-height: 44px;
+  max-height: 72px;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 16px;
+}
+
+.subtitle-text {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #e0e0e0;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+  padding: 6px 14px;
+  text-align: center;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  max-width: 100%;
+}
+
+.subtitle-text:hover {
+  background: rgba(156, 39, 176, 0.35);
+}
+
 .controls-section {
   flex: 1;
   display: flex;
@@ -1249,7 +1421,8 @@ export default {
 }
 
 .speed-btn,
-.timer-btn {
+.timer-btn,
+.subtitle-btn {
   background-color: #404040 !important;
   color: white !important;
   position: relative;
@@ -1296,6 +1469,17 @@ export default {
     flex-direction: column;
     height: 50%;
     padding: 10px;
+  }
+
+  .subtitle-section {
+    min-height: 36px;
+    max-height: 56px;
+    padding: 2px 8px;
+  }
+
+  .subtitle-text {
+    font-size: 0.875rem;
+    padding: 4px 10px;
   }
 
   .cover-section {

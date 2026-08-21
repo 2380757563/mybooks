@@ -1137,6 +1137,7 @@
     "playlist": "Playlist",
     "chapters": "chapters",
     "noAudioFiles": "No audio files available",
+    "subtitle": "Subtitle (click to seek)",
     "currentChapter": "Current Chapter",
     "startFromBeginning": "Start From Beginning",
     "timer": "Timer",
