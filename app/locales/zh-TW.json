@@ -1136,6 +1136,7 @@
     "playlist": "播放清單",
     "chapters": "章節",
     "noAudioFiles": "暫無音訊檔案",
+    "subtitle": "字幕（點擊跳轉）",
     "currentChapter": "當前章節",
     "startFromBeginning": "重新開始",
     "timer": "定時",

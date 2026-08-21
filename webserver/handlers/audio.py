@@ -23,7 +23,7 @@ from webserver.base.formatter import BookFormatter
 from webserver.handlers.base import BaseHandler, auth, js, is_admin
 from webserver.models import BizKey, ReaderPaidBook, ReaderLog, Message
 from webserver.worker.epub2audio_worker import EpubToAudioWorker
-from webserver.constants import ENABLE_VIP_QUOTA_KEY, SUPPORTED_AUDIO_FORMATS
+from webserver.constants import ENABLE_VIP_QUOTA_KEY, SUPPORTED_AUDIO_FORMATS, SUPPORTED_SUBTITLE_FORMATS
 from webserver.services.background_service import BackgroundService, BackgroundTask
 
 
@@ -197,7 +197,7 @@ class AudioUtils:
             file_urls.append(
                 {
                     "filename": os.path.splitext(file)[0],
-                    "url": f"{AudioUtils.site_url}/api/audio/{book_id}/{file}",
+                    "url": f"/api/audio/{book_id}/{file}",
                     "size": file_size,
                 }
             )
@@ -258,7 +258,7 @@ class AudioDetail(BaseHandler):
                 chapter_urls.append(
                     {
                         "filename": title,
-                        "url": f"{self.site_url}/api/audio/{book_id}/{file}",
+                        "url": f"/api/audio/{book_id}/{file}",
                         "size": chapter_size,
                         "start_time": start,
                         "end_time": end
@@ -305,6 +305,13 @@ class AudioDetail(BaseHandler):
                             is_paid = True
 
                     # Generate download URLs for audio files
+                    # 扫描同目录下的字幕文件（与音频同名，如 0001_第一章.wav -> 0001_第一章.srt）
+                    subtitle_map = {}
+                    for sub in sorted(os.listdir(audio_dir)):
+                        stem, ext = os.path.splitext(sub)
+                        if ext.lower() in SUPPORTED_SUBTITLE_FORMATS and stem not in subtitle_map:
+                            subtitle_map[stem] = sub
+
                     file_urls = []
                     for file in sorted(audio_files, key=natural_sort_key):
                         if file.find(SKIP_AUDIO_FILE_PREFIX) > 0:
@@ -316,16 +323,23 @@ class AudioDetail(BaseHandler):
                         if file.lower().endswith('.m4b'):
                             chapter_urls = self._extract_m4b_chapters(file_path, file_size, book_id, file)
                             if chapter_urls:
+                                # m4b 内嵌章节共享同一个外部字幕文件
+                                sub_file = subtitle_map.get(os.path.splitext(file)[0])
+                                for chapter_url in chapter_urls:
+                                    if sub_file:
+                                        chapter_url["subtitle"] = f"/api/audio/{book_id}/{sub_file}"
                                 file_urls.extend(chapter_urls)
                                 continue  # Skip adding the whole m4b file
 
-                        file_urls.append(
-                            {
-                                "filename": os.path.splitext(file)[0],
-                                "url": f"{self.site_url}/api/audio/{book_id}/{file}",
-                                "size": file_size,
-                            }
-                        )
+                        audio_item = {
+                            "filename": os.path.splitext(file)[0],
+                            "url": f"/api/audio/{book_id}/{file}",
+                            "size": file_size,
+                        }
+                        sub_file = subtitle_map.get(audio_item["filename"])
+                        if sub_file:
+                            audio_item["subtitle"] = f"/api/audio/{book_id}/{sub_file}"
+                        file_urls.append(audio_item)
                     return {
                         "err": "ok",
                         "audio_dir": audio_dir,
@@ -852,6 +866,8 @@ class AudioFile(BaseHandler):
                 ".m4b": "audio/mp4",
                 ".opus": "audio/opus",
                 ".wma": "audio/x-ms-wma",
+                ".srt": "application/x-subrip",
+                ".vtt": "text/vtt",
             }
             self.set_header("Content-Type", content_types.get(ext, "audio/mpeg"))
 
@@ -1004,12 +1020,22 @@ class AudioCollection(BaseHandler):
             # 如果zip不存在，创建它
             if not os.path.exists(zip_path):
                 try:
+                    # 字幕文件一并打包（与音频同名）
+                    subtitle_files = [
+                        f
+                        for f in os.listdir(audio_dir)
+                        if f.lower().endswith(tuple(SUPPORTED_SUBTITLE_FORMATS))
+                    ]
                     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                         for audio_file in sorted(audio_files, key=natural_sort_key):
                             if audio_file.find(SKIP_AUDIO_FILE_PREFIX) > 0:
                                 continue
                             file_path = os.path.join(audio_dir, audio_file)
                             zipf.write(file_path, audio_file)
+                        for sub_file in sorted(subtitle_files):
+                            sub_path = os.path.join(audio_dir, sub_file)
+                            if os.path.exists(sub_path):
+                                zipf.write(sub_path, sub_file)
                 except Exception as e:
                     logging.error(f"Error creating zip file: {e}")
                     return {"err": "server.error", "msg": _("创建压缩文件失败")}
@@ -1034,7 +1060,7 @@ class AudioCollection(BaseHandler):
             DailyDownloadMap[(user.id, book_id)] = datetime.datetime.now()
 
             # 生成下载链接
-            download_url = f"{self.get_site_url()}/api/audios/{book_id}/collection/download?key={download_key}"
+            download_url = f"/api/audios/{book_id}/collection/download?key={download_key}"
 
             # 保存日志
             db_log.set_extra("result", 0)

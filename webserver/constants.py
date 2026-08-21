@@ -17,6 +17,8 @@ CUSTOM_COVER_IMAGE = "/data/books/logo/default_cover.jpg"
 CALIBRE_ERROR_FLAG = "<*ERROR*>"
 SUPPORTED_EBOOK_FORMATS = ["azw3", "epub", "mobi", "pdf", "txt", "azw", "docx"]
 SUPPORTED_AUDIO_FORMATS = ['.mp3', ".m4a", ".m4b", ".wav", ".wma", ".opus"]
+# 有声书字幕文件格式（与音频文件同目录同名，如 0001_第一章.wav -> 0001_第一章.srt）
+SUPPORTED_SUBTITLE_FORMATS = ['.srt', '.vtt']
 
 COLUMN_CATEGORY = "category"
 CALIBRE_COLUMN_CATEGORY = "#category"
