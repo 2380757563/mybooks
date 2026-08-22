@@ -22,6 +22,7 @@ from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
 from webserver.toolbox.text_replace import TextReplaceTool
 from webserver.toolbox.txt_encoding_fixer import TxtEncodingFixerTool
 from webserver.toolbox.chinese_converter_tool import ChineseConverterTool, DIRECTIONS
+from webserver.toolbox.epub_beautify import EpubBeautifyTool
 from webserver.services.background_service import BackgroundTask
 from pathlib import Path
 
@@ -844,6 +845,86 @@ class AdminTextReplaceProgress(BaseHandler):
         return {"err": "ok", "data": result}
 
 
+class AdminEpubBeautifyPreview(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        try:
+            result = EpubBeautifyTool().preview(int(book_id))
+        except RuntimeError as err:
+            return {"err": "preview.failed", "msg": str(err)}
+        return {"err": "ok", "data": result}
+
+
+class AdminEpubBeautifyRun(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        preset = (data.get("preset") or "classic").strip()
+        toc_style = (data.get("toc_style") or "elegant").strip()
+        use_system_fonts = data.get("use_system_fonts", True)
+        # 兼容：前端可能传 string/bool
+        if isinstance(use_system_fonts, str):
+            use_system_fonts = use_system_fonts.lower() not in ("false", "0", "no", "")
+        else:
+            use_system_fonts = bool(use_system_fonts)
+        suffix = (data.get("suffix") or "").strip()
+        font_overrides = data.get("font_overrides")
+        # 兼容细粒度单独键
+        if font_overrides is None:
+            _ov = {}
+            for _k in ("body", "head", "kai", "code"):
+                _key = "font_%s" % _k
+                if _key in data:
+                    _ov[_k] = bool(data.get(_key))
+            if _ov:
+                font_overrides = _ov
+
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+
+        tool = EpubBeautifyTool()
+        if tool.is_running():
+            return {"err": "task.running", "msg": _("已有美化任务正在运行，请稍后再试")}
+
+        if font_overrides is not None:
+            tool.run(int(book_id), preset, use_system_fonts, toc_style, suffix, self.user_id(),
+                     font_overrides=font_overrides)
+        else:
+            tool.run(int(book_id), preset, use_system_fonts, toc_style, suffix, self.user_id())
+        return {"err": "ok", "msg": _("美化任务已启动，右上角可以查看进度")}
+
+
+class AdminEpubBeautifyProgress(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        task = EpubBeautifyTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动美化任务")}
+
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "new_book_id": progress_data.get("new_book_id", 0),
+            "stage": progress_data.get("stage", ""),
+        }
+
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("美化失败"), "data": result}
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("美化已完成"), "data": result}
+        return {"err": "ok", "data": result}
+
+
 def routes():
     return [
                 (r"/api/toolbox/list", AdminToolList),
@@ -883,4 +964,7 @@ def routes():
                 (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
                 (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
                 (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
+                (r"/api/toolbox/epub_beautify/preview", AdminEpubBeautifyPreview),
+                (r"/api/toolbox/epub_beautify/run", AdminEpubBeautifyRun),
+                (r"/api/toolbox/epub_beautify/progress", AdminEpubBeautifyProgress),
     ]

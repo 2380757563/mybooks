@@ -102,6 +102,7 @@ class ToolSet:
         from .text_replace import TextReplaceTool
         from .txt_encoding_fixer import TxtEncodingFixerTool
         from .chinese_converter_tool import ChineseConverterTool
+        from .epub_beautify import EpubBeautifyTool
 
         ToolSet.register(MergeFormatsTool.info())
         ToolSet.register(ReviewBookLanguageTool.info())
@@ -117,6 +118,7 @@ class ToolSet:
         ToolSet.register(MimoTTSTool.info())
         ToolSet.register(RareBookDownloader.info())
         ToolSet.register(BookBarnAcceptorTool.info())
+        ToolSet.register(EpubBeautifyTool.info())
 
         MinifyPdfTool.cleanup_old_files()
 
