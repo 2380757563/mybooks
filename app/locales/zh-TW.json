@@ -1661,7 +1661,7 @@
   "epubBeautify": {
     "title": "EPUB美化",
     "close": "關閉",
-    "hint": "對書籍的 EPUB 做無損美化：目錄、章節名、字體排版（11 套風格預設 × 4 種目錄風格），以新書入庫，原書不動。已適配手機/PC 與深色模式。",
+    "hint": "對書籍的 EPUB 做無損美化：目錄、章節名、字體排版（12 套風格預設 × 4 種目錄風格，含豎排右翻古籍），以新書入庫，原書不動。已適配手機/PC 與深色模式。",
     "selectBook": "搜尋書籍（Enter）",
     "noResults": "未找到書籍",
     "noEpub": "該書沒有 EPUB 格式，無法美化",
@@ -1692,6 +1692,7 @@
     "progressProcessing": "正在美化…",
     "progressSaving": "正在入庫…",
     "progressCompleted": "已完成",
-    "viewBook": "前往查看新書"
+    "viewBook": "前往查看新書",
+    "rtlBadge": "右翻"
   }
 }

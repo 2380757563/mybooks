@@ -218,5 +218,26 @@
     "font_kai": "\"Kaiti SC\",\"楷体\",\"STKaiti\",\"KaiTi\",serif",
     "font_code": "\"JetBrains Mono\",\"Cascadia Code\",\"Source Code Pro\",Consolas,monospace",
     "toc_gradient": "linear-gradient(135deg, #163549, #3a5a78)"
+  },
+  "vertclassical": {
+    "name": "竖排古籍",
+    "name_en": "Vertical Classic",
+    "scene": "古典原本 · 竖排右翻",
+    "description": "竖排右翻原本形制：文字自上而下、自右向左，界栏式回目标题、朱线竖分隔，宣纸墨色",
+    "line_height": "1.9",
+    "title_size": "1.4em",
+    "accent": "#241F1A",
+    "accent_light": "#F6F1E3",
+    "accent_dark": "#CFBE96",
+    "muted": "#7E7360",
+    "border": "#D6C8A6",
+    "quote_bg": "#FAF6EA",
+    "code_bg": "#F1ECDD",
+    "font_body": "\"Noto Serif SC\",\"Source Han Serif SC\",\"思源宋体\",\"方正书宋_GBK\",\"华文中宋\",\"宋体\",\"Songti SC\",\"STSong\",serif",
+    "font_head": "\"Kaiti SC\",\"楷体\",\"STKaiti\",\"KaiTi\",\"方正楷体_GBK\",\"Noto Serif SC\",\"宋体\",serif",
+    "font_kai": "\"Kaiti SC\",\"楷体\",\"STKaiti\",\"KaiTi\",\"DK-KAITI\",serif",
+    "font_code": "\"JetBrains Mono\",\"Cascadia Code\",\"Source Code Pro\",Consolas,monospace",
+    "toc_gradient": "linear-gradient(135deg, #241F1A, #6B5D3F)",
+    "page_progression": "rtl"
   }
 }

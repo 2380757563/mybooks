@@ -125,6 +125,7 @@
                     <div class="body-2 font-weight-medium d-flex align-center">
                       <v-icon v-if="preset === p.id" small color="primary" class="mr-1">mdi-check-circle</v-icon>
                       {{ $i18n.locale === 'en' ? p.name_en : p.name }}
+                      <v-chip v-if="p.page_progression === 'rtl'" x-small outlined class="ml-1 px-1" style="height:16px">{{ $t('epubBeautify.rtlBadge') }}</v-chip>
                       <span class="ml-auto d-inline-flex">
                         <span class="eb-swatch" :style="{ background: p.accent }" />
                         <span class="eb-swatch eb-swatch-b" :style="{ background: p.quote_bg }" />
@@ -339,6 +340,10 @@ export default {
       }
       if (p.id === 'xuanzhi') {
         return { color: p.accent, borderBottom: '2px solid ' + p.accent, padding: '9px 4px 6px', textAlign: 'center', fontWeight: 700, letterSpacing: '0.14em', fontSize: '0.8rem' };
+      }
+      if (p.id === 'vertclassical') {
+        // 竖排预览：真实 writing-mode 竖排 + 左右界栏线
+        return { background: p.accent_light || '#F6F1E3', color: p.accent, writingMode: 'vertical-rl', textOrientation: 'mixed', height: '62px', margin: '0 auto', padding: '4px 6px', borderLeft: '1px solid ' + (p.border || '#DDD'), borderRight: '1px solid ' + (p.border || '#DDD'), fontWeight: 700, letterSpacing: '0.16em', fontSize: '0.78rem' };
       }
       return { background: p.accent_light || '#F5F5F5', color: p.accent, borderTop: '3px solid ' + p.accent, borderBottom: '1px solid ' + (p.border || '#DDD'), borderRadius: '3px', padding: '8px 4px', textAlign: 'center', fontWeight: 700, letterSpacing: '0.06em', fontSize: '0.8rem' };
     },

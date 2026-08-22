@@ -59,8 +59,8 @@ class EpubBeautifyTool(BaseTool):
         return {
             "tool_id": "epub_beautify",
             "name": "EPUB美化",
-            "description": "美化 EPUB 的目录、章节名与字体排版（11 套风格预设，含宣纸墨韵/墨碑/航海纪事），生成新书",
-            "revision": "0.5.0",
+            "description": "美化 EPUB 的目录、章节名与字体排版（12 套风格预设，含宣纸墨韵/墨碑/航海纪事/竖排古籍），生成新书",
+            "revision": "0.1.0",
             "author": "黏菌",
             "publish_date": "2026-08-22",
         }
@@ -71,7 +71,7 @@ class EpubBeautifyTool(BaseTool):
     _PRESET_PALETTE_KEYS = (
         "scene", "line_height", "title_size",
         "accent", "accent_light", "accent_dark", "muted", "border",
-        "quote_bg", "code_bg", "toc_gradient",
+        "quote_bg", "code_bg", "toc_gradient", "page_progression",
     )
 
     @AsyncService.register_function
@@ -127,12 +127,15 @@ class EpubBeautifyTool(BaseTool):
             font_overrides: Optional[dict] = None) -> None:
         """后台执行美化并生成新书。
 
-        :param preset:           预设 id（classic/modern/webnovel/classical/navy/youth/children/refined/xuanzhi/inkstone/voyage）。
+        :param preset:           预设 id（classic/modern/webnovel/classical/navy/youth/children/refined/xuanzhi/inkstone/voyage/vertclassical）。
         :param use_system_fonts: 是否统一系统字体栈（False 保留原书字体，兼容旧接口）。
         :param toc_style:        目录风格（elegant 精致 / cool 酷炫 / seal 朱印 / minimal 极简）。
         :param suffix:           新书标题后缀（默认「（精排版）」）。
         :param user_id:          操作用户 ID。
         :param font_overrides:   细粒度字体开关 {"body":bool,"head":bool,"kai":bool,"code":bool}，覆盖 use_system_fonts。
+
+        预设元数据含 ``page_progression`` 时（如 vertclassical 竖排古籍 = rtl），
+        自动把 spine 设为对应翻页方向。
         """
         if not EpubBeautifyTool._run_lock.acquire(blocking=False):
             logging.warning(
@@ -173,13 +176,19 @@ class EpubBeautifyTool(BaseTool):
                 logging.error("[EpubBeautifyTool] Bad preset/toc_style %r/%r [uid:%d]", preset, toc_style, user_id)
                 return
 
+            # 竖排等预设可声明翻页方向（page_progression: rtl）
+            page_progression = (list_presets().get(preset) or {}).get("page_progression") or None
+
             work_dir = self.get_work_dir(str(book_id))
             out_path = os.path.join(work_dir, "beautified_%d.epub" % int(time.time()))
 
             self.update_task_progress(task_id, 30, {"status": "running", "stage": "processing"})
             progress_callback(30)
 
-            stats = epub_beautify_lib.beautify(epub_path, out_path, preset_css, toc_style=toc_style)
+            stats = epub_beautify_lib.beautify(
+                epub_path, out_path, preset_css,
+                toc_style=toc_style, page_progression=page_progression,
+            )
 
             self.update_task_progress(task_id, 80, {"status": "running", "stage": "saving"})
             progress_callback(80)
@@ -193,8 +202,9 @@ class EpubBeautifyTool(BaseTool):
                  "book_id": book_id, "new_book_id": new_book_id},
             )
             logging.info(
-                "[EpubBeautifyTool] Beautified book_id=%d (headers=%d, toc=%s) -> new book_id=%d [uid:%d]",
-                book_id, stats.get("marked_headers", 0), stats.get("toc_generated"), new_book_id, user_id,
+                "[EpubBeautifyTool] Beautified book_id=%d (headers=%d, toc=%s, rtl=%s) -> new book_id=%d [uid:%d]",
+                book_id, stats.get("marked_headers", 0), stats.get("toc_generated"),
+                stats.get("page_progression") or "-", new_book_id, user_id,
             )
             self.cleanup_work_dir(work_dir)
 

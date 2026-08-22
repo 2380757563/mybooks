@@ -620,18 +620,44 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
 
 # ── 主流程 ────────────────────────────────────────────────────────────────────
 
+def _set_page_progression(opf_str: str, direction: str) -> str:
+    """幂等设置 spine 的 page-progression-direction（竖排书右翻的标准信号）。
+
+    已有该属性则更新其值，没有则追加；找不到 spine 标签时原样返回。
+    """
+    m = re.search(r'<spine\b[^>]*>', opf_str)
+    if not m:
+        return opf_str
+    tag = m.group(0)
+    if re.search(r'page-progression-direction\s*=', tag):
+        new_tag = re.sub(
+            r'page-progression-direction\s*=\s*(["\'])[^"\']*\1',
+            'page-progression-direction="%s"' % direction,
+            tag, count=1,
+        )
+    else:
+        # 插到闭合符前（兼容 <spine> 与 <spine toc="ncx">）
+        new_tag = tag[:-1].rstrip() + ' page-progression-direction="%s">' % direction
+    if new_tag == tag:
+        return opf_str
+    return opf_str[:m.start()] + new_tag + opf_str[m.end():]
+
+
 def beautify(
     epub_path: str,
     out_path: str,
     preset_css: str,
     max_toc_entries: int = MAX_TOC_ENTRIES,
     toc_style: str = 'elegant',
+    page_progression: str = None,
 ) -> dict:
     """执行美化并写新 EPUB。
 
     :param preset_css: 已插值的 mb-beauty.css 内容（styles.get_preset_css）。
+    :param page_progression: 'rtl' 时把 spine 设为从左向右翻页（竖排预设用），
+        None 保持原书设置。
     :return: 统计 dict（marked_headers / toc_generated / toc_entries /
-        injected_css / chapters）
+        injected_css / chapters / rtl）
     """
     entries = _read_zip_entries(epub_path)
     ctx = _parse_opf(entries)
@@ -782,6 +808,15 @@ def beautify(
             entries[t] = html.encode('utf-8')
             injected += 1
 
+    # ── 4. 翻页方向：竖排预设把 spine 设为 rtl（从左向右翻）──
+    rtl_set = False
+    if page_progression:
+        opf_now = _decode(entries[ctx.opf_path])
+        opf_new = _set_page_progression(opf_now, page_progression)
+        if opf_new != opf_now:
+            entries[ctx.opf_path] = opf_new.encode('utf-8')
+        rtl_set = 'page-progression-direction="%s"' % page_progression in opf_new
+
     _write_zip(entries, out_path)
     return {
         'marked_headers': marked_headers,
@@ -789,4 +824,5 @@ def beautify(
         'toc_entries': toc_entries,
         'css_injected_chapters': injected,
         'chapters': len(text_entries),
+        'page_progression': page_progression if rtl_set else '',
     }

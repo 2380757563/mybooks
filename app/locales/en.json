@@ -1662,7 +1662,7 @@
   "epubBeautify": {
     "title": "EPUB Beautifier",
     "close": "Close",
-    "hint": "Non-destructive EPUB beautification: TOC, headings & typography (11 presets × 4 TOC styles). Saves as new book; original untouched. Mobile/PC & dark-mode ready.",
+    "hint": "Non-destructive EPUB beautification: TOC, headings & typography (12 presets × 4 TOC styles, incl. vertical RTL classic). Saves as new book; original untouched. Mobile/PC & dark-mode ready.",
     "selectBook": "Search books (Enter)",
     "noResults": "No books found",
     "noEpub": "This book has no EPUB format",
@@ -1693,6 +1693,7 @@
     "progressProcessing": "Beautifying…",
     "progressSaving": "Saving…",
     "progressCompleted": "Done",
-    "viewBook": "View new book"
+    "viewBook": "View new book",
+    "rtlBadge": "RTL"
   }
 }
