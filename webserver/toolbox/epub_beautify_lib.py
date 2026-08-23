@@ -65,8 +65,7 @@ _INLINE_RE = re.compile(r'<[^>]+>')
 
 MB_CSS_NAME = 'mb-beauty.css'
 MB_TOC_NAME = 'mb-toc.xhtml'
-# 生成目录页的最大条目数（超长 NCX 如网文 2137 条时截断）
-MAX_TOC_ENTRIES = 500
+# 目录条目默认**不截断**（v0.2.1 起取消 500 条上限；如需限制可显式传 max_toc_entries）
 
 # ── 内容清理（借鉴 Sigil CleanSource 思路，仅思路自研实现）──────────────────
 # 段首空白：全角空格/半角空格/tab/换行 + nbsp 实体，出现在 <p> 开标签之后
@@ -423,7 +422,7 @@ def _build_toc_page(toc_items: list, ref_dir: str, truncated: bool = False,
                 '<li class="%s">%s<a href="%s">%s</a></li>'
                 % (lv, num_span, rel, _esc(title))
             )
-    trunc = ('<p class="mb-toc-truncated">……（目录过长，仅显示前 %d 条）</p>' % MAX_TOC_ENTRIES) if truncated else ''
+    trunc = ('<p class="mb-toc-truncated">……（目录过长，仅显示前 %d 条）</p>' % len(toc_items)) if truncated else ''
 
     if toc_style == 'seal':
         head = (
@@ -753,7 +752,7 @@ def beautify(
     epub_path: str,
     out_path: str,
     preset_css: str,
-    max_toc_entries: int = MAX_TOC_ENTRIES,
+    max_toc_entries: int = None,
     toc_style: str = 'elegant',
     page_progression: str = None,
     toc_depth: int = None,
@@ -764,6 +763,8 @@ def beautify(
     :param preset_css: 已插值的 mb-beauty.css 内容（styles.get_preset_css）。
     :param page_progression: 'rtl' 时把 spine 设为从左向右翻页（竖排预设用），
         None 保持原书设置。
+    :param max_toc_entries: 目录条目上限；**None = 不截断（默认，v0.2.1 起）**，
+        显式传数字时超出部分丢弃并附截断提示。深度/噪音过滤先于截断执行。
     :param toc_depth: 目录收录层级上限（None=全部；1/2/3=只收 level < N 的条目）。
     :param cleanup: 内容清理开关 {"leading":bool,"empty":bool,"meta":bool}，
         见 _normalize_cleanup；None 用默认（段首空格开/空段关/meta 开）。
@@ -848,8 +849,10 @@ def beautify(
         path_to_idref.setdefault(t, idref)
 
     if (not inbook_toc_paths or nav_semantic_in_spine) and toc_items:
-        truncated = len(toc_items) > max_toc_entries
-        toc_items = toc_items[:max_toc_entries]
+        # 截断仅在显式传入 max_toc_entries 时发生（默认 None = 全量收录）
+        truncated = bool(max_toc_entries) and len(toc_items) > max_toc_entries
+        if truncated:
+            toc_items = toc_items[:max_toc_entries]
         toc_path = ctx.opf_dir + MB_TOC_NAME
 
         # 链接完整性校验：所有条目目标必须真实存在于包内（生成前校验，零成本）
