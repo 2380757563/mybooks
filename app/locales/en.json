@@ -1694,6 +1694,17 @@
     "progressSaving": "Saving…",
     "progressCompleted": "Done",
     "viewBook": "View new book",
-    "rtlBadge": "RTL"
+    "rtlBadge": "RTL",
+    "cleanTitle": "Content cleanup",
+    "cleanLeading": "Normalize full-width space indentation (recommended)",
+    "cleanEmpty": "Remove empty paragraphs & collapse <br> runs",
+    "cleanMeta": "Remove redundant meta charset",
+    "tocDepth": "TOC depth",
+    "anaLeading": "Full-width indent paras: {count}",
+    "anaEmpty": "Empty paragraphs (est): {count}",
+    "anaMismatch": "Unclosed-tag suspect files: {count}",
+    "anaConflict": "Original CSS uses !important ×{count}, override may be partial",
+    "anaImages": "Images: {count} (oversized {big})",
+    "tocPreviewTitle": "TOC preview (after noise filtering, first 12)"
   }
 }

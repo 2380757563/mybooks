@@ -1693,6 +1693,17 @@
     "progressSaving": "正在入庫…",
     "progressCompleted": "已完成",
     "viewBook": "前往查看新書",
-    "rtlBadge": "右翻"
+    "rtlBadge": "右翻",
+    "cleanTitle": "內容清理",
+    "cleanLeading": "段首全形空格歸一（建議開啟）",
+    "cleanEmpty": "刪除空白段落並收斂連續換行",
+    "cleanMeta": "移除冗餘 meta charset",
+    "tocDepth": "目錄收錄層級",
+    "anaLeading": "段首空格段落：{count} 處",
+    "anaEmpty": "空白段落（約）：{count} 個",
+    "anaMismatch": "疑似未閉合標籤檔案：{count} 個",
+    "anaConflict": "原書 CSS 含 !important ×{count}，覆蓋可能不完全",
+    "anaImages": "圖片：{count} 張（超大 {big}）",
+    "tocPreviewTitle": "目錄預覽（已過濾製作資訊，前 12 條）"
   }
 }

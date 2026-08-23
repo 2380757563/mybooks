@@ -68,6 +68,62 @@ MB_TOC_NAME = 'mb-toc.xhtml'
 # 生成目录页的最大条目数（超长 NCX 如网文 2137 条时截断）
 MAX_TOC_ENTRIES = 500
 
+# ── 内容清理（借鉴 Sigil CleanSource 思路，仅思路自研实现）──────────────────
+# 段首空白：全角空格/半角空格/tab/换行 + nbsp 实体，出现在 <p> 开标签之后
+_LEADING_WS_RE = re.compile(r'(<p\b[^>]*>)((?:&nbsp;|&#160;|[\s\u3000])+)', re.IGNORECASE)
+# 空段落：只有空白/nbsp/br 的 p（默认不启用，精排书可能用空段造留白）
+_EMPTY_P_RE = re.compile(r'<p\b[^>]*>(?:&nbsp;|&#160;|<br\s*/?>|[\s\u3000])*</p>', re.IGNORECASE)
+# 连续 br 收敛：3 个及以上连续 <br/> 收敛为 2 个
+_BR_RUN_RE = re.compile(r'(?:<br\s*/?>[\s\u3000]*){3,}', re.IGNORECASE)
+# 冗余 meta charset（EPUB 规范要求 UTF-8，无需声明；部分制作工具会残留）
+_META_CHARSET_RE = re.compile(r'[ \t]*<meta[^>]+charset[^>]*>[ \t]*\n?', re.IGNORECASE)
+# 目录噪音排除（保守清单：只排无争议的制作信息，不动 前言/序/附录 这类正章）
+_TOC_EXCLUDE_RE = re.compile(
+    r'本书由|版权所有|侵权必究|监制|制作说明|出版说明$|^出品$|更多精彩|'
+    r'未完待续|^完$|全书完|^正文完$|'
+    r'www\.|https?://|[\w.-]+\.(com|net|cn|org)([/\s]|$)',
+    re.IGNORECASE,
+)
+
+
+def _normalize_cleanup(cleanup):
+    """归一化清理开关：{"leading":bool,"empty":bool,"meta":bool}。
+
+    默认（混合策略）：段首空格归一开、空段清理关、meta 移除开。
+    """
+    c = dict(cleanup) if isinstance(cleanup, dict) else {}
+    return {
+        'leading': bool(c.get('leading', True)),
+        'empty': bool(c.get('empty', False)),
+        'meta': bool(c.get('meta', True)),
+    }
+
+
+def _clean_html_body(html_str: str, cleanup: dict) -> tuple:
+    """对单个正文文件执行内容清理。
+
+    :return: (new_html, cleaned_leading, removed_empty)
+    """
+    n_lead = n_empty = 0
+    new = html_str
+    if cleanup.get('leading'):
+        new, n_lead = _LEADING_WS_RE.subn(r'\1', new)
+    if cleanup.get('empty'):
+        new, k1 = _EMPTY_P_RE.subn('', new)
+        new, _ = _BR_RUN_RE.subn('<br/><br/>', new)
+        n_empty = k1
+    if cleanup.get('meta'):
+        stripped = _META_CHARSET_RE.sub('', new, count=2)
+        # DOCTYPE 头规整：声明后保证一个换行（幂等）
+        stripped = re.sub(r'(<!DOCTYPE[^>]*>)(?![ \t]*\r?\n)', r'\1\n', stripped, count=1, flags=re.IGNORECASE)
+        new = stripped
+    return new, n_lead, n_empty
+
+
+def _toc_entry_allowed(title: str) -> bool:
+    """目录条目是否收录（排除制作信息类噪音标题）。"""
+    return not _TOC_EXCLUDE_RE.search(title or '')
+
 
 # ── EPUB 容器基础（沿用 text_replace 模式）────────────────────────────────────
 
@@ -565,12 +621,12 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
     css_names = [n for n in entries if n.lower().endswith('.css')]
     has_fontface = False
     calibre_soup = False
+    css_important_count = 0
     for n in css_names:
         css = _decode(entries[n])
         if '@font-face' in css:
             has_fontface = True
-        if '.calibre' in css or 'class="calibre' in _decode(entries.get('META-INF/container.xml', b'')):
-            pass
+        css_important_count += css.count('!important')
     for n in css_names:
         if '.calibre' in _decode(entries[n]):
             calibre_soup = True
@@ -591,6 +647,17 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
     h_stats = {'h1': 0, 'h2': 0, 'h3': 0, 'h4': 0, 'h5': 0, 'h6': 0}
     text_headings = 0
     sampled = 0
+    # 健康报告采样：段首空格占比 / 空段估计 / p 开闭不齐文件数
+    leading_space_paras = 0
+    total_paras = 0
+    empty_para_est = 0
+    # p 开闭不齐（烂书预警）：全量计数，开销为两次正则扫描
+    p_close_mismatch_files = sum(
+        1 for t in text_entries
+        if t in entries
+        and len(re.findall(rb'<p\b', entries[t], re.IGNORECASE))
+        != len(re.findall(rb'</p>', entries[t], re.IGNORECASE))
+    )
     for t in text_entries:
         if _is_front_file(t):
             continue
@@ -598,11 +665,40 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
             break
         sampled += 1
         html = _decode(entries[t])
+        empty_para_est += len(_EMPTY_P_RE.findall(html))
         for tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             h_stats[tag] += len(re.findall(r'<%s\b' % tag, html, re.IGNORECASE))
         for m in _BLOCK_RE.finditer(html):
-            if chapter_patterns.paragraph_is_heading(_block_text(m.group(3))):
+            inner = m.group(3)
+            total_paras += 1
+            if m.group(1).lower() == 'p' and (
+                re.match(r'^[\s\u3000]*(?:&nbsp;|&#160;)+', inner, re.IGNORECASE)
+                or re.match(r'^[\s\u3000]{2,}', inner)
+            ):
+                leading_space_paras += 1
+            if chapter_patterns.paragraph_is_heading(_block_text(inner)):
                 text_headings += 1
+
+    # 目录预览：应用排除规则后的前若干条标题（与生成逻辑同源）
+    toc_preview_titles = []
+    raw_toc = []
+    if ctx.ncx_path and ctx.ncx_path in entries:
+        raw_toc = [(lv, title, src) for lv, title, src in _parse_ncx(entries[ctx.ncx_path])]
+    elif ctx.nav_path and ctx.nav_path in entries:
+        raw_toc = [(lv, title, href) for lv, title, href in _parse_nav_doc(entries[ctx.nav_path])]
+    for lv, title, _src in raw_toc:
+        if title and _toc_entry_allowed(title):
+            toc_preview_titles.append(title)
+        if len(toc_preview_titles) >= 12:
+            break
+
+    # 图片体检：数量 + 超大图计数（只报不改）
+    img_exts = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+    image_count = sum(1 for k in entries if k.lower().endswith(img_exts))
+    image_oversize = sum(
+        1 for k, v in entries.items()
+        if k.lower().endswith(img_exts) and len(v) > 2 * 1024 * 1024
+    )
 
     return {
         'title': ctx.title,
@@ -615,6 +711,16 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
         'nav_entries': nav_count,
         'heading_stats': h_stats,
         'text_headings': text_headings,
+        # ── 健康报告（v0.2.0）──
+        'leading_space_paras': leading_space_paras,
+        'sampled_paras': total_paras,
+        'empty_para_est': empty_para_est,
+        'p_close_mismatch_files': p_close_mismatch_files,
+        'css_important_count': css_important_count,
+        'css_conflict_risk': css_important_count > 30,
+        'image_count': image_count,
+        'image_oversize': image_oversize,
+        'toc_preview_titles': toc_preview_titles,
     }
 
 
@@ -650,15 +756,22 @@ def beautify(
     max_toc_entries: int = MAX_TOC_ENTRIES,
     toc_style: str = 'elegant',
     page_progression: str = None,
+    toc_depth: int = None,
+    cleanup: dict = None,
 ) -> dict:
     """执行美化并写新 EPUB。
 
     :param preset_css: 已插值的 mb-beauty.css 内容（styles.get_preset_css）。
     :param page_progression: 'rtl' 时把 spine 设为从左向右翻页（竖排预设用），
         None 保持原书设置。
+    :param toc_depth: 目录收录层级上限（None=全部；1/2/3=只收 level < N 的条目）。
+    :param cleanup: 内容清理开关 {"leading":bool,"empty":bool,"meta":bool}，
+        见 _normalize_cleanup；None 用默认（段首空格开/空段关/meta 开）。
     :return: 统计 dict（marked_headers / toc_generated / toc_entries /
-        injected_css / chapters / rtl）
+        injected_css / chapters / rtl / cleaned_leading / removed_empty /
+        toc_excluded / toc_links_ok / toc_links_total）
     """
+    cleanup_n = _normalize_cleanup(cleanup)
     entries = _read_zip_entries(epub_path)
     ctx = _parse_opf(entries)
     text_entries = _text_entries(ctx, entries)
@@ -674,6 +787,9 @@ def beautify(
     toc_generated = False
     toc_entries = 0
     toc_items = []
+    toc_excluded = 0
+    toc_links_ok = 0
+    toc_links_total = 0
 
     def _abs_with_anchor(base_dir, ref):
         """把目录条目引用解析为 zip 绝对路径（保留 #锚点）。"""
@@ -682,19 +798,36 @@ def beautify(
             return _resolve_zip(base_dir, path) + '#' + anchor
         return _resolve_zip(base_dir, ref)
 
+    def _collect_toc(items):
+        """应用噪音排除 + 深度过滤，返回 (items, excluded_count)。"""
+        kept = []
+        excluded = 0
+        for it in items:
+            lv, title, src = it
+            if not title or not _toc_entry_allowed(title):
+                excluded += 1
+                continue
+            if toc_depth is not None and lv >= toc_depth:
+                excluded += 1
+                continue
+            kept.append(it)
+        return kept, excluded
+
     # 目录数据源：NCX 优先，其次 EPUB3 nav 文档
     if ctx.ncx_path and ctx.ncx_path in entries:
         ncx_dir = ctx.ncx_path.rsplit('/', 1)[0] + '/' if '/' in ctx.ncx_path else ''
-        toc_items = [
+        raw = [
             (lv, title, _snap_with_anchor(entries, _abs_with_anchor(ncx_dir, src)))
             for lv, title, src in _parse_ncx(entries[ctx.ncx_path])
         ]
+        toc_items, toc_excluded = _collect_toc(raw)
     elif ctx.nav_path and ctx.nav_path in entries:
         nav_dir = ctx.nav_path.rsplit('/', 1)[0] + '/' if '/' in ctx.nav_path else ''
-        toc_items = [
+        raw = [
             (lv, title, _snap_with_anchor(entries, _abs_with_anchor(nav_dir, href)))
             for lv, title, href in _parse_nav_doc(entries[ctx.nav_path])
         ]
+        toc_items, toc_excluded = _collect_toc(raw)
 
     # 书内目录页：spine 中文件名为目录特征或含 <nav epub:type="toc">
     inbook_toc_paths = [
@@ -718,6 +851,11 @@ def beautify(
         truncated = len(toc_items) > max_toc_entries
         toc_items = toc_items[:max_toc_entries]
         toc_path = ctx.opf_dir + MB_TOC_NAME
+
+        # 链接完整性校验：所有条目目标必须真实存在于包内（生成前校验，零成本）
+        toc_links_ok = sum(1 for _, _, src in toc_items if src.split('#', 1)[0] in entries)
+        toc_links_total = len(toc_items)
+
         entries[toc_path] = _build_toc_page(toc_items, ctx.opf_dir, truncated, toc_style)
         toc_entries = len(toc_items)
         # OPF 注册（幂等）
@@ -776,14 +914,25 @@ def beautify(
         )
         entries[ctx.opf_path] = opf_raw.encode('utf-8')
 
-    # ── 3. 逐正文条目：目录页标记 + 章节名标记 + 注入 CSS 引用 ──
+    # ── 3. 逐正文条目：内容清理 + 目录页标记 + 章节名标记 + 注入 CSS 引用 ──
     marked_headers = 0
     injected = 0
+    cleaned_leading = 0
+    removed_empty = 0
     for t in text_entries:
         if t not in entries:
             continue
         html = _decode(entries[t])
         changed = False
+        # 内容清理（段首空格归一/空段/meta），目录页不做文本清理避免破坏布局
+        if not _is_toc_doc(t, html):
+            new_html, n_lead, n_empty = _clean_html_body(html, cleanup_n)
+            if n_lead or n_empty or new_html != html:
+                cleaned_leading += n_lead
+                removed_empty += n_empty
+                if new_html != html:
+                    changed = True
+                    html = new_html
         # 目录页：body 打 mb-toc-page 标记 + 注入真实装饰元素，不做章节标记
         if _is_toc_doc(t, html):
             new_html = _mark_toc_page_body(html)
@@ -825,4 +974,10 @@ def beautify(
         'css_injected_chapters': injected,
         'chapters': len(text_entries),
         'page_progression': page_progression if rtl_set else '',
+        'cleaned_leading': cleaned_leading,
+        'removed_empty': removed_empty,
+        'toc_excluded': toc_excluded,
+        'toc_depth': toc_depth or 0,
+        'toc_links_ok': toc_links_ok if toc_generated else 0,
+        'toc_links_total': toc_links_total if toc_generated else 0,
     }

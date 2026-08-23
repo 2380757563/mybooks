@@ -1694,6 +1694,17 @@
     "progressSaving": "正在入库…",
     "progressCompleted": "已完成",
     "viewBook": "前往查看新书",
-    "rtlBadge": "右翻"
+    "rtlBadge": "右翻",
+    "cleanTitle": "内容清理",
+    "cleanLeading": "段首全角空格归一（推荐开启）",
+    "cleanEmpty": "删除空段落并收敛连续换行",
+    "cleanMeta": "移除冗余 meta charset",
+    "tocDepth": "目录收录层级",
+    "anaLeading": "段首空格段落：{count} 处",
+    "anaEmpty": "空段落（约）：{count} 个",
+    "anaMismatch": "疑似未闭合标签文件：{count} 个",
+    "anaConflict": "原书 CSS 含 !important ×{count}，覆盖可能不完全",
+    "anaImages": "图片：{count} 张（超大 {big}）",
+    "tocPreviewTitle": "目录预览（已过滤制作信息，前 12 条）"
   }
 }

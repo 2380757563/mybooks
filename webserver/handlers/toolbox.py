@@ -885,6 +885,19 @@ class AdminEpubBeautifyRun(BaseHandler):
                     _ov[_k] = bool(data.get(_key))
             if _ov:
                 font_overrides = _ov
+        # 目录层级深度（None=全部）
+        toc_depth = data.get("toc_depth")
+        try:
+            toc_depth = int(toc_depth) if toc_depth else None
+        except (TypeError, ValueError):
+            toc_depth = None
+        if toc_depth is not None and not 1 <= toc_depth <= 6:
+            toc_depth = None
+        # 内容清理开关（后端有默认值，仅透传合法键）
+        cleanup_raw = data.get("cleanup")
+        cleanup = None
+        if isinstance(cleanup_raw, dict):
+            cleanup = {k: bool(cleanup_raw[k]) for k in ("leading", "empty", "meta") if k in cleanup_raw}
 
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
@@ -893,11 +906,14 @@ class AdminEpubBeautifyRun(BaseHandler):
         if tool.is_running():
             return {"err": "task.running", "msg": _("已有美化任务正在运行，请稍后再试")}
 
+        kwargs = {}
         if font_overrides is not None:
-            tool.run(int(book_id), preset, use_system_fonts, toc_style, suffix, self.user_id(),
-                     font_overrides=font_overrides)
-        else:
-            tool.run(int(book_id), preset, use_system_fonts, toc_style, suffix, self.user_id())
+            kwargs["font_overrides"] = font_overrides
+        if toc_depth is not None:
+            kwargs["toc_depth"] = toc_depth
+        if cleanup is not None:
+            kwargs["cleanup"] = cleanup
+        tool.run(int(book_id), preset, use_system_fonts, toc_style, suffix, self.user_id(), **kwargs)
         return {"err": "ok", "msg": _("美化任务已启动，右上角可以查看进度")}
 
 

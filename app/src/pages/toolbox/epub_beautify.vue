@@ -101,6 +101,26 @@
                     {{ $t('epubBeautify.analysisCalibre') }}
                   </v-chip>
                   <v-chip x-small outlined class="mb-1">{{ $t('epubBeautify.analysisHeadings', { count: headingCount }) }}</v-chip>
+                  <v-chip v-if="analysis.leading_space_paras" x-small outlined color="secondary" class="mr-2 mb-1">
+                    {{ $t('epubBeautify.anaLeading', { count: analysis.leading_space_paras }) }}
+                  </v-chip>
+                  <v-chip v-if="analysis.empty_para_est" x-small outlined color="secondary" class="mr-2 mb-1">
+                    {{ $t('epubBeautify.anaEmpty', { count: analysis.empty_para_est }) }}
+                  </v-chip>
+                  <v-chip v-if="analysis.p_close_mismatch_files" x-small outlined color="error" class="mr-2 mb-1">
+                    {{ $t('epubBeautify.anaMismatch', { count: analysis.p_close_mismatch_files }) }}
+                  </v-chip>
+                  <v-chip v-if="analysis.css_conflict_risk" x-small outlined color="warning" class="mr-2 mb-1">
+                    {{ $t('epubBeautify.anaConflict', { count: analysis.css_important_count }) }}
+                  </v-chip>
+                  <v-chip v-if="analysis.image_count" x-small outlined class="mb-1">
+                    {{ $t('epubBeautify.anaImages', { count: analysis.image_count, big: analysis.image_oversize || 0 }) }}
+                  </v-chip>
+                </div>
+                <!-- 目录预览（应用排除规则后的前 12 条） -->
+                <div v-if="tocPreviewText" class="mt-2 caption grey--text eb-toc-preview">
+                  <div class="font-weight-medium">{{ $t('epubBeautify.tocPreviewTitle') }}</div>
+                  <div style="max-height:96px;overflow-y:auto;white-space:pre-line">{{ tocPreviewText }}</div>
                 </div>
               </v-card-text>
             </v-card>
@@ -210,6 +230,38 @@
               </div>
             </v-expand-transition>
 
+            <!-- 内容清理 -->
+            <div class="text-subtitle-2 font-weight-medium mb-1 mt-3">{{ $t('epubBeautify.cleanTitle') }}</div>
+            <v-switch
+              v-model="cleanLeading"
+              :label="$t('epubBeautify.cleanLeading')"
+              dense hide-details class="mt-0"
+            />
+            <v-switch
+              v-model="cleanEmpty"
+              :label="$t('epubBeautify.cleanEmpty')"
+              dense hide-details class="mt-0"
+            />
+            <v-switch
+              v-model="cleanMeta"
+              :label="$t('epubBeautify.cleanMeta')"
+              dense hide-details class="mt-0 mb-1"
+            />
+
+            <!-- 目录深度 -->
+            <div class="d-flex align-center">
+              <span class="text-subtitle-2 font-weight-medium mr-3">{{ $t('epubBeautify.tocDepth') }}</span>
+              <v-select
+                v-model="tocDepth"
+                :items="tocDepthItems"
+                item-text="label"
+                item-value="value"
+                dense hide-details
+                style="max-width:180px"
+                class="mt-0"
+              />
+            </div>
+
             <v-text-field
               v-model="suffix"
               :label="$t('epubBeautify.suffix')"
@@ -299,6 +351,18 @@ export default {
     fontHead: true,
     fontKai: true,
     fontCode: true,
+    // 内容清理（混合默认：段首空格开 / 空段关 / meta 开）
+    cleanLeading: true,
+    cleanEmpty: false,
+    cleanMeta: true,
+    // 目录深度（0 = 全部）
+    tocDepth: 0,
+    tocDepthItems: [
+      { value: 0, label: '全部层级' },
+      { value: 1, label: '仅一级' },
+      { value: 2, label: '前两级' },
+      { value: 3, label: '前三级' },
+    ],
     suffix: '',
 
     processing: false,
@@ -321,6 +385,10 @@ export default {
       if (!this.analysis) return 0;
       const s = this.analysis.heading_stats || {};
       return (s.h1 || 0) + (s.h2 || 0) + (s.h3 || 0) + this.analysis.text_headings;
+    },
+    tocPreviewText() {
+      const titles = (this.analysis && this.analysis.toc_preview_titles) || [];
+      return titles.map((t, i) => (i + 1) + '. ' + t).join('\n');
     },
     currentPreset() {
       return this.presets.find((p) => p.id === this.preset) || this.presets[0] || {};
@@ -504,6 +572,12 @@ export default {
             toc_style: this.tocStyle,
             use_system_fonts: this.useSystemFonts,
             font_overrides: fontOverrides,
+            toc_depth: this.tocDepth || null,
+            cleanup: {
+              leading: this.cleanLeading,
+              empty: this.cleanEmpty,
+              meta: this.cleanMeta,
+            },
             suffix: this.suffix,
           }),
         });

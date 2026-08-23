@@ -59,8 +59,8 @@ class EpubBeautifyTool(BaseTool):
         return {
             "tool_id": "epub_beautify",
             "name": "EPUB美化",
-            "description": "美化 EPUB 的目录、章节名与字体排版（12 套风格预设，含宣纸墨韵/墨碑/航海纪事/竖排古籍），生成新书",
-            "revision": "0.1.0",
+            "description": "美化 EPUB 的目录、章节名与字体排版（12 套风格预设，含宣纸墨韵/墨碑/航海纪事/竖排古籍；内容清理与目录深度可调），生成新书",
+            "revision": "0.2.0",
             "author": "黏菌",
             "publish_date": "2026-08-22",
         }
@@ -124,7 +124,9 @@ class EpubBeautifyTool(BaseTool):
     @AsyncService.register_service
     def run(self, book_id: int, preset: str, use_system_fonts: bool,
             toc_style: str, suffix: str, user_id: int,
-            font_overrides: Optional[dict] = None) -> None:
+            font_overrides: Optional[dict] = None,
+            toc_depth: Optional[int] = None,
+            cleanup: Optional[dict] = None) -> None:
         """后台执行美化并生成新书。
 
         :param preset:           预设 id（classic/modern/webnovel/classical/navy/youth/children/refined/xuanzhi/inkstone/voyage/vertclassical）。
@@ -133,6 +135,9 @@ class EpubBeautifyTool(BaseTool):
         :param suffix:           新书标题后缀（默认「（精排版）」）。
         :param user_id:          操作用户 ID。
         :param font_overrides:   细粒度字体开关 {"body":bool,"head":bool,"kai":bool,"code":bool}，覆盖 use_system_fonts。
+        :param toc_depth:        目录收录层级上限（None=全部；1/2/3=只收前 N 级）。
+        :param cleanup:          内容清理开关 {"leading":bool,"empty":bool,"meta":bool}，
+                                 默认 段首空格归一开 / 空段清理关 / 冗余 meta 移除开。
 
         预设元数据含 ``page_progression`` 时（如 vertclassical 竖排古籍 = rtl），
         自动把 spine 设为对应翻页方向。
@@ -188,6 +193,7 @@ class EpubBeautifyTool(BaseTool):
             stats = epub_beautify_lib.beautify(
                 epub_path, out_path, preset_css,
                 toc_style=toc_style, page_progression=page_progression,
+                toc_depth=toc_depth, cleanup=cleanup,
             )
 
             self.update_task_progress(task_id, 80, {"status": "running", "stage": "saving"})
