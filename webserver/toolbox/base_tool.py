@@ -18,6 +18,7 @@ from webserver.i18n import _
 from webserver.models import Item
 from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
+from webserver.toolbox.core_api import CoreAPI
 
 
 class BaseTool(AsyncService):
@@ -26,11 +27,26 @@ class BaseTool(AsyncService):
     # 子类必须覆盖：后台任务面板中显示的任务名称（会经过 i18n 处理）
     service_item_name: str = ""
 
-    # 工具数据根目录；子类可覆盖
+    # 工具数据根目录；子类可覆盖。刻意不做成 CONF 配置项，见
+    # document/Toolbox_Dynamic_Design.md 2.2 节的说明。
     TOOL_DATA_ROOT: str = "/data/toolbox"
 
     # 支持的入库文件格式
     SUPPORTED_FORMATS = {"epub", "pdf", "azw3", "mobi", "txt"}
+
+    # 由 webserver/toolbox/plugin_manager.py 在动态加载一个 type=plugin 的工具类之后，
+    # 以类属性形式设置为 "plugin:<tool_id>"（见 document/Toolbox_Dynamic_Design.md 2.2 节
+    # "决策"）。14 个内置工具（含被更新覆盖过的）保持默认 None，create_task() 继续使用
+    # SERVICE_TYPE_OTHER，行为不变。
+    PLUGIN_SERVICE_TYPE: Optional[str] = None
+
+    def __init__(self):
+        super().__init__()
+        # Core API 层入口，见 webserver/toolbox/core_api.py 与
+        # document/Toolbox_Dynamic_Design.md 第二节。`self.db` / `self.session` 仍然可用
+        # （由 AsyncService.register_service 在每次方法调用前重新赋值），保留作为过渡期的
+        # 兼容别名；新代码应优先通过 self.api.* 访问。
+        self.api = CoreAPI(self)
 
     @staticmethod
     def info() -> dict:
@@ -93,7 +109,7 @@ class BaseTool(AsyncService):
                 f"{self.__class__.__name__} must define service_item_name"
             )
         task = BackgroundService().update_task(
-            service_type=BackgroundTask.SERVICE_TYPE_OTHER,
+            service_type=self.PLUGIN_SERVICE_TYPE or BackgroundTask.SERVICE_TYPE_OTHER,
             service_item=_(self.service_item_name),
             progress=0,
             progress_data=progress_data or {},

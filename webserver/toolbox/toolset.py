@@ -6,7 +6,7 @@
 
 
 class Tool:
-    def __init__(self, id: str, name: str, description: str, revision: str, author: str, publish_date: str = "", page: str = ""):
+    def __init__(self, id: str, name: str, description: str, revision: str, author: str, publish_date: str = "", page: str = "", repo_url: str = ""):
         self._id = id
         self._name = name
         self._description = description
@@ -14,6 +14,10 @@ class Tool:
         self._author = author
         self._publish_date = publish_date
         self._page = page
+        # 工具源码仓库地址，供审核/溯源使用，见 document/Toolbox_Dynamic_Design.md 3.2 节。
+        # 外部插件的 manifest.json 里是必填字段；14 个内置工具尚未逐个补充，暂时允许为空，
+        # 不在 ToolSet.register() 里强制校验，避免一次性改动全部内置工具的 info()。
+        self._repo_url = repo_url
 
     @property
     def id(self) -> str:
@@ -71,6 +75,14 @@ class Tool:
     def page(self, value: str):
         self._page = value
 
+    @property
+    def repo_url(self) -> str:
+        return self._repo_url
+
+    @repo_url.setter
+    def repo_url(self, value: str):
+        self._repo_url = value
+
     def to_dict(self) -> dict:
         return {
             "id": self._id,
@@ -80,6 +92,7 @@ class Tool:
             "author": self._author,
             "publish_date": self._publish_date,
             "page": self._page,
+            "repo_url": self._repo_url,
         }
 
 
@@ -130,9 +143,14 @@ class ToolSet:
             revision=info["revision"],
             author=info["author"],
             publish_date=info.get("publish_date", ""),
-            page=info.get("page", "")
+            page=info.get("page", ""),
+            repo_url=info.get("repo_url", ""),
         )
         ToolSet._tool_set[info["tool_id"]] = tool
+
+    @staticmethod
+    def unregister(tool_id: str) -> None:
+        ToolSet._tool_set.pop(tool_id, None)
 
     @staticmethod
     def all_tools() -> list[Tool]:

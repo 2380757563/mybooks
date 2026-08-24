@@ -3,12 +3,15 @@
 import logging
 import os
 import re
+import tempfile
 import time
 import mimetypes
 import tornado
 
 from webserver.i18n import _
+from webserver.loader import get_settings
 from webserver.toolbox.toolset import ToolSet
+from webserver.toolbox import plugin_manager
 from webserver.handlers.base import BaseHandler, js, is_admin
 from urllib.parse import urlparse
 from webserver.toolbox.rare_book_downloader import RareBookDownloader
@@ -27,14 +30,134 @@ from webserver.toolbox.styles import TOC_STYLES as EB_TOC_STYLES, list_presets a
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from pathlib import Path
 
+CONF = get_settings()
+
 
 class AdminToolList(BaseHandler):
     @js
     @is_admin
     def get(self):
-        ToolSet.collect_tools()
-        tools = [t.to_dict() for t in ToolSet.all_tools()]
+        # 注意：不在这里调用 ToolSet.collect_tools() —— 工具的注册（含外部插件、被更新覆盖
+        # 的内置工具）只在进程启动时 plugin_manager.load_all() 里发生一次（"重启生效"模型，
+        # 见 document/Toolbox_Dynamic_Design.md 3.3.1 节）；每次请求都重新 collect_tools()
+        # 会用仓库自带的 info() 把已加载的覆盖版本元数据冲掉。
+        tools = []
+        for t in ToolSet.all_tools():
+            state = plugin_manager.tool_state(t.id)
+            if state["type"] == "plugin" and state["status"] == "disabled":
+                # 禁用的外部插件立即从列表消失，无需重启（3.3.1 节）
+                continue
+            data = t.to_dict()
+            data.update(state)
+            tools.append(data)
         return {"err": "ok", "tools": tools}
+
+
+def _save_upload_to_tmpfile(file_meta) -> str:
+    fd, path = tempfile.mkstemp(prefix="mybooks_tool_upload_", suffix=".zip")
+    with os.fdopen(fd, "wb") as f:
+        f.write(file_meta["body"])
+    return path
+
+
+class AdminToolInstallUpload(BaseHandler):
+    """开发者模式：本地上传 zip 安装一个全新的外部插件。见 3.5 节。"""
+
+    @js
+    @is_admin
+    def post(self):
+        if not CONF.get("ENABLE_TOOLBOX_DEV_MODE"):
+            self.set_status(403)
+            return {"err": "dev_mode.disabled", "msg": _("开发者模式未开启，请先在系统设置中开启")}
+        if not self.request.files or "file" not in self.request.files:
+            return {"err": "params.missing", "msg": _("未上传文件")}
+
+        tmp_path = _save_upload_to_tmpfile(self.request.files["file"][0])
+        try:
+            record = plugin_manager.install_from_zip(
+                tmp_path, is_update=False, installed_by=self.user_id(),
+                source=plugin_manager.InstalledTool.SOURCE_DEV,
+            )
+        except plugin_manager.ToolValidationError as err:
+            return {"err": "tool.invalid", "msg": str(err)}
+        except plugin_manager.ToolStateError as err:
+            return {"err": "tool.state", "msg": str(err)}
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        return {"err": "ok", "msg": _("已安装，重启后生效"), "data": record.to_dict()}
+
+
+class AdminToolUpdateUpload(BaseHandler):
+    """开发者模式：本地上传 zip 更新一个已安装的工具（builtin 或 plugin 均可）。见 3.5 节。"""
+
+    @js
+    @is_admin
+    def post(self, tool_id):
+        if not CONF.get("ENABLE_TOOLBOX_DEV_MODE"):
+            self.set_status(403)
+            return {"err": "dev_mode.disabled", "msg": _("开发者模式未开启，请先在系统设置中开启")}
+        if not self.request.files or "file" not in self.request.files:
+            return {"err": "params.missing", "msg": _("未上传文件")}
+
+        tmp_path = _save_upload_to_tmpfile(self.request.files["file"][0])
+        try:
+            record = plugin_manager.install_from_zip(
+                tmp_path, is_update=True, expected_tool_id=tool_id, installed_by=self.user_id(),
+                source=plugin_manager.InstalledTool.SOURCE_DEV,
+            )
+        except plugin_manager.ToolValidationError as err:
+            return {"err": "tool.invalid", "msg": str(err)}
+        except plugin_manager.ToolStateError as err:
+            return {"err": "tool.state", "msg": str(err)}
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        return {"err": "ok", "msg": _("已更新，重启后生效"), "data": record.to_dict()}
+
+
+class AdminToolEnable(BaseHandler):
+    @js
+    @is_admin
+    def post(self, tool_id):
+        try:
+            record = plugin_manager.enable_tool(tool_id)
+        except plugin_manager.ToolStateError as err:
+            return {"err": "tool.not_found", "msg": str(err)}
+        except plugin_manager.ToolPermissionError as err:
+            self.set_status(403)
+            return {"err": "tool.permission", "msg": str(err)}
+        return {"err": "ok", "msg": _("已启用"), "data": record.to_dict()}
+
+
+class AdminToolDisable(BaseHandler):
+    @js
+    @is_admin
+    def post(self, tool_id):
+        try:
+            record = plugin_manager.disable_tool(tool_id)
+        except plugin_manager.ToolStateError as err:
+            return {"err": "tool.not_found", "msg": str(err)}
+        except plugin_manager.ToolPermissionError as err:
+            self.set_status(403)
+            return {"err": "tool.permission", "msg": str(err)}
+        return {"err": "ok", "msg": _("已禁用"), "data": record.to_dict()}
+
+
+class AdminToolUninstall(BaseHandler):
+    @js
+    @is_admin
+    def delete(self, tool_id):
+        try:
+            plugin_manager.uninstall_tool(tool_id)
+        except plugin_manager.ToolStateError as err:
+            return {"err": "tool.not_found", "msg": str(err)}
+        except plugin_manager.ToolPermissionError as err:
+            self.set_status(403)
+            return {"err": "tool.permission", "msg": str(err)}
+        return {"err": "ok", "msg": _("已卸载，重启后彻底生效")}
 
 
 class AdminRareBookDownloader(BaseHandler):
@@ -1046,8 +1169,16 @@ class AdminEpubBeautifyProgress(BaseHandler):
 
 
 def routes():
+    # 动态 import 外部插件 / 被更新覆盖的内置工具，只在这里（进程启动、路由拼接时）跑一次，
+    # 对应 document/Toolbox_Dynamic_Design.md 3.3.1 节确认的"重启生效"模型。
+    plugin_manager.load_all()
+
     return [
                 (r"/api/toolbox/list", AdminToolList),
+                (r"/api/toolbox/install/upload", AdminToolInstallUpload),
+                (r"/api/toolbox/([a-z0-9_]+)/update/upload", AdminToolUpdateUpload),
+                (r"/api/toolbox/([a-z0-9_]+)/enable", AdminToolEnable),
+                (r"/api/toolbox/([a-z0-9_]+)/disable", AdminToolDisable),
                 (r"/api/toolbox/rare_book_downloader", AdminRareBookDownloader),
                 (r"/api/toolbox/merge_formats/merge", AdminMergeFormatsMerge),
                 (r"/api/toolbox/review_book_language", AdminReviewBookLanguage),
@@ -1090,4 +1221,18 @@ def routes():
                 (r"/api/toolbox/epub_beautify/bg_meta", AdminEpubBeautifyBgMeta),
                 (r"/api/toolbox/epub_beautify/bg_raw", AdminEpubBeautifyBgRaw),
                 (r"/api/toolbox/epub_beautify/bg_delete", AdminEpubBeautifyBgDelete),
+                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
+                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
+                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
+                (r"/api/toolbox/txt_encoding_fixer/analyze", AdminTxtEncodingFixerAnalyze),
+                (r"/api/toolbox/txt_encoding_fixer/fix", AdminTxtEncodingFixerFix),
+                (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
+                (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
+                (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
+    ] + plugin_manager.collect_plugin_routes() + [
+                # 必须放在整个列表最后：这是个不加区分的单段路径通配（DELETE 卸载），
+                # 排在前面会抢先匹配到上面所有单段路径的工具路由（如
+                # /api/toolbox/rare_book_downloader、/api/toolbox/author_clean），
+                # Tornado 是按 URLSpec 顺序找第一个正则匹配的路径、与 HTTP method 无关。
+                (r"/api/toolbox/([a-z0-9_]+)", AdminToolUninstall),
     ]

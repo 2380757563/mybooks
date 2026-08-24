@@ -127,6 +127,10 @@ settings = {
 
     "PDF_TILE_WITH_FILE_NAME": False,
 
+    "PLUGIN_ROOT": "/data/books/tool_plugins/",
+    "ENABLE_TOOLBOX_DEV_MODE": False,
+    "ENABLE_TOOLBOX_STORE": False,
+
     "SOCIAL_AUTH_LOGIN_URL"          : '/',
     "SOCIAL_AUTH_LOGIN_REDIRECT_URL" : '/api/done/',
     "SOCIAL_AUTH_USER_MODEL"         : 'webserver.models.Reader',

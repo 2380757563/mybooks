@@ -42,8 +42,8 @@ class RareBookDownloader(BaseTool):
         :return: {"title": str, "authors": list, "pdf_path": str, "book_id": int}；
                  异步模式下返回 None
         """
-        task_id = self.create_task(progress_data={"url": url})
-        progress_callback = self.make_progress_callback(
+        task_id = self.api.tasks.create_task(progress_data={"url": url})
+        progress_callback = self.api.tasks.make_progress_callback(
             task_id,
             progress_data_factory=lambda p: {"url": url},
             outer_callback=callback,
@@ -53,21 +53,21 @@ class RareBookDownloader(BaseTool):
             downloader = self._get_downloader(url)
             meta = downloader.check_valid_url()
 
-            work_dir = self.get_work_dir(url)
+            work_dir = self.api.storage.get_work_dir(url)
             logging.info("[RareBookDownloader] start download: %s -> %s", url, work_dir)
             os.makedirs(work_dir, exist_ok=True)
 
             pdf_path = downloader.download(work_dir, callback=progress_callback)
 
-            book_id = self.import_file(
+            book_id = self.api.calibre.import_file(
                 user_id,
                 pdf_path,
                 title=meta.get("title", ""),
                 authors=meta.get("authors", []),
             )
 
-            self.complete_task(task_id)
-            self.cleanup_work_dir(work_dir)
+            self.api.tasks.complete_task(task_id)
+            self.api.storage.cleanup_work_dir(work_dir)
 
             return {
                 "title": meta.get("title", ""),
@@ -77,5 +77,5 @@ class RareBookDownloader(BaseTool):
             }
         except Exception as err:
             logging.error("[RareBookDownloader] download failed: %s", err)
-            self.complete_task(task_id, error_message=str(err))
+            self.api.tasks.complete_task(task_id, error_message=str(err))
             raise

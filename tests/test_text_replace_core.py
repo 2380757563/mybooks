@@ -86,6 +86,26 @@ def _stub_webserver():
     })
 
 
+_STUBBED_MODULE_NAMES = (
+    "webserver",
+    "webserver.toolbox",
+    "webserver.i18n",
+    "webserver.utils",
+    "webserver.models",
+    "webserver.services",
+    "webserver.services.background_service",
+    "webserver.toolbox.base_tool",
+    "calibre",
+    "calibre.ebooks",
+    "calibre.ebooks.metadata",
+    "calibre.ebooks.metadata.book",
+    "calibre.ebooks.metadata.book.base",
+)
+# 记录 stub 之前 sys.modules 里已有的内容（通常是 None，即真实 webserver 包尚未被导入过），
+# 导入完 text_replace 需要的符号后立即恢复，避免这份 stub（尤其是缺 book_id/Message 的假
+# webserver.models）污染同一个 pytest 进程里在这之后收集到的其它测试文件。
+_ORIGINAL_MODULES = {name: sys.modules.get(name) for name in _STUBBED_MODULE_NAMES}
+
 _stub_webserver()
 
 from webserver.toolbox.text_replace import (  # noqa: E402
@@ -97,6 +117,12 @@ from webserver.toolbox.text_replace import (  # noqa: E402
     _read_text_entries,
     _write_zip,
 )
+
+for _name, _original in _ORIGINAL_MODULES.items():
+    if _original is None:
+        sys.modules.pop(_name, None)
+    else:
+        sys.modules[_name] = _original
 
 GBK_TEXT = "第一章\u3000序章\n人工智能的发展历程，包括机器学习与深度学习。"
 CH1 = "<html><body><p>第一章 人工智能的黎明</p><p>机器学习是核心。</p></body></html>"

@@ -38,7 +38,7 @@ class MergeFormatsTool(BaseTool):
         if source_book_id == target_book_id:
             raise RuntimeError(_("来源书籍和目标书籍不能相同"))
 
-        added = self.merge_book_formats(source_book_id, target_book_id)
+        added = self.api.calibre.merge_formats(source_book_id, target_book_id)
 
         if not added:
             raise RuntimeError(_("没有可合并的格式"))
@@ -48,7 +48,7 @@ class MergeFormatsTool(BaseTool):
             added, source_book_id, target_book_id,
         )
 
-        self.delete_book_by_id(source_book_id)
+        self.api.calibre.delete_book(source_book_id)
 
         return {
             "added_formats": added,

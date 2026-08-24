@@ -838,6 +838,65 @@ class Memo(Base, SQLAlchemyMixin):
         self.update_date = datetime.datetime.now()
 
 
+class InstalledTool(Base, SQLAlchemyMixin):
+    """Toolbox 工具安装记录：内置工具 + 外部插件统一记录在这张表里，
+    见 document/Toolbox_Dynamic_Design.md 3.3.2 节。"""
+    __tablename__ = "installed_tools"
+
+    TYPE_BUILTIN = "builtin"
+    TYPE_PLUGIN = "plugin"
+
+    SOURCE_BUNDLED = "bundled"  # 随仓库自带（仅 builtin）
+    SOURCE_STORE = "store"      # 通过 mybooks.top 商店安装/更新（M5，暂未启用）
+    SOURCE_DEV = "dev"          # 开发者模式本地 zip 上传安装/更新
+
+    tool_id = Column(String(128), primary_key=True)
+    type = Column(String(16), nullable=False)  # builtin | plugin，写入后不再改变
+    installed_revision = Column(String(32), default="", nullable=False)
+    source = Column(String(16), nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)  # 仅对 plugin 有意义，builtin 恒为 True
+    install_time = Column(DateTime)
+    update_time = Column(DateTime)
+    installed_by = Column(Integer, ForeignKey("readers.id"), nullable=True)
+
+    def __init__(self, tool_id, type_, source, installed_revision="", enabled=True, installed_by=None):
+        super(InstalledTool, self).__init__()
+        self.tool_id = tool_id
+        self.type = type_
+        self.source = source
+        self.installed_revision = installed_revision
+        self.enabled = enabled
+        now = datetime.datetime.now()
+        self.install_time = now
+        self.update_time = now
+        self.installed_by = installed_by
+
+    @classmethod
+    def get(cls, tool_id):
+        return cls._query().filter_by(tool_id=tool_id).first()
+
+    @classmethod
+    def all(cls):
+        return cls._query().all()
+
+    def delete(self):
+        session = self._session()
+        session.delete(self)
+        session.commit()
+
+    def to_dict(self):
+        return {
+            "tool_id": self.tool_id,
+            "type": self.type,
+            "source": self.source,
+            "installed_revision": self.installed_revision,
+            "enabled": self.enabled,
+            "install_time": self.install_time.isoformat() if self.install_time else None,
+            "update_time": self.update_time.isoformat() if self.update_time else None,
+            "installed_by": self.installed_by,
+        }
+
+
 def user_syncdb(engine):
     Base.metadata.create_all(engine)
 
@@ -845,7 +904,7 @@ def user_syncdb(engine):
 # 表结构随功能迭代新增的表，不希望依赖运维方手动重新执行 `--syncdb` 才能用上
 # （`docker/start.sh` 每次启动都会跑 --syncdb，但手工部署/测试环境不一定会），
 # 在正常的 make_app() 启动路径里也顺带补建一次，checkfirst=True 天然幂等。
-_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview)
+_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview, InstalledTool)
 
 
 def ensure_new_tables(engine):
