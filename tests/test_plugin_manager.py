@@ -321,6 +321,20 @@ class TestPluginManager(unittest.TestCase):
         plugin_manager.load_all()
         self.assertIsNone(ToolSet.get_tool("demo_tool"))
 
+    def test_tool_state_none_after_uninstall_before_restart(self):
+        # 回归测试：真实容器里手工验证时发现的 bug——卸载后、重启前这段空档期，
+        # tool_state() 之前会兜底回退成 type=builtin/source=bundled，AdminToolList 因此会
+        # 展示一条来源被错误标注的记录，而不是按 3.3.1 节要求的"立即从列表消失"。
+        zip_path = self._install(tool_id="demo_tool")
+        plugin_manager.install_from_zip(zip_path, is_update=False)
+        plugin_manager.load_all()
+
+        plugin_manager.uninstall_tool("demo_tool")
+        # ToolSet 里的静态注册还在（要等下次 load_all()/"重启"才清掉），
+        # 但 InstalledTool 记录已经没了，tool_state() 必须能表达"应该被隐藏"
+        self.assertIsNotNone(ToolSet.get_tool("demo_tool"))
+        self.assertIsNone(plugin_manager.tool_state("demo_tool"))
+
     def test_uninstall_rejected_for_builtin(self):
         plugin_manager.sync_builtin_records()
         builtin_id = ToolSet.all_tools()[0].id

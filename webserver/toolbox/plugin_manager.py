@@ -388,18 +388,19 @@ def is_pending_restart(tool_id: str) -> bool:
     return has_override(tool_id) and tool_id not in _loaded_at_startup
 
 
-def tool_state(tool_id: str) -> dict:
-    """供 /api/toolbox/list 拼接 type/source/status/pending_restart 字段，见 3.3.1 节。"""
+def tool_state(tool_id: str) -> Optional[dict]:
+    """供 /api/toolbox/list 拼接 type/source/status/pending_restart 字段，见 3.3.1 节。
+
+    返回 None 表示这个 tool_id 已经没有 InstalledTool 记录——只会发生在"外部插件被卸载，
+    但进程还没有重启、ToolSet 里的静态注册还没清掉"这个空档期，调用方（AdminToolList）应该
+    把这种工具从列表里剔除，而不是回退展示成 builtin：3.3.1 节明确要求"工具已经从
+    /api/toolbox/list 消失"，展示成来源错误的 builtin 元数据比直接不显示更容易误导管理员。
+    builtin 工具不会走到这个分支——sync_builtin_records() 在 load_all() 里已经保证它们
+    都有记录。
+    """
     record = InstalledTool.get(tool_id)
     if not record:
-        # 理论上不会发生：builtin 在 load_all() 时已自动补记录；plugin 必然先安装才会出现在
-        # ToolSet 里。兜底按 builtin+bundled 处理，避免因为记录缺失而让整个列表接口报错。
-        return {
-            "type": InstalledTool.TYPE_BUILTIN,
-            "source": InstalledTool.SOURCE_BUNDLED,
-            "status": "enabled",
-            "pending_restart": False,
-        }
+        return None
     return {
         "type": record.type,
         "source": record.source,

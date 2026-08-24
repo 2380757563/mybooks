@@ -44,6 +44,10 @@ class AdminToolList(BaseHandler):
         tools = []
         for t in ToolSet.all_tools():
             state = plugin_manager.tool_state(t.id)
+            if state is None:
+                # 外部插件已被卸载，但进程还没重启、ToolSet 里的静态注册还没清掉：
+                # 直接跳过，不展示（3.3.1 节要求卸载后立即从列表消失）
+                continue
             if state["type"] == "plugin" and state["status"] == "disabled":
                 # 禁用的外部插件立即从列表消失，无需重启（3.3.1 节）
                 continue
