@@ -362,7 +362,21 @@ def load_all() -> None:
         if record.type == InstalledTool.TYPE_PLUGIN:
             cls.PLUGIN_SERVICE_TYPE = f"plugin:{record.tool_id}"
 
-        ToolSet.register(cls.info())
+        # ToolSet 的元数据来自 cls.info()（BaseTool 子类必须实现的 staticmethod），但
+        # manifest.json 里 page/repo_url 这两个"打包描述"字段不要求插件作者在 info() 里
+        # 重复一遍——那样两处容易改一处漏一处（tool_builder 生成的模板都会填，但手写的
+        # manifest.json 未必会记得同步）。这里把 manifest.json 当兜底：只在 info() 没给出
+        # 时才用 manifest 里的值补上，不覆盖 info() 已经给出的值。
+        try:
+            manifest = _read_manifest(tool_dir)
+        except ToolValidationError:
+            manifest = {}
+        info = cls.info()
+        for field in ("page", "repo_url"):
+            if not info.get(field) and manifest.get(field):
+                info[field] = manifest[field]
+
+        ToolSet.register(info)
         _loaded_classes[record.tool_id] = cls
         _loaded_at_startup.add(record.tool_id)
 

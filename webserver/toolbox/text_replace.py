@@ -223,7 +223,7 @@ class TextReplaceTool(BaseTool):
                 logging.error("[TextReplaceTool] Bad rule: %s [uid:%d]", regex_error, user_id)
                 return
 
-            books = self.db.get_data_as_dict(ids=[book_id])
+            books = self.api.calibre.get_data_as_dict([book_id])
             if not books:
                 error_message = _("书籍不存在：ID=%d") % book_id
                 logging.error("[TextReplaceTool] Book not found: ID=%d [uid:%d]", book_id, user_id)
@@ -315,7 +315,7 @@ class TextReplaceTool(BaseTool):
 
         :param fmt: 指定格式（TXT / EPUB，大写）；不指定时自动选择（EPUB 优先）。
         """
-        books = self.db.get_data_as_dict(ids=[book_id])
+        books = self.api.calibre.get_data_as_dict([book_id])
         book = books[0] if books else {}
         fmts = [f.upper() for f in (book.get("available_formats") or [])]
         if fmt:

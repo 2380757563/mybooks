@@ -13,15 +13,23 @@ Calibre / SQLAlchemy 的内部实现细节解耦。设计背景见
 - `CoreAPI.messages`  —— 站内消息
 - `CoreAPI.storage`   —— 工具专属数据目录 + 持久配置
 
-本次改造（M0）只做接口收敛，不改变现有 14 个内置工具的行为：凡是 `BaseTool` 已有对应方法
+M0 阶段只做接口收敛，不改变现有 14 个内置工具的行为：凡是 `BaseTool` 已有对应方法
 的（`import_file`、`merge_book_formats`、`delete_book_by_id`、`get_all_book_ids`、
 `get_book_metadata`、`set_book_language`、`get_work_dir`、`cleanup_work_dir`、
 `create_task`、`update_task_progress`、`complete_task`、`make_progress_callback`），
 `CoreAPI` 里对应的方法只是薄封装、原样转发给 `BaseTool` 的实现，单一实现来源仍在
-`base_tool.py`，避免出现两份逻辑分叉。只有 `BaseTool` 目前没有的能力
-（`search_books`、`set_metadata`、`add_format`、`format_abspath`、应用数据库的
-`get_item_by_book_id`/`create_item`/`delete_item_by_book_id`/`get_reader`、站内消息、
-持久配置）才在这里给出新实现。
+`base_tool.py`，避免出现两份逻辑分叉。`BaseTool` 目前没有的能力
+（`search_books`/`search_ids`、`set_metadata`、`add_format`、`format_abspath`、
+`get_data_as_dict`、`cover`、`import_book`、`get_custom`/`set_custom`、`remove_formats`、
+应用数据库的 `get_item_by_book_id`/`create_item`/`delete_item_by_book_id`/`get_reader`、
+站内消息、持久配置）在这里给出新实现——其中 `get_data_as_dict`/`cover`/`import_book`/
+`get_custom`/`set_custom`/`remove_formats` 是 M4（迁移剩余内置工具）阶段按各工具的实际
+用法补齐的，直接转发给 Calibre `legacy` DB / `new_api`，不经过 `BaseTool`。
+
+`base_tool.py` 与本文件是 Core API 的唯一实现来源，允许直接访问 `owner.db`/
+`owner.session`；`webserver/toolbox/` 下的其余文件（各工具类、`book_utils.py` 等）一律
+通过 `self.api.*`／`tool.api.*` 访问，不直接触碰 `self.db`/`self.session`
+（`document/Toolbox_Dynamic_Design.md` 第八节 M4 的验收标准）。
 """
 import json
 import logging
@@ -59,13 +67,45 @@ class CalibreAPI(_NamespaceBase):
             return []
         return self._owner.db.get_data_as_dict(ids=ids)
 
-    def get_metadata(self, book_id: int):
-        """返回指定书籍的 Calibre Metadata 对象。"""
-        return self._owner.get_book_metadata(book_id)
+    def get_metadata(self, book_id: int, get_cover: bool = False, cover_as_data: bool = False):
+        """返回指定书籍的 Calibre Metadata 对象；`get_cover`/`cover_as_data` 透传给 Calibre。"""
+        if not get_cover and not cover_as_data:
+            return self._owner.get_book_metadata(book_id)
+        return self._owner.db.get_metadata(
+            book_id, index_is_id=True, get_cover=get_cover, cover_as_data=cover_as_data
+        )
 
     def set_metadata(self, book_id: int, mi, force_changes: bool = True) -> None:
         """写回书籍元数据。"""
         self._owner.db.set_metadata(book_id, mi, force_changes=force_changes)
+
+    def get_data_as_dict(self, ids: List[int]) -> List[dict]:
+        """按 book_id 列表批量返回书籍 dict（含 available_formats/title 等字段）。"""
+        return self._owner.db.get_data_as_dict(ids=ids)
+
+    def cover(self, book_id: int) -> Optional[bytes]:
+        """返回书籍封面的原始字节，没有封面时返回 None。"""
+        return self._owner.db.cover(book_id, index_is_id=True)
+
+    def import_book(self, mi, formats: List[str]) -> Optional[int]:
+        """将本地格式文件与给定元数据一并入库，返回新书的 book_id。"""
+        return self._owner.db.import_book(mi, formats)
+
+    def search_ids(self, query: str) -> List[int]:
+        """按 Calibre 搜索语法查询书籍，返回排序后的 book_id 列表（不取详情）。"""
+        return sorted(self._owner.db.new_api.search(query))
+
+    def get_custom(self, book_id: int, label: str):
+        """读取自定义列的值。"""
+        return self._owner.db.get_custom(book_id, label=label, index_is_id=True)
+
+    def set_custom(self, label: str, values: dict) -> None:
+        """批量写入自定义列的值，`values` 为 `{book_id: value}`。"""
+        self._owner.db.new_api.set_field(label, values)
+
+    def remove_formats(self, values: dict) -> None:
+        """批量删除格式文件，`values` 为 `{book_id: [fmt, ...]}`。"""
+        self._owner.db.new_api.remove_formats(values)
 
     def set_language(self, book_id: int, language: str) -> None:
         self._owner.set_book_language(book_id, language)

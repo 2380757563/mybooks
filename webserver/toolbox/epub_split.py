@@ -43,14 +43,14 @@ class EpubSplitTool(BaseTool):
         }
 
     def _load_epub(self, book_id: int):
-        books = self.db.get_data_as_dict(ids=[book_id])
+        books = self.api.calibre.get_data_as_dict([book_id])
         if not books:
             raise RuntimeError(_("书籍不存在：ID=%d") % book_id)
         book = books[0]
         fmts = [f.upper() for f in (book.get("available_formats") or [])]
         if "EPUB" not in fmts:
             raise RuntimeError(_("该书籍没有 EPUB 格式，无法执行拆分"))
-        epub_path = self.db.format_abspath(book_id, "EPUB", index_is_id=True)
+        epub_path = self.api.calibre.format_abspath(book_id, "EPUB")
         if not epub_path or not os.path.exists(epub_path):
             raise RuntimeError(_("找不到 EPUB 文件，可能已被移除"))
         with open(epub_path, "rb") as f:
@@ -104,7 +104,7 @@ class EpubSplitTool(BaseTool):
             else:
                 logging.info("[EpubSplit]Not found the first image")
         if cover_data is None:
-            raw_cover = self.db.cover(book_id, index_is_id=True)
+            raw_cover = self.api.calibre.cover(book_id)
             if raw_cover:
                 cover_data = ("jpeg", raw_cover)
 
@@ -135,7 +135,7 @@ class EpubSplitTool(BaseTool):
                 logging.info("[EPUB]Has valid cover data")
                 mi.cover_data = cover_data
 
-            new_book_id = self.db.import_book(mi, [out_path])
+            new_book_id = self.api.calibre.import_book(mi, [out_path])
             if new_book_id is None:
                 raise RuntimeError(_("导入拆分后的 EPUB 失败"))
 

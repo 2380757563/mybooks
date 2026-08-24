@@ -103,7 +103,7 @@ class TxtEncodingFixerTool(BaseTool):
             TxtEncodingFixerTool._last_task_id = task_id
             progress_callback = self.make_progress_callback(task_id)
 
-            books = self.db.get_data_as_dict(ids=[book_id])
+            books = self.api.calibre.get_data_as_dict([book_id])
             if not books:
                 error_message = _("书籍不存在：ID=%d") % book_id
                 self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})
@@ -119,7 +119,7 @@ class TxtEncodingFixerTool(BaseTool):
                 logging.error("[TxtEncodingFixerTool] No TXT format for book_id=%d [uid:%d]", book_id, user_id)
                 return
 
-            txt_path = self.db.format_abspath(book_id, "TXT", index_is_id=True)
+            txt_path = self.api.calibre.format_abspath(book_id, "TXT")
             if not txt_path or not os.path.exists(txt_path):
                 error_message = _("找不到 TXT 文件，可能已被移除")
                 self.update_task_progress(task_id, 0, {"status": "failed", "stage": "failed"})

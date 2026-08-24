@@ -512,7 +512,7 @@ class MimoTTSTool(BaseTool):
         book_title = "Unknown"
 
         try:
-            books = self.db.get_data_as_dict(ids=[book_id])
+            books = self.api.calibre.get_data_as_dict([book_id])
             if not books:
                 raise RuntimeError(_("书籍不存在：ID=%d") % book_id)
 
@@ -522,7 +522,7 @@ class MimoTTSTool(BaseTool):
             if "EPUB" not in fmts:
                 raise RuntimeError(_("该书籍没有 EPUB 格式，无法转换"))
 
-            epub_path = self.db.format_abspath(book_id, "EPUB", index_is_id=True)
+            epub_path = self.api.calibre.format_abspath(book_id, "EPUB")
             if not epub_path or not os.path.exists(epub_path):
                 raise RuntimeError(_("找不到 EPUB 文件"))
 
@@ -540,7 +540,7 @@ class MimoTTSTool(BaseTool):
 
             # Save the cover image to the output dir
             try:
-                cover_data = self.db.cover(book_id, index_is_id=True)
+                cover_data = self.api.calibre.cover(book_id)
                 if cover_data:
                     cover_path = os.path.join(output_dir, "cover.jpg")
                     with open(cover_path, "wb") as f:

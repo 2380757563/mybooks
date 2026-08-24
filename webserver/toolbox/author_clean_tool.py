@@ -45,8 +45,7 @@ class AuthorCleanTool(BaseTool):
     def _find_book_ids_by_author(self, author_name: str) -> List[int]:
         escaped = author_name.replace('"', '\\"')
         query = f'authors:="{escaped}"'
-        ids = self.db.new_api.search(query)
-        return sorted(ids)
+        return self.api.calibre.search_ids(query)
 
     @AsyncService.register_service
     def clean(
@@ -152,7 +151,7 @@ class AuthorCleanTool(BaseTool):
     def _set_book_authors(self, book_id: int, authors: List[str]) -> None:
         mi = self.get_book_metadata(book_id)
         mi.authors = authors
-        self.db.set_metadata(book_id, mi, force_changes=True)
+        self.api.calibre.set_metadata(book_id, mi, force_changes=True)
         logging.info(
             "[AuthorCleanTool] Set authors of book_id=%d to %s", book_id, authors,
         )

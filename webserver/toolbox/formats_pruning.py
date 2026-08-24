@@ -167,7 +167,7 @@ class FormatsPruningTool(BaseTool):
 
         :return: 实际删除的格式名列表（大写）。
         """
-        books = self.db.get_data_as_dict(ids=[book_id])
+        books = self.api.calibre.get_data_as_dict([book_id])
         if not books:
             return []
 
@@ -180,7 +180,7 @@ class FormatsPruningTool(BaseTool):
         for fmt in fmts:
             if fmt not in delete_formats:
                 continue
-            fpath = self.db.format_abspath(book_id, fmt, index_is_id=True)
+            fpath = self.api.calibre.format_abspath(book_id, fmt)
             if fpath and os.path.exists(fpath):
                 to_remove.append(fmt)
 
@@ -192,6 +192,6 @@ class FormatsPruningTool(BaseTool):
             return []
 
         logging.info("[FormatsPruningTool] book_id=%d will remove formats=%s (fmts=%s, delete=%s)", book_id, to_remove, fmts, delete_formats)
-        self.db.new_api.remove_formats({book_id: to_remove})
+        self.api.calibre.remove_formats({book_id: to_remove})
         logging.info("[FormatsPruningTool] book_id=%d removed formats=%s", book_id, to_remove)
         return to_remove

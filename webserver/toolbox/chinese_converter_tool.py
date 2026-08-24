@@ -130,7 +130,7 @@ class ChineseConverterTool(BaseTool):
             })
             ChineseConverterTool._last_task_id = task_id
 
-            books = self.db.get_data_as_dict(ids=[book_id])
+            books = self.api.calibre.get_data_as_dict([book_id])
             if not books:
                 error_message = _("书籍不存在：ID=%d") % book_id
                 logging.error("[ChineseConverterTool] Book not found: ID=%d [uid:%d]", book_id, user_id)
@@ -145,7 +145,7 @@ class ChineseConverterTool(BaseTool):
                 logging.error("[ChineseConverterTool] No EPUB/TXT format for book_id=%d [uid:%d]", book_id, user_id)
                 return
 
-            src_path = self.db.format_abspath(book_id, fmt, index_is_id=True)
+            src_path = self.api.calibre.format_abspath(book_id, fmt)
             if not src_path or not os.path.exists(src_path):
                 error_message = _("找不到 %s 文件，可能已被移除") % fmt
                 logging.error("[ChineseConverterTool] %s file missing for book_id=%d [uid:%d]",
@@ -223,12 +223,12 @@ class ChineseConverterTool(BaseTool):
             backup_path = os.path.join(
                 backup_dir, "backup_%d_%s_%d.%s" % (
                     book_id, fmt.lower(), int(time.time()), fmt.lower()))
-            calibre_path = self.db.format_abspath(book_id, fmt, index_is_id=True)
+            calibre_path = self.api.calibre.format_abspath(book_id, fmt)
             if calibre_path and os.path.exists(calibre_path):
                 shutil.copy2(calibre_path, backup_path)
                 logging.info("[ChineseConverterTool] Backed up %s to %s", fmt, backup_path)
         with open(out_path, "rb") as f:
-            self.db.add_format(book_id, fmt, f, index_is_id=True)
+            self.api.calibre.add_format(book_id, fmt, f)
         logging.info("[ChineseConverterTool] Replaced %s for book_id=%d", fmt, book_id)
         try:
             os.remove(out_path)
@@ -243,7 +243,7 @@ class ChineseConverterTool(BaseTool):
         评论、语言、封面、自定义列等），返回新书 book_id。"""
         # get_metadata 每次返回全新对象，可直接原地修改（勿 deepcopy，
         # 其内部挂有指向 Cache 的代理，深拷贝不安全）
-        mi = self.db.get_metadata(book_id, index_is_id=True, get_cover=True, cover_as_data=True)
+        mi = self.api.calibre.get_metadata(book_id, get_cover=True, cover_as_data=True)
 
         suffix = NEW_BOOK_SUFFIX.get(DIRECTION_LANG.get(direction, "zh"), "（新版本）")
         title = (mi.title or "Unknown").strip()
@@ -268,7 +268,7 @@ class ChineseConverterTool(BaseTool):
         mi.languages = [DIRECTION_LANG.get(direction, "zh")]
         mi.uuid = None  # 新书应使用独立 UUID，避免与原书冲突
 
-        new_book_id = self.db.import_book(mi, [out_path])
+        new_book_id = self.api.calibre.import_book(mi, [out_path])
         if new_book_id is None:
             raise RuntimeError(_("导入文件失败，Calibre未返回书籍ID"))
 
@@ -286,7 +286,7 @@ class ChineseConverterTool(BaseTool):
         for col in (CALIBRE_COLUMN_CATEGORY, CALIBRE_COLUMN_EXT_LINK,
                     CALIBRE_COLUMN_LOCATION, CALIBRE_COLUMN_DYNAMIC_COVER):
             try:
-                val = self.db.get_custom(book_id, label=col, index_is_id=True)
+                val = self.api.calibre.get_custom(book_id, col)
             except Exception as err:
                 logging.warning("[ChineseConverterTool] Failed to read %s of book_id=%d: %s",
                                 col, book_id, err)
@@ -294,7 +294,7 @@ class ChineseConverterTool(BaseTool):
             if val in (None, ""):
                 continue
             try:
-                self.db.new_api.set_field(col, {new_book_id: val})
+                self.api.calibre.set_custom(col, {new_book_id: val})
             except Exception as err:
                 logging.warning("[ChineseConverterTool] Failed to copy %s to new book_id=%d: %s",
                                 col, new_book_id, err)
@@ -314,7 +314,7 @@ class ChineseConverterTool(BaseTool):
         """替换模式下同步库内标题/作者/语言（不加后缀），保持与转换后文件一致。
         封面不受影响：set_metadata 只会更新提供的封面、从不删除现有封面。"""
         try:
-            mi = self.db.get_metadata(book_id, index_is_id=True)
+            mi = self.api.calibre.get_metadata(book_id)
             if mi.title:
                 mi.title = engine.convert(mi.title)
             mi.title = mi.title or "Unknown"
@@ -333,7 +333,7 @@ class ChineseConverterTool(BaseTool):
             if mi.tags:
                 mi.tags = [engine.convert(t) for t in mi.tags]
             mi.languages = [DIRECTION_LANG.get(direction, "zh")]
-            self.db.set_metadata(book_id, mi, force_changes=True)
+            self.api.calibre.set_metadata(book_id, mi, force_changes=True)
             logging.info("[ChineseConverterTool] Updated title/authors/language for book_id=%d", book_id)
         except Exception as err:
             logging.warning("[ChineseConverterTool] Failed to update title for book_id=%d: %s",

@@ -172,6 +172,24 @@ class FakeDB:
         return self.path
 
 
+class FakeCalibreAPI:
+    """镜像 CoreAPI.calibre 里 text_replace / book_utils 用到的那几个方法，转发给 FakeDB。"""
+
+    def __init__(self, db):
+        self._db = db
+
+    def get_data_as_dict(self, ids=None):
+        return self._db.get_data_as_dict(ids=ids)
+
+    def format_abspath(self, book_id, fmt):
+        return self._db.format_abspath(book_id, fmt, index_is_id=True)
+
+
+class FakeAPI:
+    def __init__(self, db):
+        self.calibre = FakeCalibreAPI(db)
+
+
 class TestCompile(unittest.TestCase):
     """替换规则编译。"""
 
@@ -266,7 +284,7 @@ class TestFormatSelection(unittest.TestCase):
             f.write(GBK_TEXT.encode("gb18030"))
         try:
             tool = TextReplaceTool()
-            tool.db = FakeDB(["EPUB", "TXT"], paths={"EPUB": epub, "TXT": txt})
+            tool.api = FakeAPI(FakeDB(["EPUB", "TXT"], paths={"EPUB": epub, "TXT": txt}))
 
             fmt, texts = tool._load_texts(0)  # 未指定：EPUB 优先
             self.assertEqual(fmt, "EPUB")
@@ -294,7 +312,7 @@ class TestTxtReplace(unittest.TestCase):
             f.write(GBK_TEXT.encode("gb18030"))
         try:
             tool = TextReplaceTool()
-            tool.db = FakeDB("TXT", tmp)
+            tool.api = FakeAPI(FakeDB("TXT", tmp))
             apply_fn, _ = TextReplaceTool._compile("人工智能", "AI", False)
             out = os.path.join(TESTS_DIR, "_tmp_out.txt")
             count = tool._replace_txt(0, apply_fn, out)
@@ -342,7 +360,7 @@ class TestEpubReplace(unittest.TestCase):
         out = os.path.join(TESTS_DIR, "_tmp_out.epub")
         try:
             tool = TextReplaceTool()
-            tool.db = FakeDB("EPUB", tmp)
+            tool.api = FakeAPI(FakeDB("EPUB", tmp))
             apply_fn, _ = TextReplaceTool._compile("机器学习", "AI", False)
             count = tool._replace_epub(0, apply_fn, out)
             self.assertEqual(count, 3)  # ch1 1 处 + ch2 2 处

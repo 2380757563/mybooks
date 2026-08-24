@@ -68,7 +68,7 @@ class EpubFixerTool(BaseTool):
         book_title = "Unknown"
 
         try:
-            books = self.db.get_data_as_dict(ids=[book_id])
+            books = self.api.calibre.get_data_as_dict([book_id])
             if not books:
                 error_message = _("书籍不存在：ID=%d") % book_id
                 logging.error("[EpubFixerTool] Book not found: ID=%d [uid:%d]", book_id, user_id)
@@ -82,7 +82,7 @@ class EpubFixerTool(BaseTool):
                 logging.error("[EpubFixerTool] No EPUB format for book_id=%d [uid:%d]", book_id, user_id)
                 return
 
-            epub_path = self.db.format_abspath(book_id, "EPUB", index_is_id=True)
+            epub_path = self.api.calibre.format_abspath(book_id, "EPUB")
             if not epub_path or not os.path.exists(epub_path):
                 error_message = _("找不到 EPUB 文件，可能已被移除")
                 logging.error("[EpubFixerTool] EPUB file missing for book_id=%d [uid:%d]", book_id, user_id)
@@ -118,7 +118,7 @@ class EpubFixerTool(BaseTool):
             progress_callback(80)
 
             with open(fixed_path, "rb") as f:
-                self.db.add_format(book_id, "EPUB", f, index_is_id=True)
+                self.api.calibre.add_format(book_id, "EPUB", f)
             logging.info("[EpubFixerTool] Replaced EPUB for book_id=%d [uid:%d]", book_id, user_id)
 
             try:

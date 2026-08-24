@@ -239,6 +239,12 @@ class TestPluginManager(unittest.TestCase):
         self.assertIsNotNone(cls)
         self.assertEqual(cls.PLUGIN_SERVICE_TYPE, "plugin:demo_tool")
 
+        # 回归测试：真实容器里用 tool_builder 生成的包做验证时发现的 bug —— manifest.json
+        # 里的 page 字段（DEMO_BACKEND_SRC 的 info() 故意没有返回它，模拟大多数插件作者会
+        # 忘记在两处重复同一个字段的情况）之前会被 cls.info() 的返回值直接覆盖掉，
+        # ToolSet 里最终拿到空字符串。load_all() 现在会用 manifest.json 兜底补上。
+        self.assertEqual(tool.page, "demo_tool")
+
         state = plugin_manager.tool_state("demo_tool")
         self.assertEqual(state["type"], "plugin")
         self.assertEqual(state["status"], "enabled")
