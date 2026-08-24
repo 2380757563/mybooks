@@ -374,25 +374,25 @@
                   <span class="caption">{{ $t('epubBeautify.previewIdleSub') }}</span>
                 </div>
               </template>
-              <template v-else-if="previewTab === 'ch'">
+                <template v-else-if="previewTab === 'ch'">
                 <!-- 竖排古籍：整体竖排渲染 -->
                 <div v-if="currentPreset.id === 'vertclassical'" class="eb-vpad">
                   <div class="eb-vbody" :style="{ background: currentPreset.accent_light, borderLeftColor: currentPreset.border, borderRightColor: currentPreset.border, fontFamily: bodyFont }">
-                    <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }">第一章 血尸</div>
+                    <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }">{{ chapterSample }}</div>
                     <div>天色将明未明，山道上薄雾未散，一行脚印自东而来。</div>
                     <div>青砖黛瓦的宅院静静卧在雾里，檐角铜铃偶尔轻响一声。</div>
                   </div>
                   <div class="eb-vnote">← {{ $t('epubBeautify.verticalNote') }}</div>
                 </div>
-              <template v-else-if="previewTab === 'toc'">
+                <div v-else>
                   <!-- 章节标题：按预设特例渲染 -->
-                  <div v-if="currentPreset.id === 'inkstone'" class="eb-t-ink" :style="{ background: currentPreset.accent, fontFamily: headFont }">第一章 血尸</div>
+                  <div v-if="currentPreset.id === 'inkstone'" class="eb-t-ink" :style="{ background: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
                   <div v-else-if="currentPreset.id === 'xuanzhi'" class="eb-t-xz-wrap">
-                    <div class="eb-t-xz-title" :style="{ color: currentPreset.accent, fontFamily: headFont }">第一章 血尸</div>
+                    <div class="eb-t-xz-title" :style="{ color: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
                     <div class="eb-t-xz-bar mx-auto" :style="{ background: currentPreset.accent }"></div>
                   </div>
-                  <div v-else-if="currentPreset.id === 'modern'" class="eb-t-leftbar" :style="{ color: currentPreset.accent, borderLeftColor: currentPreset.accent, fontFamily: headFont }">第一章 血尸</div>
-                  <div v-else class="eb-t-card" :class="{ 'eb-round': currentPreset.id === 'children' }" :style="{ background: currentPreset.accent_light, color: currentPreset.accent, borderTopColor: currentPreset.accent, borderBottomColor: currentPreset.border, fontFamily: headFont }"><template v-if="titleSplit && !currentPreset.special"><span class="eb-t-num">第三章</span><span class="eb-t-title">血尸</span></template><template v-else>第一章 血尸</template></div>
+                  <div v-else-if="currentPreset.id === 'modern'" class="eb-t-leftbar" :style="{ color: currentPreset.accent, borderLeftColor: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                  <div v-else class="eb-t-card" :class="{ 'eb-round': currentPreset.id === 'children' }" :style="{ background: currentPreset.accent_light, color: currentPreset.accent, borderTopColor: currentPreset.accent, borderBottomColor: currentPreset.border, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
 
                   <!-- 标题下长线 -->
                   <div v-if="currentPreset.id === 'classical'" class="eb-sep-dbl" :style="{ borderTopColor: currentPreset.accent, borderBottomColor: hexA(currentPreset.accent, 0.45) }"></div>
@@ -404,23 +404,23 @@
                   <p v-if="dialogue" class="eb-p eb-dialog-demo" :style="dialogueStyle">「你终于来了。」他压低了声音。</p>
                   <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」</blockquote>
                   <p class="eb-p eb-indent" :style="bodyTextStyle">他攥紧了手中的包袱，加快脚步走进雾中。</p>
-                </template>
+                </div>
               </template>
-              <template v-else>
+              <template v-else-if="previewTab === 'toc'">
                 <!-- 目录预览：按目录形式渲染 -->
                 <div class="eb-tocbig">
                   <div v-if="tocStyle === 'elegant'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-th-elegant" :style="{ background: currentPreset.accent_light, borderTopColor: currentPreset.accent, color: currentPreset.accent }">目 录<div class="eb-th-sub" :style="{ color: currentPreset.muted }">CONTENTS</div></div>
-                    <div v-for="(r, i) in tocMockRows" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
-                      <span class="eb-num-badge" :style="{ background: currentPreset.accent_light, color: currentPreset.accent }">{{ r[0] }}</span>{{ r[1] }}
+                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
+                      <span class="eb-num-badge" :style="{ background: currentPreset.accent_light, color: currentPreset.accent }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                     </div>
                     <div class="text-center py-2" :style="{ color: currentPreset.accent, fontSize: '11px' }">◆</div>
                   </div>
                   <div v-else-if="tocStyle === 'cool'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-cool-head" :style="{ background: currentPreset.toc_gradient || currentPreset.accent }">目 录<div class="eb-th-sub">CONTENTS</div></div>
                     <div class="eb-cool-items" :style="{ borderLeftColor: currentPreset.accent, background: currentPreset.quote_bg }">
-                      <div v-for="(r, i) in tocMockRows" :key="i" class="eb-cool-row" :style="{ borderBottomColor: currentPreset.border }">
-                        <span :style="{ color: currentPreset.accent, fontWeight: 800, fontSize: '14px', minWidth: '24px' }">{{ r[0] }}</span>{{ r[1] }}
+                      <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-cool-row" :style="{ borderBottomColor: currentPreset.border }">
+                        <span :style="{ color: currentPreset.accent, fontWeight: 800, fontSize: '14px', minWidth: '24px' }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                       </div>
                     </div>
                   </div>
@@ -429,16 +429,16 @@
                       <span class="eb-seal-title" :style="{ color: currentPreset.accent }">目 录</span>
                       <span class="eb-seal-stamp">隐</span>
                     </div>
-                    <div v-for="(r, i) in tocMockRows" :key="i" class="eb-seal-row">
+                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-seal-row">
                       <span :style="{ color: currentPreset.accent, fontWeight: 700, fontSize: '12px' }">{{ r[0] }}</span>
-                      <span class="flex-grow-1">{{ r[1] }}</span>
+                      <span class="flex-grow-1 eb-rt">{{ r[1] }}</span>
                       <span style="color:#A2906A;font-size:11px">\ ✦</span>
                     </div>
                   </div>
                   <div v-else class="eb-min-frame">
                     <div class="eb-min-head" :style="{ color: currentPreset.accent }">目 录</div>
-                    <div v-for="(r, i) in tocMockRows" :key="i" class="eb-min-row">
-                      <span :style="{ color: currentPreset.muted, minWidth: '18px', fontSize: '12px' }">{{ r[0] }}</span><span>{{ r[1] }}</span>
+                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-min-row">
+                      <span :style="{ color: currentPreset.muted, minWidth: '18px', fontSize: '12px' }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                     </div>
                     <div class="eb-min-end" :style="{ borderTopColor: currentPreset.border }"></div>
                   </div>
@@ -447,7 +447,7 @@
               <template v-else-if="previewTab === 'orig'">
                 <!-- 原书效果：无样式裸渲染，用于对比 -->
                 <div style="padding: 6px 4px; font-family: Georgia, 'Times New Roman', 宋体, serif; line-height: 1.85; color: #222; font-size: 15px">
-                  <h2 style="text-align: center; margin: 0 0 18px; font-size: 17px">第一章 血尸</h2>
+                  <h2 style="text-align: center; margin: 0 0 18px; font-size: 17px">{{ chapterSample }}</h2>
                   <p style="margin: 0 0 14px; text-indent: 2em">天色将明未明，山道上薄雾未散，一行脚印自东而来，又消失在石桥尽头。</p>
                   <p style="margin: 0 0 14px; text-indent: 2em">青砖黛瓦的宅院静静卧在雾里，檐角铜铃偶尔轻响一声。</p>
                   <p style="margin: 0 0 14px; text-indent: 2em">张三道：“你来了。”</p>
@@ -605,6 +605,20 @@ export default {
     tocPreviewText() {
       const titles = (this.analysis && this.analysis.toc_preview_titles) || [];
       return titles.map((t, i) => (i + 1) + '. ' + t).join('\n');
+    },
+    chapterSample() {
+      const t = this.analysis && this.analysis.toc_preview_titles;
+      return (t && t[0]) || '第一章 血尸';
+    },
+    tocSampleRows() {
+      const t = (this.analysis && this.analysis.toc_preview_titles) || [];
+      if (!t.length) return this.tocMockRows;
+      return t.slice(0, 5).map((title, i) => [('0' + (i + 1)).slice(-2), title]);
+    },
+    splitSample() {
+      const m = this.chapterSample.trim().match(
+        /^\s*(第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[章节回篇卷部集季]|(?:chapter|chap\.?)\s*\d+)[\s、．.:：\-—·]*(.+)$/i);
+      return m ? [m[1].replace(/\s+/g, ''), m[2]] : null;
     },
     currentPreset() {
       const p = this.presets.find((x) => x.id === this.preset) || this.presets[0] || {};
@@ -1425,6 +1439,13 @@ export default {
   border-left: 3px solid !important;
   padding: 0.55em 0.9em !important;
   text-indent: 0 !important;
+}
+.eb-rt {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .eb-t-num {
   display: block;
