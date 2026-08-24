@@ -14,6 +14,7 @@ PLUGIN_ROOT，不依赖 tests/test_main.py 里那套完整的 Calibre 测试库 
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -56,6 +57,7 @@ def _fake_collect_tools():
 DEMO_BACKEND_SRC = '''
 from webserver.toolbox.base_tool import BaseTool
 from webserver.services import AsyncService
+from webserver.handlers.base import BaseHandler, js
 
 
 class DemoTool(BaseTool):
@@ -78,6 +80,15 @@ class DemoTool(BaseTool):
         task_id = self.api.tasks.create_task(progress_data={{"stage": "ping"}})
         self.api.tasks.complete_task(task_id)
         return "pong"
+
+
+# manifest 里 api_routes 声明的自定义 handler，和上面的工具类同在一个文件里——这是插件作者
+# 最自然的写法，也是曾经触发过"两次 import 出两个不同类对象"这个 bug 的具体场景，见
+# test_collect_plugin_routes_shares_module_with_entry_backend()。
+class PingHandler(BaseHandler):
+    @js
+    def get(self):
+        return {{"err": "ok", "msg": DemoTool().ping()}}
 '''
 
 
@@ -109,7 +120,8 @@ def _write_demo_plugin(tool_id="demo_tool", revision="1.0.0", entry_backend="too
     with open(os.path.join(backend_dir, "tool.py"), "w", encoding="utf-8") as f:
         class_name = entry_backend.rsplit(".", 1)[-1]
         code = DEMO_BACKEND_SRC.format(tool_id=tool_id, revision=revision)
-        code = code.replace("class DemoTool(BaseTool):", f"class {class_name}(BaseTool):")
+        # 连带 PingHandler 里 `DemoTool()` 的引用一起改名，保持类名 <-> 引用一致
+        code = code.replace("DemoTool", class_name)
         f.write(code)
 
     frontend_dir = os.path.join(src_dir, "frontend")
@@ -231,6 +243,37 @@ class TestPluginManager(unittest.TestCase):
         self.assertEqual(state["type"], "plugin")
         self.assertEqual(state["status"], "enabled")
         self.assertFalse(state["pending_restart"])
+
+    def test_collect_plugin_routes_shares_module_with_entry_backend(self):
+        # 回归测试：曾经真实发生过的 bug——entry_backend 和 manifest 里 api_routes 声明的
+        # handler 同在一个 backend/tool.py 文件里时，如果各自单独 import 了一次，会得到两个
+        # 不同的模块对象、两份不同的 DemoTool 类定义，handler 里 `DemoTool()` 实例化出来的
+        # 对象读不到 load_all() 设在"另一份" DemoTool 类上的 PLUGIN_SERVICE_TYPE，
+        # 表现为后台任务面板的 service_type 悄悄退回 "other"。在真实容器里用一个会custom
+        # api_routes 的 demo 插件手工验证时发现的，见对话记录。
+        zip_path = self._install(
+            tool_id="demo_tool",
+            extra_manifest={"api_routes": [{"path": "ping", "handler": "tool.PingHandler"}]},
+        )
+        plugin_manager.install_from_zip(zip_path, is_update=False)
+        plugin_manager.load_all()
+
+        routes = plugin_manager.collect_plugin_routes()
+        self.assertEqual(len(routes), 1)
+        route_path, wrapped_handler_cls = routes[0]
+        self.assertEqual(route_path, "/api/toolbox/plugin/demo_tool/ping")
+
+        real_handler_cls = wrapped_handler_cls.__bases__[0]
+        handler_module = sys.modules[real_handler_cls.__module__]
+        tool_cls_seen_by_handler = getattr(handler_module, "DemoTool")
+
+        entry_cls = plugin_manager.get_tool_class("demo_tool")
+        self.assertIs(
+            tool_cls_seen_by_handler, entry_cls,
+            "handler 模块里的 DemoTool 必须和 entry_backend 解析出来的是同一个类对象，"
+            "否则 PLUGIN_SERVICE_TYPE 对 handler 不可见",
+        )
+        self.assertEqual(entry_cls.PLUGIN_SERVICE_TYPE, "plugin:demo_tool")
 
     def test_pending_restart_before_next_load_all(self):
         zip_path = self._install(tool_id="demo_tool")

@@ -266,9 +266,23 @@ def _require_installed(tool_id: str) -> InstalledTool:
 # 启动加载（"重启生效"：动态 import + 路由挂载只在这里发生一次）
 # ---------------------------------------------------------------------------
 
-def _load_tool_class(tool_id: str, tool_dir: str) -> Type[BaseTool]:
-    manifest = _read_manifest(tool_dir)
-    module_rel, class_name = manifest["entry_backend"].rsplit(".", 1)
+# (tool_id, module_rel) -> 已 import 的模块对象。entry_backend 和 manifest 里
+# api_routes 声明的 handler 很可能落在同一个 backend/tool.py 文件里（如
+# `tool.DemoTool` + `tool.SearchHandler`），如果各自单独调一次
+# importlib.util.spec_from_file_location，会把同一份源码 import 成两个不同的模块对象、
+# 两份不同的类定义——DemoTool 类上设置的 PLUGIN_SERVICE_TYPE 只会出现在 _load_tool_class()
+# 这一份上，Handler 里 `from tool import DemoTool` 拿到的却是另一份，PLUGIN_SERVICE_TYPE
+# 读回来是 None，后台任务的 service_type 就悄悄退回 SERVICE_TYPE_OTHER——这是曾经真实
+# 出现过的 bug，用这个缓存保证同一个 (tool_id, module_rel) 在一次 load_all() 里只 import
+# 一次、处处拿到同一个模块/同一份类对象。
+_module_cache: Dict[tuple, "object"] = {}
+
+
+def _import_backend_module(tool_id: str, tool_dir: str, module_rel: str):
+    cache_key = (tool_id, module_rel)
+    if cache_key in _module_cache:
+        return _module_cache[cache_key]
+
     module_file = _module_file_for(tool_dir, module_rel)
     module_name = f"mybooks_plugin_{tool_id}_{module_rel.replace('.', '_')}"
 
@@ -278,6 +292,15 @@ def _load_tool_class(tool_id: str, tool_dir: str) -> Type[BaseTool]:
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
+
+    _module_cache[cache_key] = module
+    return module
+
+
+def _load_tool_class(tool_id: str, tool_dir: str) -> Type[BaseTool]:
+    manifest = _read_manifest(tool_dir)
+    module_rel, class_name = manifest["entry_backend"].rsplit(".", 1)
+    module = _import_backend_module(tool_id, tool_dir, module_rel)
 
     cls = getattr(module, class_name, None)
     if cls is None or not (isinstance(cls, type) and issubclass(cls, BaseTool)):
@@ -315,6 +338,7 @@ def load_all() -> None:
 
     _loaded_classes.clear()
     _loaded_at_startup.clear()
+    _module_cache.clear()
     sync_builtin_records()
 
     for record in InstalledTool.all():
@@ -420,13 +444,12 @@ def collect_plugin_routes() -> List[tuple]:
                 logging.warning("[plugin_manager] %s 的 api_routes 声明不完整，跳过：%s", tool_id, entry)
                 continue
             module_rel, handler_cls_name = handler_name.rsplit(".", 1)
-            module_file = _module_file_for(tool_dir, module_rel)
-            module_name = f"mybooks_plugin_{tool_id}_{module_rel.replace('.', '_')}_handler"
             try:
-                spec = importlib.util.spec_from_file_location(module_name, module_file)
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
+                # 复用 _import_backend_module() 的缓存：handler 常常和 entry_backend 同在
+                # 一个模块文件里（如 tool.DemoTool + tool.PingHandler），必须拿到同一个模块
+                # 对象、同一份类定义，否则 entry_backend 类上设置的 PLUGIN_SERVICE_TYPE 类
+                # 属性对 handler 里实例化出来的对象不可见（曾经真实触发过的 bug）。
+                module = _import_backend_module(tool_id, tool_dir, module_rel)
                 handler_cls = getattr(module, handler_cls_name)
             except Exception as err:
                 logging.error("[plugin_manager] 加载 %s 的自定义路由 handler 失败: %s", tool_id, err)
