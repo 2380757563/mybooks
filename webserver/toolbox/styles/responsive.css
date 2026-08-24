@@ -45,6 +45,41 @@ a {
   text-transform: none;
   letter-spacing: 0.06em;
 }
+
+/* 卷级标题（mb-vol）：独占一页、居中大字距；无长线，与章级区分 */
+.mb-vol {
+  page-break-before: always;
+  break-before: page;
+  text-align: center !important;
+  text-indent: 0 !important;
+  duokan-text-indent: 0;
+  {{FONT_HEAD}}
+  font-weight: bold;
+  font-size: 1.9em !important;
+  line-height: 1.5;
+  color: {{ACCENT}} !important;
+  letter-spacing: 0.3em;
+  margin: 34% 0 2.2em 0 !important;
+}
+
+/* 双行排版（split_title）：章节号小字上移 + 标题大字。
+   用 .mb-ch 前缀提升特异性，抵消各预设自带的 .mb-ch span 规则
+   （如 classic 的 0.75em/muted 会把标题也缩小变灰） */
+.mb-ch-num,
+.mb-ch-title {
+  display: block;
+}
+.mb-ch .mb-ch-num {
+  font-size: 0.55em;
+  font-weight: normal !important;
+  color: {{MUTED}} !important;
+  letter-spacing: 0.4em;
+  margin-bottom: 0.35em;
+}
+.mb-ch .mb-ch-title {
+  font-size: inherit;
+  color: inherit;
+}
 /* 长线分隔（真实元素 div.mb-ch-sep，由代码注入）— 基础样式，宽度由各预设覆盖 */
 .mb-ch-sep {
   height: 1px !important;
@@ -89,6 +124,19 @@ figcaption, p.duokan-image-maintitle, div.duokan-image-maintitle {
   text-indent: 0 !important;
   margin: 0.6em auto 0 auto !important;
   {{FONT_KAI}}
+}
+
+/* 对话行（mb-dialog）：以「『“起始的段落，预设色板驱动，开关控制打标 */
+p.mb-dialog {
+  {{FONT_KAI}}
+  color: {{MUTED}} !important;
+  background: {{QUOTE_BG}} !important;
+  border-left: 3px solid {{ACCENT}} !important;
+  border-radius: 4px;
+  padding: 0.55em 0.9em !important;
+  margin: 0.7em 0 !important;
+  text-indent: 0 !important;
+  duokan-text-indent: 0;
 }
 
 /* 代码块（特殊元素：代码）— CODE_BG + BORDER */
@@ -232,6 +280,12 @@ blockquote, pre, table, figure, img {
   blockquote p {
     color: #d0d0d0 !important;
   }
+  /* 对话行夜间适配：底色转深灰，竖线用预设夜间色 */
+  p.mb-dialog {
+    background: #1e1e1e !important;
+    border-left-color: {{ACCENT_DARK}} !important;
+    color: #c8c8c8 !important;
+  }
   pre {
     background: #1e1e1e !important;
     border-color: #333 !important;
@@ -252,6 +306,12 @@ blockquote, pre, table, figure, img {
   }
   .mb-ch {
     color: {{ACCENT_DARK}} !important;
+  }
+  .mb-vol {
+    color: {{ACCENT_DARK}} !important;
+  }
+  .mb-ch .mb-ch-num {
+    color: #8a8a8a !important;
   }
   .mb-ch-sep {
     background: #444 !important;

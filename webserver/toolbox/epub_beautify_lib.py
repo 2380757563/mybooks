@@ -14,6 +14,7 @@ EPUB 容器读写（container → OPF → manifest/spine、mimetype 置首 ZIP_S
 规范重写、编码兜底）沿用「正文查找替换」工具已验证的实现模式。
 """
 
+import logging
 import re
 import zipfile
 import xml.etree.ElementTree as ET
@@ -65,7 +66,7 @@ _INLINE_RE = re.compile(r'<[^>]+>')
 
 MB_CSS_NAME = 'mb-beauty.css'
 MB_TOC_NAME = 'mb-toc.xhtml'
-# 目录条目默认**不截断**（v0.2.1 起取消 500 条上限；如需限制可显式传 max_toc_entries）
+# 目录条目默认**不截断**（取消 500 条上限；如需限制可显式传 max_toc_entries）
 
 # ── 内容清理（借鉴 Sigil CleanSource 思路，仅思路自研实现）──────────────────
 # 段首空白：全角空格/半角空格/tab/换行 + nbsp 实体，出现在 <p> 开标签之后
@@ -86,15 +87,17 @@ _TOC_EXCLUDE_RE = re.compile(
 
 
 def _normalize_cleanup(cleanup):
-    """归一化清理开关：{"leading":bool,"empty":bool,"meta":bool}。
+    """归一化清理开关：{"leading":bool,"empty":bool,"meta":bool,"toc_blank":bool}。
 
-    默认（混合策略）：段首空格归一开、空段清理关、meta 移除开。
+    默认（混合策略）：段首空格归一开、空段清理关、meta 移除开、
+    NCX/nav 空白条目净化开（只删零信息空条目）。
     """
     c = dict(cleanup) if isinstance(cleanup, dict) else {}
     return {
         'leading': bool(c.get('leading', True)),
         'empty': bool(c.get('empty', False)),
         'meta': bool(c.get('meta', True)),
+        'toc_blank': bool(c.get('toc_blank', True)),
     }
 
 
@@ -371,6 +374,93 @@ def _parse_nav_doc(data: bytes) -> list:
     return items
 
 
+# ── 目录数据净化（cleanup.toc_blank）──────────────────────────────────
+# 只删零信息的空条目：label 全空且无存活后代的 navPoint / 空 <li>；
+# 不动任何有文字的条目，playOrder 顺序重排。
+
+def _prune_ncx_bytes(data: bytes) -> tuple:
+    """剔除 NCX 中空标签 navPoint（子级优先递归）。:return: (new_bytes, pruned)"""
+    try:
+        root = ET.fromstring(_decode(data))
+    except ET.ParseError:
+        return data, 0
+    nav_map = root.find(_q('navMap', _NS_DTBNCX))
+    if nav_map is None:
+        return data, 0
+
+    pruned = 0
+
+    def _label(np):
+        lab = np.find(_q('navLabel', _NS_DTBNCX))
+        if lab is None:
+            return ''
+        t = lab.find(_q('text', _NS_DTBNCX))
+        return (t.text or '').strip() if t is not None else ''
+
+    def _clean(elem):
+        nonlocal pruned
+        for np in list(elem):
+            if np.tag != _q('navPoint', _NS_DTBNCX):
+                continue
+            _clean(np)
+            children = [c for c in np if c.tag == _q('navPoint', _NS_DTBNCX)]
+            if not _label(np) and not children:
+                elem.remove(np)
+                pruned += 1
+
+    _clean(nav_map)
+    if not pruned:
+        return data, 0
+    order = 0
+    for np in root.iter(_q('navPoint', _NS_DTBNCX)):
+        order += 1
+        np.set('playOrder', str(order))
+    ET.register_namespace('', _NS_DTBNCX)
+    return ET.tostring(root, encoding='utf-8', xml_declaration=True), pruned
+
+
+def _prune_nav_bytes(data: bytes) -> tuple:
+    """剔除 EPUB3 nav 文档 toc 列表中的空 <li>。:return: (new_bytes, pruned)"""
+    try:
+        root = ET.fromstring(_decode(data))
+    except ET.ParseError:
+        return data, 0
+    pruned = 0
+
+    def _li_text(li):
+        a = li.find(_q('a', _NS_XHTML))
+        return ''.join(a.itertext()).strip() if a is not None else ''
+
+    def _clean_ol(ol):
+        nonlocal pruned
+        for li in list(ol):
+            if li.tag != _q('li', _NS_XHTML):
+                continue
+            subs = [c for c in li if c.tag in (_q('ol', _NS_XHTML), _q('ul', _NS_XHTML))]
+            for s in subs:
+                _clean_ol(s)
+            has_live_sub = any(
+                len(c) for c in li
+                if c.tag in (_q('ol', _NS_XHTML), _q('ul', _NS_XHTML))
+            )
+            if not _li_text(li) and not has_live_sub:
+                ol.remove(li)
+                pruned += 1
+
+    for n in root.iter(_q('nav', _NS_XHTML)):
+        ntype = n.get('{http://www.idpf.org/2007/ops}type') or ''
+        if 'toc' not in ntype:
+            continue
+        top = n.find(_q('ol', _NS_XHTML)) or n.find(_q('ul', _NS_XHTML))
+        if top is not None:
+            _clean_ol(top)
+    if not pruned:
+        return data, 0
+    ET.register_namespace('', _NS_XHTML)
+    ET.register_namespace('epub', 'http://www.idpf.org/2007/ops')
+    return ET.tostring(root, encoding='utf-8', xml_declaration=True), pruned
+
+
 # ── 目录页生成 ────────────────────────────────────────────────────────────────
 
 # 标题已自带中文序号（第X章）或数字前缀（01.）时不再注入编号
@@ -549,25 +639,68 @@ def _decorate_toc_page(html_str: str) -> str:
 
 _MB_SEP = '<div class="mb-ch-sep"></div>'
 
+# 章节号前缀拆分（双行排版）：第X章节回篇卷部集季 / Chapter N
+_CH_PREFIX_RE = re.compile(
+    r'^\s*(?P<num>第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[章节回篇卷部集季]'
+    r'|(?:chapter|chap\.?)\s*\d+)'
+    r'[\s、．.:：\-—·]*(?P<rest>.+)$',
+    re.IGNORECASE,
+)
 
-def mark_chapters_in_html(html_str: str) -> tuple:
-    """正文条目内标记章节标题（mb-ch）与章首段（data-mb-first）。
+
+def _split_chapter_title(text: str):
+    """把「第三章 血尸」拆为 ('第三章', '血尸')；无剩余标题时返回 None。
+
+    前缀压缩内部空白；仅用于双行排版（split_title），卷级标题不拆。
+    """
+    m = _CH_PREFIX_RE.match((text or '').strip())
+    if not m:
+        return None
+    rest = m.group('rest').strip()
+    if not rest:
+        return None
+    return re.sub(r'\s+', '', m.group('num')), rest
+
+
+# 卷级标题（样式分级用）：仅 卷/部/篇 算卷级；「回」在章回体中是章节单元，
+# 不沿用 chapter_patterns 的分组语义（那里 回 与 部篇 同级用于分组）
+_MB_VOL_RE = re.compile(
+    r'^\s*(?:[【\[]\s*)?(?:'
+    r'第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]'
+    r'|0*\d{1,4}\s*卷'
+    r'|卷\s*[0-9零〇一二三四五六七八九十百千万兩两]+'
+    r'|[上中下]\s*卷)'
+)
+
+
+def _is_volume_text(text: str) -> bool:
+    return bool(_MB_VOL_RE.match((text or '').strip()))
+
+
+def mark_chapters_in_html(html_str: str, split_title: bool = False) -> tuple:
+    """正文条目内标记章节标题（mb-ch / 卷级 mb-vol）与章首段（data-mb-first）。
 
     幂等：已含 mb-ch 的条目直接返回原样。
-    :return: (new_html, marked_count)
+    :param split_title: True 时把纯文本章题拆为 mb-ch-num + mb-ch-title 两行
+        span（双行排版，仅章级；块内含子标签则跳过不动）。
+    :return: (new_html, stats)，stats = {'chapters','volumes','splits'}
     """
+    empty = {'chapters': 0, 'volumes': 0, 'splits': 0}
     if 'mb-ch' in html_str or '<html' not in html_str.lower():
-        return html_str, 0
+        return html_str, dict(empty)
     if _FRONT_TYPE_RE.search(html_str[:4000]):
-        # body 声明为前置类型（cover/title-page/copyright…）——不标记
-        return html_str, 0
+        return html_str, dict(empty)
 
-    marked = 0
+    stats = dict(empty)
     first_done = False
     heading_seen = False
 
     def _handle_block(tag, attrs, inner, is_div=False):
-        nonlocal marked, heading_seen, first_done
+        nonlocal stats, heading_seen, first_done
+        # 同名标签嵌套（多级 li 大纲 / 嵌套引用）：正则的惰性匹配会把内层
+        # 闭合标签吞进 outer match，重建后结构破坏——直接跳过不修改
+        if re.search(r'<%s\b' % tag, inner or '', re.IGNORECASE):
+            return None
         cls_attr = attrs or ''
         text = _block_text(inner)
         if not text.strip():
@@ -578,11 +711,25 @@ def mark_chapters_in_html(html_str: str) -> tuple:
         elif chapter_patterns.paragraph_is_heading(text):
             is_heading = True
         if is_heading:
-            new_attrs = _add_class(cls_attr, 'mb-ch')
-            marked += 1
+            # 卷级（第N卷/卷N/上中下卷/第N部篇）单独样式：独页大字、无长线；
+            # 章回体「第X回」视为章节，不升级
+            is_volume = _is_volume_text(text)
+            new_attrs = _add_class(cls_attr, 'mb-vol' if is_volume else 'mb-ch')
+            if is_volume:
+                stats['volumes'] += 1
+            else:
+                stats['chapters'] += 1
+            if split_title and not is_volume and '<' not in inner:
+                parts = _split_chapter_title(text)
+                if parts:
+                    inner = (
+                        '<span class="mb-ch-num">%s</span>'
+                        '<span class="mb-ch-title">%s</span>'
+                    ) % (_esc(parts[0]), _esc(parts[1]))
+                    stats['splits'] += 1
             heading_seen = True
-            # 下方长线分隔（实色卡片外，兼容所有阅读器）
-            return '<%s%s>%s</%s>%s' % (tag, new_attrs, inner, tag, _MB_SEP)
+            return '<%s%s>%s</%s>%s' % (tag, new_attrs, inner, tag,
+                                        '' if is_volume else _MB_SEP)
         if heading_seen and not first_done and not is_div:
             new_attrs = cls_attr + ' data-mb-first="true"'
             first_done = True
@@ -604,7 +751,49 @@ def mark_chapters_in_html(html_str: str) -> tuple:
             return out if out is not None else m.group(0)
 
         new_html = _SIMPLE_DIV_RE.sub(_replace_div, new_html)
-    return new_html, marked
+    return new_html, stats
+
+
+# ── 对话行点缀（mb-dialog）────────────────────────────────────────────
+
+# 开引号字符集：直角引号（「『）、中文弯双引、全角直引号、ASCII 双引号；
+# ASCII 单引号不参与（英文撇号/内嵌引用误判率高）
+_DIALOG_OPEN_QUOTES = ('「', '『', '“', '＂', '"')
+
+
+def _is_dialogue_text(text: str) -> bool:
+    """段落纯文本是否为对话行：容忍前导空白，以开引号起始。
+
+    保守策略——仅识别开引号起始；``张三道："…"` ` 等叙述引导句式不标
+    （避免把整段叙述一起染色）。
+    """
+    t = (text or '').lstrip(' \u3000')
+    return bool(t) and t.startswith(_DIALOG_OPEN_QUOTES)
+
+
+def mark_dialogue_in_html(html_str: str) -> tuple:
+    """为以开引号起始的普通段落打 ``mb-dialog`` 类（幂等，配合开关使用）。
+
+    只处理 ``<p>``（li/blockquote 不动）；标题块（mb-ch）跳过；同名标签
+    嵌套整块跳过。:return: (new_html, marked_count)
+    """
+    if 'mb-dialog' in html_str or '<html' not in html_str.lower():
+        return html_str, 0
+    marked = 0
+
+    def _replace_p(m):
+        nonlocal marked
+        tag, attrs, inner = m.group(1), m.group(2), m.group(3)
+        if tag.lower() != 'p' or 'mb-ch' in (attrs or ''):
+            return m.group(0)
+        if re.search(r'<%s\b' % tag, inner or '', re.IGNORECASE):
+            return m.group(0)
+        if not _is_dialogue_text(_block_text(inner)):
+            return m.group(0)
+        marked += 1
+        return '<%s%s>%s</%s>' % (tag, _add_class(attrs or '', 'mb-dialog'), inner, tag)
+
+    return _BLOCK_RE.sub(_replace_p, html_str), marked
 
 
 # ── 分析（preview 用）─────────────────────────────────────────────────────────
@@ -646,10 +835,11 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
     h_stats = {'h1': 0, 'h2': 0, 'h3': 0, 'h4': 0, 'h5': 0, 'h6': 0}
     text_headings = 0
     sampled = 0
-    # 健康报告采样：段首空格占比 / 空段估计 / p 开闭不齐文件数
+    # 健康报告采样：段首空格占比 / 空段估计 / p 开闭不齐文件数 / 对话行估计
     leading_space_paras = 0
     total_paras = 0
     empty_para_est = 0
+    dialogue_paras = 0
     # p 开闭不齐（烂书预警）：全量计数，开销为两次正则扫描
     p_close_mismatch_files = sum(
         1 for t in text_entries
@@ -675,6 +865,8 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
                 or re.match(r'^[\s\u3000]{2,}', inner)
             ):
                 leading_space_paras += 1
+            if m.group(1).lower() == 'p' and _is_dialogue_text(_block_text(inner)):
+                dialogue_paras += 1
             if chapter_patterns.paragraph_is_heading(_block_text(inner)):
                 text_headings += 1
 
@@ -710,10 +902,11 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
         'nav_entries': nav_count,
         'heading_stats': h_stats,
         'text_headings': text_headings,
-        # ── 健康报告（v0.2.0）──
+        # ── 健康报告 ──
         'leading_space_paras': leading_space_paras,
         'sampled_paras': total_paras,
         'empty_para_est': empty_para_est,
+        'dialogue_paras': dialogue_paras,
         'p_close_mismatch_files': p_close_mismatch_files,
         'css_important_count': css_important_count,
         'css_conflict_risk': css_important_count > 30,
@@ -757,25 +950,52 @@ def beautify(
     page_progression: str = None,
     toc_depth: int = None,
     cleanup: dict = None,
+    dialogue: bool = False,
+    split_title: bool = False,
+    extra_assets: dict = None,
 ) -> dict:
     """执行美化并写新 EPUB。
 
     :param preset_css: 已插值的 mb-beauty.css 内容（styles.get_preset_css）。
     :param page_progression: 'rtl' 时把 spine 设为从左向右翻页（竖排预设用），
         None 保持原书设置。
-    :param max_toc_entries: 目录条目上限；**None = 不截断（默认，v0.2.1 起）**，
+    :param max_toc_entries: 目录条目上限；**None = 不截断（默认）**，
         显式传数字时超出部分丢弃并附截断提示。深度/噪音过滤先于截断执行。
     :param toc_depth: 目录收录层级上限（None=全部；1/2/3=只收 level < N 的条目）。
     :param cleanup: 内容清理开关 {"leading":bool,"empty":bool,"meta":bool}，
         见 _normalize_cleanup；None 用默认（段首空格开/空段关/meta 开）。
-    :return: 统计 dict（marked_headers / toc_generated / toc_entries /
-        injected_css / chapters / rtl / cleaned_leading / removed_empty /
-        toc_excluded / toc_links_ok / toc_links_total）
+    :param dialogue: 对话行点缀开关（True=为「『“起始段落打 mb-dialog，
+        样式由 mb-beauty.css 的 .mb-dialog 规则提供）。
+    :param split_title: 双行排版开关（True=纯文本章题拆为 mb-ch-num +
+        mb-ch-title 两行 span，卷级不拆）。
+    :param extra_assets: 附加资源 {zip内文件名: (bytes, media_type)}，
+        如背景图片 {'mb-bg.jpg': (data, 'image/jpeg')}；写入包体并注册 manifest（幂等）。
+    :return: 统计 dict（marked_headers / marked_volumes / titles_split /
+        toc_generated / toc_entries / injected_css / chapters / rtl /
+        cleaned_leading / removed_empty / toc_excluded / toc_links_ok /
+        toc_links_total / dialogues_marked）
     """
     cleanup_n = _normalize_cleanup(cleanup)
     entries = _read_zip_entries(epub_path)
     ctx = _parse_opf(entries)
     text_entries = _text_entries(ctx, entries)
+
+    # ── 0. 目录数据净化：剔除 NCX/nav 空白条目（阅读器侧边栏空行元凶）──
+    toc_blank_pruned = 0
+    if cleanup_n.get('toc_blank'):
+        if ctx.ncx_path and ctx.ncx_path in entries:
+            new_ncx, n = _prune_ncx_bytes(entries[ctx.ncx_path])
+            if n:
+                entries[ctx.ncx_path] = new_ncx
+                toc_blank_pruned += n
+        if ctx.nav_path and ctx.nav_path in entries:
+            new_nav, n2 = _prune_nav_bytes(entries[ctx.nav_path])
+            if n2:
+                entries[ctx.nav_path] = new_nav
+                toc_blank_pruned += n2
+        if toc_blank_pruned:
+            logging.getLogger(__name__).info(
+                "[epub_beautify] pruned %d blank TOC entries", toc_blank_pruned)
 
     # ── 1. 目录：生成普通结构目录页 / 替换 nav 语义目录页 / 保留普通目录页 ──
     # 手机阅读器（多看/KOReader/微信读书等）把 <nav epub:type="toc"> 文档当
@@ -843,10 +1063,19 @@ def beautify(
         and re.search(r'<nav\b[^>]*epub:type\s*=\s*["\']toc', _decode(entries[t])[:4000], re.IGNORECASE)
     ]
     nav_semantic_in_spine = bool(nav_semantic_paths)
-    # spine 条目 zip 路径 → idref 映射（用于替换 itemref）
+    # spine 条目 zip 路径 → idref 映射（用于替换 itemref）。
+    # 必须从 ctx.spine 逐项解析构建，不能 zip(text_entries, linear idrefs)——
+    # spine 含非 XHTML 的 linear 条目（SVG 插图页 / 烂书直接塞图）或 manifest
+    # 缺 idref 时两者长度与顺序均会错位，导致 nav 替换误伤其他条目。
     path_to_idref = {}
-    for t, idref in zip(text_entries, [r[0] for r in ctx.spine if r[1]]):
-        path_to_idref.setdefault(t, idref)
+    for idref, linear in ctx.spine:
+        if not linear:
+            continue
+        item = ctx.manifest.get(idref)
+        if not item or item['mt'] not in ('application/xhtml+xml', 'text/html'):
+            continue
+        p = _snap_entry(entries, _resolve_zip(ctx.opf_dir, item['href']))
+        path_to_idref.setdefault(p, idref)
 
     if (not inbook_toc_paths or nav_semantic_in_spine) and toc_items:
         # 截断仅在显式传入 max_toc_entries 时发生（默认 None = 全量收录）
@@ -904,6 +1133,22 @@ def beautify(
             entries[ctx.opf_path] = opf_str.encode('utf-8')
             toc_generated = True
 
+    # ── 1.5 附加资源（如背景图片）：写入包体 + manifest 注册（幂等）──
+    extra_count = 0
+    if extra_assets:
+        opf_now = _decode(entries[ctx.opf_path])
+        added = ''
+        for name, (blob, mtype) in extra_assets.items():
+            entries[ctx.opf_dir + name] = blob
+            extra_count += 1
+            item_id = name.rsplit('.', 1)[0]
+            if ('href="%s"' % name) not in opf_now:
+                added += ('\n<item id="%s" href="%s" media-type="%s"/>'
+                          % (item_id, name, mtype))
+        if added:
+            opf_now = opf_now.replace('</manifest>', added + '\n</manifest>', 1)
+            entries[ctx.opf_path] = opf_now.encode('utf-8')
+
     # ── 2. mb-beauty.css 注入 ──
     css_zip_path = ctx.opf_dir + MB_CSS_NAME
     entries[css_zip_path] = preset_css.encode('utf-8')
@@ -917,11 +1162,14 @@ def beautify(
         )
         entries[ctx.opf_path] = opf_raw.encode('utf-8')
 
-    # ── 3. 逐正文条目：内容清理 + 目录页标记 + 章节名标记 + 注入 CSS 引用 ──
+    # ── 3. 逐正文条目：内容清理 + 目录页标记 + 章节名标记 + 对话行标记 + 注入 CSS ──
     marked_headers = 0
+    marked_volumes = 0
+    titles_split = 0
     injected = 0
     cleaned_leading = 0
     removed_empty = 0
+    dialogues_marked = 0
     for t in text_entries:
         if t not in entries:
             continue
@@ -947,9 +1195,18 @@ def beautify(
                 changed = True
                 html = new_html
         elif not _is_front_file(t):
-            new_html, count = mark_chapters_in_html(html)
-            if count:
-                marked_headers += count
+            new_html, mk = mark_chapters_in_html(html, split_title=bool(split_title))
+            if mk['chapters'] or mk['volumes'] or mk['splits']:
+                marked_headers += mk['chapters']
+                marked_volumes += mk['volumes']
+                titles_split += mk['splits']
+                changed = True
+                html = new_html
+        # 对话行点缀（开关控制打标；目录/前置页不做）
+        if dialogue and not _is_toc_doc(t, html) and not _is_front_file(t):
+            new_html, dcount = mark_dialogue_in_html(html)
+            if dcount:
+                dialogues_marked += dcount
                 changed = True
                 html = new_html
         new_html = _inject_css_link(html, _relative_href(t, css_zip_path))
@@ -972,6 +1229,8 @@ def beautify(
     _write_zip(entries, out_path)
     return {
         'marked_headers': marked_headers,
+        'marked_volumes': marked_volumes,
+        'titles_split': titles_split,
         'toc_generated': toc_generated,
         'toc_entries': toc_entries,
         'css_injected_chapters': injected,
@@ -983,4 +1242,7 @@ def beautify(
         'toc_depth': toc_depth or 0,
         'toc_links_ok': toc_links_ok if toc_generated else 0,
         'toc_links_total': toc_links_total if toc_generated else 0,
+        'dialogues_marked': dialogues_marked,
+        'toc_blank_pruned': toc_blank_pruned,
+        'extra_assets': extra_count,
     }

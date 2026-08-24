@@ -90,12 +90,92 @@ def _interpolate(template: str, params: dict, use_system_fonts: bool,
     return _PLACEHOLDER_RE.sub(_replace, template)
 
 
+# ── 自定义配色与全书底色────────────────────────────────────────────
+_HEX_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$')
+_PALETTE_KEYS = ('accent', 'accent_light', 'muted', 'border', 'quote_bg', 'code_bg')
+
+
+def _blend_hex(color: str, target_rgb: tuple, ratio: float) -> str:
+    """颜色向目标 RGB 按比例混合，返回 6 位大写 hex。"""
+    c = color.lstrip('#')
+    if len(c) == 3:
+        c = ''.join(ch * 2 for ch in c)
+    r, g, b = (int(c[i:i + 2], 16) for i in (0, 2, 4))
+    mixed = [
+        int(round(v * (1 - ratio) + t * ratio))
+        for v, t in ((r, target_rgb[0]), (g, target_rgb[1]), (b, target_rgb[2]))
+    ]
+    return '#%02X%02X%02X' % tuple(mixed)
+
+
+def _apply_palette_overrides(params: dict, overrides: dict) -> dict:
+    """校验并合并自定义色板；覆盖 accent 时自动派生联动色。
+
+    - 键限定 _PALETTE_KEYS，值须为 #RGB / #RRGGBB；
+    - 派生规则：accent_dark 向白混合 55%，toc_gradient 用 accent→加深 35% 双停渐变；
+      显式给出对应键时不派生。
+    非法键 / 非法色值 → ValueError。
+    """
+    out = dict(params)
+    given = {}
+    for key, val in (overrides or {}).items():
+        if key not in _PALETTE_KEYS:
+            raise ValueError('unknown palette key: %s' % key)
+        if not isinstance(val, str) or not _HEX_RE.match(val.strip()):
+            raise ValueError('invalid hex color for %s: %r' % (key, val))
+        given[key] = val.strip().upper()
+    out.update(given)
+    if 'accent' in given:
+        acc = given['accent']
+        if 'accent_dark' not in given:
+            out['accent_dark'] = _blend_hex(acc, (255, 255, 255), 0.55)
+        if 'toc_gradient' not in given:
+            out['toc_gradient'] = 'linear-gradient(135deg, %s, %s)' % (
+                acc, _blend_hex(acc, (0, 0, 0), 0.35))
+    return out
+
+
+def _apply_page_tint(css: str, page_tint, params: dict) -> str:
+    """三态全书主题底色后处理。
+
+    - None：跟随预设（xuanzhi/vertclassical 自带纸底，其余白底），原样返回；
+    - True：日间铺 accent_light 纸色底、夜间保持深色（自带媒体查询重申，
+      避免追加规则因层叠位置覆盖 responsive 的夜间底色）；
+    - False：清空预设底色回到阅读器默认（日间白/夜间深）。
+    """
+    if page_tint is True:
+        block = (
+            '\n\n/* ── 全书主题底色（page_tint=on）── */\n'
+            '@media (prefers-color-scheme: light), (prefers-color-scheme: no-preference) {\n'
+            '  body { background-color: %s !important; }\n'
+            '}\n'
+            '@media (prefers-color-scheme: dark) {\n'
+            '  body { background-color: #121212 !important; }\n'
+            '}\n' % params.get('accent_light', '#FFFFFF')
+        )
+    elif page_tint is False:
+        block = (
+            '\n\n/* ── 全书主题底色关闭（page_tint=off）── */\n'
+            'body { background-color: transparent !important; }\n'
+        )
+    else:
+        return css
+    return css.rstrip() + block
+
+
 def get_preset_css(preset_id: str, use_system_fonts: bool = True,
                    toc_style: str = DEFAULT_TOC_STYLE,
-                   font_overrides: dict = None) -> str:
-    """加载指定预设模板并插值；preset_id / toc_style 非法时抛 ValueError。
+                   font_overrides: dict = None,
+                   palette_overrides: dict = None,
+                   page_tint=None,
+                   bg_image: dict = None) -> str:
+    """加载指定预设模板并插值；preset_id / toc_style / 色板非法时抛 ValueError。
 
-    font_overrides: 细粒度字体开关，见 _interpolate。
+    font_overrides:     细粒度字体开关，见 _interpolate。
+    palette_overrides:  自定义配色 {token: hex}，见 _apply_palette_overrides。
+    page_tint:          全书主题底色三态，见 _apply_page_tint。
+    bg_image:           全书背景图片 {'url': 'mb-bg.jpg', 'night_dim': float}，
+                        见 _apply_bg_image；激活时日间取代纸色铺满。
     """
     presets = list_presets()
     if preset_id not in presets:
@@ -103,6 +183,8 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
     if toc_style not in TOC_STYLES:
         raise ValueError("unknown toc_style: %s" % toc_style)
     params = presets[preset_id]
+    if palette_overrides:
+        params = _apply_palette_overrides(params, palette_overrides)
 
     css_path = os.path.join(_PRESETS_DIR, "%s.css" % preset_id)
     if not os.path.exists(css_path):
@@ -128,4 +210,71 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
         else:
             template = template.rstrip() + "\n\n/* ── responsive injected ── */\n" + responsive_css
 
-    return _interpolate(template, params, use_system_fonts, font_overrides)
+    css = _interpolate(template, params, use_system_fonts, font_overrides)
+    css = _apply_page_tint(css, page_tint, params)
+    if bg_image:
+        css = _apply_bg_image(css, bg_image)
+    return css
+
+
+# ── 背景图片（内置纹理 + 用户上传）────────────────────────────────────────────
+# 纹理来源与许可：
+#   tex_xuanzhi.jpg   ← transparenttextures.com "Rice Paper 2"（站点声明免费可用）
+#   tex_parchment.jpg ← Wikimedia Commons "Pergament.2.jpg"（CC0，作者 Membeth）
+#   tex_linen.jpg     ← transparenttextures.com "Low Contrast Linen"（反色染米白）
+_TEXTURES_DIR = os.path.join(_PRESETS_DIR, 'textures')
+BUILTIN_TEXTURES = {
+    'xuanzhi':   {'name': '宣纸纹', 'name_en': 'Rice Paper', 'file': 'tex_xuanzhi.jpg'},
+    'parchment': {'name': '羊皮纸', 'name_en': 'Parchment',  'file': 'tex_parchment.jpg'},
+    'linen':     {'name': '素麻布', 'name_en': 'Linen',      'file': 'tex_linen.jpg'},
+}
+
+
+def list_builtin_textures() -> list:
+    """内置纹理列表 [{id,name,name_en}]。"""
+    return [{'id': k, 'name': v['name'], 'name_en': v['name_en']}
+            for k, v in BUILTIN_TEXTURES.items()]
+
+
+def get_texture_bytes(tex_id: str) -> tuple:
+    """读取内置纹理字节。:return: (data, media_type)。非法 id 抛 ValueError。"""
+    meta = BUILTIN_TEXTURES.get(tex_id)
+    if not meta:
+        raise ValueError('unknown texture: %s' % tex_id)
+    path = os.path.join(_TEXTURES_DIR, meta['file'])
+    if not os.path.exists(path):
+        raise ValueError('texture missing: %s' % path)
+    with open(path, 'rb') as f:
+        return f.read(), 'image/jpeg'
+
+
+def _apply_bg_image(css: str, bg: dict) -> str:
+    """全书背景图片（尽力而为增强）：日间原图 cover，夜间叠加深色渐变遮罩。
+
+    遮罩用双层背景（linear-gradient 叠加原图）实现，不依赖伪元素；
+    不支持多背景的老引擎回退为单图/纯色，不破版。
+    bg: {'url': 'mb-bg.jpg', 'night_dim': 0.0~1.0}
+    """
+    url = bg.get('url') or 'mb-bg.jpg'
+    dim = max(0.0, min(1.0, float(bg.get('night_dim', 0.72))))
+    dim_c = 'rgba(18,18,18,%s)' % ('%.2f' % dim)
+    block = (
+        '\n\n/* ── 全书背景图片 ── */\n'
+        'body {\n'
+        "  background-image: url('%(u)s') !important;\n"
+        '  background-size: cover !important;\n'
+        '  background-position: center !important;\n'
+        '  background-repeat: no-repeat !important;\n'
+        '  background-attachment: fixed !important;\n'
+        '}\n'
+        '@media (prefers-color-scheme: dark) {\n'
+        '  body {\n'
+        "    background-image: linear-gradient(%(d)s, %(d)s), url('%(u)s') !important;\n"
+        '    background-size: cover !important;\n'
+        '    background-position: center !important;\n'
+        '    background-repeat: no-repeat !important;\n'
+        '    background-attachment: fixed !important;\n'
+        '  }\n'
+        '}\n'
+    ) % {'u': url, 'd': dim_c}
+    return css.rstrip() + block
