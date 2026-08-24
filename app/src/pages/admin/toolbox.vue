@@ -91,8 +91,15 @@ export default {
   },
   methods: {
     goToTool(tool) {
-      let toolPage = tool.page || tool.id;
-      this.$router.push(`/toolbox/${toolPage}`);
+      const toolPage = tool.page || tool.id;
+      // source === 'bundled'（从未被更新过的内置工具）走构建期就存在的 /toolbox/{page}；
+      // 'store'/'dev' 的工具（外部插件，或被更新覆盖过的内置工具）统一走通用承载页
+      // /toolbox/plugin/{page}，见 document/Toolbox_Dynamic_Design.md 4.3 节。
+      if (tool.source === 'bundled') {
+        this.$router.push(`/toolbox/${toolPage}`);
+      } else {
+        this.$router.push(`/toolbox/plugin/${toolPage}`);
+      }
     },
   },
 };

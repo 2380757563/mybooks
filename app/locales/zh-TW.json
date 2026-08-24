@@ -1248,6 +1248,10 @@
     "author": "作者",
     "publishDate": "發布日期"
   },
+  "toolboxPlugin": {
+    "title": "工具",
+    "notFound": "工具不存在或已被停用"
+  },
   "resources": {
     "pageTitle": "圖書資源",
     "pageSubtitle": "圖書資源彙總，不定期更新",

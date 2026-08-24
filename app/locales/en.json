@@ -1249,6 +1249,10 @@
     "author": "Author",
     "publishDate": "Publish Date"
   },
+  "toolboxPlugin": {
+    "title": "Tool",
+    "notFound": "Tool not found or disabled"
+  },
   "resources": {
     "pageTitle": "eBook Resources",
     "pageSubtitle": "eBook resource directory",

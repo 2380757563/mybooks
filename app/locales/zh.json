@@ -1250,6 +1250,10 @@
     "author": "作者",
     "publishDate": "发布日期"
   },
+  "toolboxPlugin": {
+    "title": "工具",
+    "notFound": "工具不存在或已被禁用"
+  },
   "resources": {
     "pageTitle": "图书资源",
     "pageSubtitle": "图书资源汇总，不定期更新",
