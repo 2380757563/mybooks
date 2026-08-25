@@ -87,7 +87,7 @@
                 class="mt-0 pt-0"
               ></v-switch>
               <v-spacer></v-spacer>
-              <v-btn v-if="devMode" x-small text @click="openUpdateDialog(tool)">
+              <v-btn v-if="devMode && tool.source === 'dev'" x-small text @click="openUpdateDialog(tool)">
                 <v-icon x-small left>mdi-file-upload-outline</v-icon>{{ $t('toolbox.update') }}
               </v-btn>
               <v-btn

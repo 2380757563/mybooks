@@ -852,7 +852,7 @@
     "enable_webdav_service": "啟用 WebDAV 服務（用於閱讀器透過 WebDAV 協定存取書庫）",
     "enable_podcast_service": "啟用 Podcast 訂閱服務（用於播放器透過 Podcast 協定存取有聲書）",
     "enable_toolbox_dev_mode": "啟用工具箱開發者模式（允許在工具箱管理頁手動上傳 zip 安裝／更新工具，僅用於除錯）",
-    "enable_toolbox_store": "啟用工具箱商店（從 mybooks.top 取得可安裝工具清單與更新，尚未上線，開啟後暫無可安裝工具）",
+    "enable_toolbox_store": "啟用工具箱商店（從MyBooks取得可安裝工具清單與更新，尚未上線，開啟後暫無可安裝工具）",
     "allow_user_disable_statistic": "允許使用者自行關閉閱讀及下載資料採集（關閉後預設採集所有使用者的資料）",
     "enable_homepage_reading_stats": "在首頁顯示閱讀統計 Banner（預設開啟）",
     "extended_features": "擴充功能",
@@ -1282,7 +1282,7 @@
     "updateTool": "更新「{name}」",
     "uninstallConfirm": "確定要解除安裝「{name}」嗎？重啟後徹底生效，工具自身的資料不會被清除。",
     "storeTitle": "工具商店",
-    "storeSubtitle": "從 mybooks.top 取得可安裝的工具（尚未上線，開啟前需在系統設定中開啟「啟用工具箱商店」）",
+    "storeSubtitle": "從 MyBooks 取得可安裝的工具（尚未上線，開啟前需在系統設定中開啟「啟用工具箱商店」）",
     "storeEmpty": "暫無可安裝工具",
     "storeInstall": "安裝",
     "storeUpdate": "更新"
