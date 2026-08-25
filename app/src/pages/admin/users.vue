@@ -51,6 +51,32 @@
             </template>
             <template v-slot:item.actions="{ item }">
                 <v-btn small color="primary" class="white--text" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
+                <v-menu v-if="enableDownloadQuota" v-model="item._quotaMenuOpen" offset-y right :close-on-content-click="false">
+                    <template v-slot:activator="{ on }">
+                        <v-btn small color="primary" class="white--text" v-on="on" @click="resetDownloadQuotaEdit(item)">{{ $t('admin.users.set_download_quota') }}</v-btn>
+                    </template>
+                    <v-card min-width="300">
+                        <v-card-text class="pb-0">
+                            <v-form :ref="'downloadQuotaForm-' + item.id">
+                                <v-text-field
+                                    v-model.number="item._quotaEditValue"
+                                    :label="$t('admin.users.download_quota_label')"
+                                    type="number"
+                                    min="-1"
+                                    max="1000"
+                                    :rules="[rules.downloadQuota]"
+                                    autofocus
+                                    class="quota-input"
+                                ></v-text-field>
+                            </v-form>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer></v-spacer>
+                            <v-btn text @click="item._quotaMenuOpen = false">{{ $t('admin.users.cancel') }}</v-btn>
+                            <v-btn color="primary" @click="saveDownloadQuota(item)" :loading="savingDownloadQuota">{{ $t('admin.users.save') }}</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-menu>
                 <v-menu offset-y right>
                     <template v-slot:activator="{ on }">
                         <v-btn color="primary" small v-on="on">{{ $t('admin.users.actions') }} <v-icon small>more_vert</v-icon></v-btn>
@@ -389,6 +415,8 @@ export default {
         loadingTags: false,
         tagSearchTimer: null,
         allowReadRangeSetting: false,
+        // Download quota menu (open state & edit value live per-row on each item, see getDataFromApi)
+        savingDownloadQuota: false,
         // Change password dialog
         showChangePasswordDialog: false,
         changingPassword: false,
@@ -410,6 +438,7 @@ export default {
                 var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
                 return re.test(email) || "错误的邮箱格式";
             },
+            downloadQuota: v => (Number.isInteger(v) && v >= -1 && v <= 1000) || '-1 ~ 1000 的整数',
         },
     }),
     created() {
@@ -550,6 +579,33 @@ export default {
             })
             .finally(() => { this.savingReadingRange = false; });
         },
+        resetDownloadQuotaEdit(item) {
+            // 每次打开都重置为服务端当前值，避免上次未保存的修改残留
+            item._quotaEditValue = item.download_daily_quota ?? -1;
+            this.$nextTick(() => {
+                const form = this.$refs['downloadQuotaForm-' + item.id];
+                if (form) form.resetValidation();
+            });
+        },
+        saveDownloadQuota(item) {
+            const form = this.$refs['downloadQuotaForm-' + item.id];
+            if (form && !form.validate()) return;
+            this.savingDownloadQuota = true;
+            this.$backend("/admin/users", {
+                body: JSON.stringify({ id: item.id, download_daily_quota: item._quotaEditValue }),
+                method: "POST",
+            })
+            .then(rsp => {
+                if (rsp.err !== "ok") {
+                    this.$alert("error", rsp.msg);
+                } else {
+                    this.$alert("success", this.$t('admin.users.download_quota_save_ok'));
+                    item._quotaMenuOpen = false;
+                    this.getDataFromApi();
+                }
+            })
+            .finally(() => { this.savingDownloadQuota = false; });
+        },
         validatePassword: function(v) {
             if ( v.length < 6 ) {
                 return '最少6个字符';
@@ -664,7 +720,11 @@ export default {
                         alert(rsp.msg);
                         return false;
                     }
-                    this.items = rsp.users.items;
+                    this.items = (rsp.users.items || []).map((u) => ({
+                        ...u,
+                        _quotaMenuOpen: false,
+                        _quotaEditValue: u.download_daily_quota ?? -1,
+                    }));
                     this.total = rsp.users.total;
                     this.allowReadRangeSetting = rsp.settings?.allow_read_range_setting || false;
                     this.enableDownloadQuota = rsp.settings?.enable_download_quota || false;
@@ -691,5 +751,11 @@ export default {
 <style scoped>
 .detail-toggle-btn >>> .v-btn__content {
     font-size: 14px;
+}
+.quota-input >>> .v-label {
+    line-height: 1.2;
+}
+.quota-input >>> .v-input__control {
+    margin-top: 12px;
 }
 </style>

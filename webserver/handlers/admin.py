@@ -169,7 +169,7 @@ class AdminUsers(BaseHandler):
             if enable_download_quota:
                 usage = DownloadQuotaService.get_usage(user)
                 d["download_quota_used"] = usage.used
-                d["download_quota_limit"] = usage.quota
+                d["download_quota_limit"] = 0 if user.is_admin() else usage.quota
                 d["download_daily_quota"] = (user.extra.get("downloads") or {}).get(
                     "daily_quota", DOWNLOAD_QUOTA_FOLLOW_GLOBAL
                 )
@@ -253,10 +253,10 @@ class AdminUsers(BaseHandler):
                     "err": "params.download_daily_quota.invalid",
                     "msg": _("下载配额参数不对"),
                 }
-            if daily_quota < DOWNLOAD_QUOTA_FOLLOW_GLOBAL:
+            if daily_quota < DOWNLOAD_QUOTA_FOLLOW_GLOBAL or daily_quota > 1000:
                 return {
                     "err": "params.download_daily_quota.invalid",
-                    "msg": _("下载配额参数不对"),
+                    "msg": _("下载配额参数不对，需为-1~1000之间的整数"),
                 }
             downloads = dict(user.extra.get("downloads") or {})
             downloads["daily_quota"] = daily_quota

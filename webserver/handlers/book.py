@@ -1820,7 +1820,7 @@ class BookDownloadQuota(BaseHandler):
     @auth
     def get(self):
         """返回当前用户今日下载配额的使用情况，供前端在真正触发下载前做提示，不消耗配额。"""
-        if not CONF.get("ENABLE_DOWNLOAD_QUOTA", False):
+        if not CONF.get("ENABLE_DOWNLOAD_QUOTA", False) or self.is_admin():
             return {"err": "ok", "allowed": True, "used": 0, "quota": 0}
         result = DownloadQuotaService.get_usage(self.current_user)
         allowed = result.quota == 0 or result.used < result.quota

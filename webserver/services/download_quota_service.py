@@ -70,9 +70,9 @@ class DownloadQuotaService:
     def check_and_consume(cls, reader: Reader) -> QuotaResult:
         """检查reader的每日下载配额，若还有余量则原子地消耗一次并落库。
 
-        当ENABLE_DOWNLOAD_QUOTA未开启时，始终放行且不改动extra["downloads"]。
+        当ENABLE_DOWNLOAD_QUOTA未开启、或reader为管理员时，始终放行且不改动extra["downloads"]。
         """
-        if not CONF.get("ENABLE_DOWNLOAD_QUOTA", False):
+        if not CONF.get("ENABLE_DOWNLOAD_QUOTA", False) or reader.is_admin():
             return QuotaResult(True, 0, 0)
 
         with cls._lock_for(reader.id):
