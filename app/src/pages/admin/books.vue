@@ -110,7 +110,7 @@
                     <v-btn
                         v-if="!loading && books_selected.length > 0"
                         color="#9f353a"
-                        @click="deleteSelectedBooks"
+                        @click="showDeleteSelectedBooksDialog"
                         class="flex-shrink-0"
                         :icon="$vuetify.breakpoint.xs"
                         :small="$vuetify.breakpoint.xs"
@@ -415,7 +415,7 @@
                 <v-btn
                     color="warning"
                     :small="!$vuetify.breakpoint.xs"
-                    @click="deleteBook(item)"
+                    @click="showDeleteBookDialog(item)"
                 >
                     <v-icon :small="!$vuetify.breakpoint.xs">delete</v-icon>
                     <span >{{ $t('admin.books.deleteBook') }}</span>
@@ -564,6 +564,38 @@
             </v-card>
         </v-dialog>
 
+        <!-- 删除单本书籍确认对话框 -->
+        <v-dialog v-model="delete_book_dialog" persistent transition="dialog-bottom-transition" width="500">
+            <v-card>
+                <v-toolbar flat dense dark color="error"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
+                <v-card-title></v-card-title>
+                <v-card-text>
+                    <p>{{ $t('admin.books.deleteBookConfirm') }}</p>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn @click="delete_book_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
+                    <v-spacer></v-spacer>
+                    <v-btn color="error" @click="deleteBook">{{ $t('admin.books.confirmDelete') }}</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- 批量删除书籍确认对话框 -->
+        <v-dialog v-model="delete_selected_books_dialog" persistent transition="dialog-bottom-transition" width="500">
+            <v-card>
+                <v-toolbar flat dense dark color="error"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
+                <v-card-title></v-card-title>
+                <v-card-text>
+                    <p>{{ $t('admin.books.deleteSelectedBooksConfirm', { count: books_selected.length }) }}</p>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn @click="delete_selected_books_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
+                    <v-spacer></v-spacer>
+                    <v-btn color="error" @click="deleteSelectedBooks">{{ $t('admin.books.confirmDelete') }}</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
 </v-card>
 </template>
 
@@ -583,6 +615,9 @@ export default {
         kindle_convert_dialog: false,
         update_title_sort_dialog: false,
         clear_invalid_items_dialog: false,
+        delete_book_dialog: false,
+        delete_selected_books_dialog: false,
+        book_pending_delete: null,
         adding_book: false,
         jumpPage: 1,
         books_selected: [],
@@ -795,8 +830,15 @@ export default {
             return true;
         },
 
+        showDeleteSelectedBooksDialog() {
+            const books_ids = this.getSelectedBookIds();
+            if (!books_ids) return;
+            this.delete_selected_books_dialog = true;
+        },
+
         deleteSelectedBooks() {
             const books_ids = this.getSelectedBookIds();
+            this.delete_selected_books_dialog = false;
             if (!books_ids) return;
 
             this.loading = true;
@@ -1045,7 +1087,16 @@ export default {
             });
         },
 
-        deleteBook(book) {
+        showDeleteBookDialog(book) {
+            this.book_pending_delete = book;
+            this.delete_book_dialog = true;
+        },
+
+        deleteBook() {
+            const book = this.book_pending_delete;
+            this.delete_book_dialog = false;
+            if (!book) return;
+
             this.loading = true;
             this.$backend("/book/" + book.id + "/delete", {
                 method: "POST",
@@ -1057,6 +1108,7 @@ export default {
                 })
                 .finally(() => {
                     this.loading = false;
+                    this.book_pending_delete = null;
                 });
         },
 

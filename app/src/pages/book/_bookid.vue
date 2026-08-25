@@ -412,7 +412,7 @@
                                     <v-icon>mdi-card-bulleted-outline</v-icon>
                                     {{ $t('book.generateShareCard') }}
                                 </v-list-item>
-                                <v-list-item @click="deleteBook">
+                                <v-list-item @click="dialog_delete_book = true">
                                     <v-icon>delete_forever</v-icon>
                                     {{ $t('book.deleteBook') }}
                                 </v-list-item>
@@ -1013,6 +1013,30 @@
                     :disabled="!selectedSeparateFormat"
                 >
                     {{ $t('common.ok') }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <!-- 删除书籍确认对话框 -->
+    <v-dialog v-model="dialog_delete_book" persistent max-width="500">
+        <v-card>
+            <v-card-title class="headline">
+                <v-icon class="mr-2" color="error">delete_forever</v-icon>
+                {{ $t('book.deleteBook') }}
+            </v-card-title>
+            <v-card-text>
+                <v-alert type="warning" text dense class="mt-2">
+                    {{ $t('book.deleteBookConfirm') }}
+                </v-alert>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="dialog_delete_book = false">
+                    {{ $t('common.cancel') }}
+                </v-btn>
+                <v-btn color="error" @click="confirmDeleteBook">
+                    {{ $t('book.confirmDeleteBook') }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -1803,6 +1827,7 @@ export default {
         selectedSeparateFormat: null,
         separating_book: false,
         // 删除格式对话框
+        dialog_delete_book: false,
         dialog_delete_format: false,
         selectedDeletedFormat: null,
         deleting_format: false,
@@ -2626,7 +2651,8 @@ export default {
                 return parseInt(size / 1024) + 'KB';
             }
         },
-        deleteBook() {
+        confirmDeleteBook() {
+            this.dialog_delete_book = false;
             this.$backend("/book/" + this.book.id + "/delete", {
                 method: "POST",
             }).then((rsp) => {
