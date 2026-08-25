@@ -51,10 +51,15 @@
             </template>
             <template v-slot:item.actions="{ item }">
                 <v-btn small color="primary" class="white--text" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
-                <v-menu v-if="enableDownloadQuota" v-model="item._quotaMenuOpen" offset-y right :close-on-content-click="false">
-                    <template v-slot:activator="{ on }">
-                        <v-btn small color="primary" class="white--text" v-on="on" @click="resetDownloadQuotaEdit(item)">{{ $t('admin.users.set_download_quota') }}</v-btn>
-                    </template>
+                <v-btn small color="primary" class="white--text" v-if="enableDownloadQuota" @click="openDownloadQuotaMenu(item, $event)">{{ $t('admin.users.set_download_quota') }}</v-btn>
+                <v-menu
+                    v-if="enableDownloadQuota"
+                    v-model="item._quotaMenuOpen"
+                    absolute
+                    :position-x="quotaMenuX"
+                    :position-y="quotaMenuY"
+                    :close-on-content-click="false"
+                >
                     <v-card min-width="300">
                         <v-card-text class="pb-0">
                             <v-form :ref="'downloadQuotaForm-' + item.id">
@@ -417,6 +422,8 @@ export default {
         allowReadRangeSetting: false,
         // Download quota menu (open state & edit value live per-row on each item, see getDataFromApi)
         savingDownloadQuota: false,
+        quotaMenuX: 0,
+        quotaMenuY: 0,
         // Change password dialog
         showChangePasswordDialog: false,
         changingPassword: false,
@@ -579,9 +586,14 @@ export default {
             })
             .finally(() => { this.savingReadingRange = false; });
         },
-        resetDownloadQuotaEdit(item) {
+        openDownloadQuotaMenu(item, event) {
+            // 对话框右侧与按钮右侧对齐，顶部在按钮下方（对话框宽度对应 v-card 的 min-width="300"）
+            const rect = event.currentTarget.getBoundingClientRect();
+            this.quotaMenuX = rect.right - 300;
+            this.quotaMenuY = rect.bottom;
             // 每次打开都重置为服务端当前值，避免上次未保存的修改残留
             item._quotaEditValue = item.download_daily_quota ?? -1;
+            item._quotaMenuOpen = true;
             this.$nextTick(() => {
                 const form = this.$refs['downloadQuotaForm-' + item.id];
                 if (form) form.resetValidation();
