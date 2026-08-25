@@ -1124,6 +1124,7 @@ class BaseHandler(web.RequestHandler):
                 "push": CONF["ALLOW_GUEST_PUSH"],
                 "read": CONF["ALLOW_GUEST_READ"],
                 "physical_books": CONF.get("ENABLE_PHYSICAL_BOOKS", True),
+                "download_quota": CONF.get("ENABLE_DOWNLOAD_QUOTA", False),
                 "upload": CONF.get("ALLOW_GUEST_UPLOAD", False),
                 "sync": CONF.get("ENABLE_DATA_SYNC", False),
                 "book_review": CONF.get("ENABLE_BOOK_REVIEW", True),
@@ -1136,7 +1137,7 @@ class BaseHandler(web.RequestHandler):
             "standalone": CONF.get("STANDALONE", False),
             "hide_project_links": CONF.get("HIDE_PROJECT_LINKS", False),
             "invited_enabled": self.need_invited(),
-            "showUserInfo": CONF.get("ENABLE_AUTHOR_INFO", False)
+            "showUserInfo": CONF.get("ENABLE_AUTHOR_INFO", False),
         }
 
 

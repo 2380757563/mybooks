@@ -187,7 +187,7 @@ settings = {
     'ALLOW_GUEST_PUSH' : True,
     'ALLOW_GUEST_DOWNLOAD' : True,
     "ENABLE_DOWNLOAD_QUOTA" : False,   # 是否启用每用户每日下载配额限制
-    "GLOBAL_DOWNLOAD_QUOTA" : 5,       # 全局每日下载配额（用户未单独设置时使用），0表示不限制
+    "GLOBAL_DOWNLOAD_QUOTA" : 10,       # 全局每日下载配额（用户未单独设置时使用），0表示不限制
     'ALLOW_REGISTER' : False,
     'HEADER': '',
     'FOOTER': '',

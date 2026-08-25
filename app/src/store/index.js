@@ -11,6 +11,7 @@ export const state = () => ({
         socials: [],
         allow: {
             physical_books: false,
+            download_quota: false,
             upload: false,
             register: false,
             guest_read: false,

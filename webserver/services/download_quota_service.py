@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 """
 Per-reader daily download quota enforcement.
+@author: PoxenStudio, 2026-08
 
 No new column is added to Reader; the state lives entirely in the existing
 `extra` JSON column under the "downloads" key:

@@ -712,6 +712,7 @@
     "generateCover": "Generate Simple Cover",
     "cropCover": "Auto Crop Cover",
     "noDownloadableFiles": "No downloadable file formats available for this book",
+    "downloadQuotaExceeded": "Today's download limit has been reached, please try again tomorrow",
     "languages": "Language",
     "push": "Push",
     "read": "Read",

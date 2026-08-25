@@ -142,8 +142,8 @@
                     <v-card-title color="primary" class="">{{ $t('book.downloadBook') }}</v-card-title>
                     <v-card-text>
                         <v-list v-if="book.files.length > 0">
-                            <v-list-item :key="'file-'+file.format" v-for="file in book.files" target="_blank"
-                                         :href="file.href">
+                            <v-list-item :key="'file-'+file.format" v-for="file in book.files"
+                                         @click="openDownloadLink(file.href)">
                                 <v-list-item-avatar color='primary'>
                                     <v-icon dark>get_app</v-icon>
                                 </v-list-item-avatar>
@@ -2020,10 +2020,26 @@ export default {
         },
         downloadBook() {
             if (this.book.files && this.book.files.length === 1) {
-                window.open(this.book.files[0].href, '_blank');
+                this.openDownloadLink(this.book.files[0].href);
             } else {
                 this.dialog_download = true;
             }
+        },
+        async openDownloadLink(url) {
+            // 与 $store.state.sys.allow.physical_books 相同的用法：功能开关关闭时不做任何检查，直接下载
+            if (this.$store.state.sys.allow.download_quota) {
+                try {
+                    const rsp = await this.$backend('/book/download_quota');
+                    if (rsp.err !== 'ok' || !rsp.allowed) {
+                        this.$alert('error', rsp.msg || this.$t('book.downloadQuotaExceeded'));
+                        return;
+                    }
+                } catch (e) {
+                    // 配额查询本身失败不阻塞下载，交由服务端下载接口兜底判断
+                }
+            }
+            window.open(url, '_blank');
+            this.dialog_download = false;
         },
         async loadMyReview() {
             if (!this.canReview || this.$store.state.user?.is_login !== true) return;

@@ -1792,6 +1792,26 @@ class BookDeleteFormat(BaseHandler):
             return {"err": "fail", "msg": _("删除%s格式失败, 请查看日志。如果一直出错，请联系管理员。" % fmt)}
 
 
+class BookDownloadQuota(BaseHandler):
+    @js
+    @auth
+    def get(self):
+        """返回当前用户今日下载配额的使用情况，供前端在真正触发下载前做提示，不消耗配额。"""
+        if not CONF.get("ENABLE_DOWNLOAD_QUOTA", False):
+            return {"err": "ok", "allowed": True, "used": 0, "quota": 0}
+        result = DownloadQuotaService.get_usage(self.current_user)
+        allowed = result.quota == 0 or result.used < result.quota
+        if allowed:
+            return {"err": "ok", "allowed": True, "used": result.used, "quota": result.quota}
+        return {
+            "err": "quota.exceeded",
+            "allowed": False,
+            "used": result.used,
+            "quota": result.quota,
+            "msg": _("今日下载次数已达上限(%d/%d)，请明天再试") % (result.used, result.quota),
+        }
+
+
 class BookDownload(BaseHandler, web.StaticFileHandler):
     def send_error_of_not_invited(self):
         self.set_header("WWW-Authenticate", "Basic")
@@ -3663,6 +3683,7 @@ def routes():
         (r"/api/book/([0-9]+)/delete", BookDelete),
         (r"/api/book/([0-9]+)/delete_format", BookDeleteFormat),
         (r"/api/book/([0-9]+)/edit", BookEdit),
+        (r"/api/book/download_quota", BookDownloadQuota),
         (r"/api/book/([0-9]+\..+)", BookDownload),
         (r"/api/book/([0-9]+)/refer", BookRefer),
         (r"/api/book/([0-9]+)/send_to_device", BookSendToDevice),

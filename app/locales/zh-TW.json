@@ -495,6 +495,7 @@
     "generateCover": "生成簡單封面",
     "cropCover": "自動裁剪封面",
     "noDownloadableFiles": "本書暫無可供下載的檔案格式",
+    "downloadQuotaExceeded": "今日下載次數已達上限，請明天再試",
     "languages": "語言",
     "push": "推送",
     "read": "閱讀",
