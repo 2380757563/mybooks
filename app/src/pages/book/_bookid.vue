@@ -2035,7 +2035,9 @@ export default {
                         return;
                     }
                 } catch (e) {
-                    // 配额查询本身失败不阻塞下载，交由服务端下载接口兜底判断
+                    console.error('Failed to query download quota:', e);
+                    this.$alert('error', this.$t('book.downloadQuotaCheckFailed'));
+                    return;
                 }
             }
             window.open(url, '_blank');

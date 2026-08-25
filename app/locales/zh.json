@@ -497,6 +497,7 @@
     "cropCover": "自动裁剪封面",
     "noDownloadableFiles": "本书暂无可供下载的文件格式",
     "downloadQuotaExceeded": "今日下载次数已达上限，请明天再试",
+    "downloadQuotaCheckFailed": "下载配额查询失败，请稍后重试",
     "languages": "语言",
     "push": "推送",
     "read": "阅读",

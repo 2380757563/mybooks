@@ -713,6 +713,7 @@
     "cropCover": "Auto Crop Cover",
     "noDownloadableFiles": "No downloadable file formats available for this book",
     "downloadQuotaExceeded": "Today's download limit has been reached, please try again tomorrow",
+    "downloadQuotaCheckFailed": "Failed to check download quota, please try again later",
     "languages": "Language",
     "push": "Push",
     "read": "Read",
