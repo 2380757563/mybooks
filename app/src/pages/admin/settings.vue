@@ -1458,6 +1458,18 @@ export default {
             type: "checkbox",
           },
           {
+            icon: "mdi-toolbox-outline",
+            key: "ENABLE_TOOLBOX_DEV_MODE",
+            label: "settings.enable_toolbox_dev_mode",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-storefront-outline",
+            key: "ENABLE_TOOLBOX_STORE",
+            label: "settings.enable_toolbox_store",
+            type: "checkbox",
+          },
+          {
             icon: "mdi-restart",
             key: "autoreload",
             label: "settings.autoreload",

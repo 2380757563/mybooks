@@ -842,6 +842,8 @@
     "enable_opds_auth": "启用OPDS目录服务认证（开启后访问OPDS需要输入用户名和密码）",
     "enable_webdav_service": "启用WebDAV服务（用于阅读器通过WebDAV协议访问书库）",
     "enable_podcast_service": "启用Podcast订阅服务（用于播放器通过Podcast协议访问有声书）",
+    "enable_toolbox_dev_mode": "启用工具箱开发者模式（允许在工具箱管理页手动上传 zip 安装/更新工具，仅用于调试）",
+    "enable_toolbox_store": "启用工具箱商店（从 mybooks.top 获取可安装工具列表与更新，尚未上线，开启后暂无可安装工具）",
     "allow_user_disable_statistic": "允许用户自行关闭阅读及下载数据采集（关闭后默认采集所有用户的数据）",
     "enable_homepage_reading_stats": "在首页显示阅读统计 Banner（默认开启）",
     "extended_features": "扩展功能",
@@ -1248,9 +1250,36 @@
     "noTools": "暂无可用工具",
     "version": "版本",
     "author": "作者",
-    "publishDate": "发布日期"
+    "publishDate": "发布日期",
+    "refresh": "刷新",
+    "installFromZip": "上传 zip 安装",
+    "type": {
+      "builtin": "内置",
+      "tool": "工具"
+    },
+    "source": {
+      "bundled": "内置",
+      "store": "商店",
+      "dev": "开发者模式"
+    },
+    "status": {
+      "disabled": "已禁用"
+    },
+    "pendingRestart": "待重启生效",
+    "update": "更新",
+    "uninstall": "卸载",
+    "selectZip": "选择 zip 文件",
+    "cancel": "取消",
+    "install": "安装",
+    "updateTool": "更新「{name}」",
+    "uninstallConfirm": "确定要卸载「{name}」吗？重启后彻底生效，工具自身的数据不会被清除。",
+    "storeTitle": "工具商店",
+    "storeSubtitle": "从 mybooks.top 获取可安装的工具（尚未上线，开启前需在系统设置中开启“启用工具箱商店”）",
+    "storeEmpty": "暂无可安装工具",
+    "storeInstall": "安装",
+    "storeUpdate": "更新"
   },
-  "toolboxPlugin": {
+  "toolboxTool": {
     "title": "工具",
     "notFound": "工具不存在或已被禁用"
   },

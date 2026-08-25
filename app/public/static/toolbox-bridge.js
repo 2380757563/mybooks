@@ -5,7 +5,7 @@
  * `<script src="/static/toolbox-bridge.js"></script>` 引用，运行时得到
  * `window.MyBooksToolBridge`。
  *
- * 设计见 document/Toolbox_Dynamic_Design.md 4.3 节。这是"运行时实现"，跑在真实的
+ * 设计见 document/Toolbox_Dynamic_Design.md 4.3/4.5/4.6 节。这是"运行时实现"，跑在真实的
  * MyBooks 页面里；tool_builder（独立仓库）会内置一份 API 形状一致的本地开发 mock 实现，
  * 两者需要保持同步。
  *
@@ -28,13 +28,47 @@
 
   var toolId = getToolId();
   // 宿主渲染 <iframe> 时把当前主题/语言拼进 src 的 query string（见 4.3 节），首次渲染就能
-  // 拿到，不需要等待 postMessage 握手；宿主切换主题/语言时会重设 iframe.src，页面会重新加载
-  // 一次，届时这两个值也会随之更新。
-  var theme = getQueryParam('theme') || 'light';
-  var locale = getQueryParam('locale') || 'zh';
+  // 拿到，不需要等待 postMessage 握手。此后主题/语言变化不再重设 iframe.src（4.5 节），
+  // 而是通过下面的 postMessage 监听实时更新，state 里的值保持最新。
+  var state = {
+    theme: getQueryParam('theme') || 'light',
+    locale: getQueryParam('locale') || 'zh',
+  };
+
+  var localeListeners = [];
+  var themeListeners = [];
+
+  function onHostMessage(event) {
+    if (event.origin !== window.location.origin) return;
+    var data = event.data;
+    if (!data || data.source !== 'mybooks-toolbox-host') return;
+
+    if (data.type === 'locale-change' && data.locale && data.locale !== state.locale) {
+      var oldLocale = state.locale;
+      state.locale = data.locale;
+      localeListeners.forEach(function (fn) {
+        try {
+          fn(state.locale, oldLocale);
+        } catch (e) {
+          // 工具自己的监听器报错不应该打断 bridge 内部状态
+        }
+      });
+    } else if (data.type === 'theme-change' && data.theme && data.theme !== state.theme) {
+      var oldTheme = state.theme;
+      state.theme = data.theme;
+      themeListeners.forEach(function (fn) {
+        try {
+          fn(state.theme, oldTheme);
+        } catch (e) {
+          // 同上
+        }
+      });
+    }
+  }
+  window.addEventListener('message', onHostMessage);
 
   /**
-   * 对 /api/toolbox/plugin/{tool_id}/... 的 fetch 简单封装。
+   * 对 /api/toolbox/tool/{tool_id}/... 的 fetch 简单封装。
    * iframe 与宿主同源，Cookie 天然带上，不需要额外处理鉴权。
    *
    * @param {string} path 相对路径（不需要带前导 /），例如 "ping"
@@ -46,7 +80,7 @@
       return Promise.reject(new Error('MyBooksToolBridge: 无法从当前页面 URL 解析出 tool_id'));
     }
     var cleanPath = String(path || '').replace(/^\//, '');
-    var url = '/api/toolbox/plugin/' + toolId + '/' + cleanPath;
+    var url = '/api/toolbox/tool/' + toolId + '/' + cleanPath;
     var opts = Object.assign({ credentials: 'include' }, options || {});
     return fetch(url, opts).then(function (resp) {
       var contentType = resp.headers.get('content-type') || '';
@@ -77,11 +111,60 @@
     );
   }
 
-  window.MyBooksToolBridge = {
+  /**
+   * 订阅宿主语言变化（4.5/4.6 节）。宿主切换 vue-i18n locale 时会通过 postMessage 推送，
+   * 不再重新加载 iframe。不调用这个方法也没关系——bridge.locale 本身随时读到的都是最新值，
+   * 只是不会主动收到"变了"的推送。
+   *
+   * @param {(newLocale: string, oldLocale: string) => void} fn
+   * @returns {() => void} 取消订阅函数
+   */
+  function onLocaleChange(fn) {
+    localeListeners.push(fn);
+    return function unsubscribe() {
+      localeListeners = localeListeners.filter(function (f) {
+        return f !== fn;
+      });
+    };
+  }
+
+  /**
+   * 订阅宿主主题（亮/暗）变化，用法与 onLocaleChange 对称。
+   *
+   * @param {(newTheme: string, oldTheme: string) => void} fn
+   * @returns {() => void} 取消订阅函数
+   */
+  function onThemeChange(fn) {
+    themeListeners.push(fn);
+    return function unsubscribe() {
+      themeListeners = themeListeners.filter(function (f) {
+        return f !== fn;
+      });
+    };
+  }
+
+  var bridge = {
     toolId: toolId,
-    theme: theme,
-    locale: locale,
     fetch: bridgeFetch,
     notify: bridgeNotify,
+    onLocaleChange: onLocaleChange,
+    onThemeChange: onThemeChange,
   };
+  // theme/locale 用 getter 暴露：取值方式对调用方完全透明（还是读 bridge.theme /
+  // bridge.locale），但内部值会随 postMessage 推送实时更新，不需要工具自己维护订阅也能
+  // 轮询到最新值。
+  Object.defineProperty(bridge, 'theme', {
+    get: function () {
+      return state.theme;
+    },
+    enumerable: true,
+  });
+  Object.defineProperty(bridge, 'locale', {
+    get: function () {
+      return state.locale;
+    },
+    enumerable: true,
+  });
+
+  window.MyBooksToolBridge = bridge;
 })(window);

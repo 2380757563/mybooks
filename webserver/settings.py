@@ -127,7 +127,7 @@ settings = {
 
     "PDF_TILE_WITH_FILE_NAME": False,
 
-    "PLUGIN_ROOT": "/data/books/tool_plugins/",
+    "TOOL_ROOT": "/data/books/tools/",
     "ENABLE_TOOLBOX_DEV_MODE": False,
     "ENABLE_TOOLBOX_STORE": False,
 

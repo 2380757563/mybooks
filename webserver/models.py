@@ -839,22 +839,25 @@ class Memo(Base, SQLAlchemyMixin):
 
 
 class InstalledTool(Base, SQLAlchemyMixin):
-    """Toolbox 工具安装记录：内置工具 + 外部插件统一记录在这张表里，
-    见 document/Toolbox_Dynamic_Design.md 3.3.2 节。"""
+    """Toolbox 工具安装记录：内置工具 + 外部工具统一记录在这张表里，
+    见 document/Toolbox_Dynamic_Design.md 3.3.2 节。
+
+    MyBooks 里统一用"工具"（tool）指代 Toolbox 的功能单元，不用"插件"（plugin）这个词——
+    type 只有 builtin（内置）/ tool（通过 zip 安装的非内置工具）两种。"""
     __tablename__ = "installed_tools"
 
     TYPE_BUILTIN = "builtin"
-    TYPE_PLUGIN = "plugin"
+    TYPE_TOOL = "tool"
 
     SOURCE_BUNDLED = "bundled"  # 随仓库自带（仅 builtin）
-    SOURCE_STORE = "store"      # 通过 mybooks.top 商店安装/更新（M5，暂未启用）
+    SOURCE_STORE = "store"      # 通过 mybooks.top 商店安装/更新；ENABLE_TOOLBOX_STORE=False（默认）时商店索引恒为空，实际不会产生此来源的记录
     SOURCE_DEV = "dev"          # 开发者模式本地 zip 上传安装/更新
 
     tool_id = Column(String(128), primary_key=True)
-    type = Column(String(16), nullable=False)  # builtin | plugin，写入后不再改变
+    type = Column(String(16), nullable=False)  # builtin | tool，写入后不再改变
     installed_revision = Column(String(32), default="", nullable=False)
     source = Column(String(16), nullable=False)
-    enabled = Column(Boolean, default=True, nullable=False)  # 仅对 plugin 有意义，builtin 恒为 True
+    enabled = Column(Boolean, default=True, nullable=False)  # 仅对 type=tool 有意义，builtin 恒为 True
     install_time = Column(DateTime)
     update_time = Column(DateTime)
     installed_by = Column(Integer, ForeignKey("readers.id"), nullable=True)

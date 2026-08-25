@@ -11,7 +11,8 @@ import tornado
 from webserver.i18n import _
 from webserver.loader import get_settings
 from webserver.toolbox.toolset import ToolSet
-from webserver.toolbox import plugin_manager
+from webserver.toolbox import toolbox_manager
+from webserver.services.toolbox_store import ToolboxStoreClient, ToolboxStoreError, get_cached_index, find_in_index
 from webserver.handlers.base import BaseHandler, js, is_admin
 from urllib.parse import urlparse
 from webserver.toolbox.rare_book_downloader import RareBookDownloader
@@ -37,24 +38,34 @@ class AdminToolList(BaseHandler):
     @js
     @is_admin
     def get(self):
-        # 注意：不在这里调用 ToolSet.collect_tools() —— 工具的注册（含外部插件、被更新覆盖
-        # 的内置工具）只在进程启动时 plugin_manager.load_all() 里发生一次（"重启生效"模型，
+        # 注意：不在这里调用 ToolSet.collect_tools() —— 工具的注册（含外部工具、被更新覆盖
+        # 的内置工具）只在进程启动时 toolbox_manager.load_all() 里发生一次（"重启生效"模型，
         # 见 document/Toolbox_Dynamic_Design.md 3.3.1 节）；每次请求都重新 collect_tools()
         # 会用仓库自带的 info() 把已加载的覆盖版本元数据冲掉。
+        #
+        # include_disabled=1：仅供 /admin/toolbox 管理页使用（同样要求 is_admin）——3.3.1
+        # 节要求"禁用立即从可见列表消失"针对的是工具启动入口（普通工具墙/工具承载页），
+        # 但管理页面需要能看到被禁用的工具才能把它重新启用，否则禁用会变成有去无回的单向操作。
+        include_disabled = self.get_argument("include_disabled", "") == "1"
         tools = []
         for t in ToolSet.all_tools():
-            state = plugin_manager.tool_state(t.id)
+            state = toolbox_manager.tool_state(t.id)
             if state is None:
-                # 外部插件已被卸载，但进程还没重启、ToolSet 里的静态注册还没清掉：
+                # 外部工具已被卸载，但进程还没重启、ToolSet 里的静态注册还没清掉：
                 # 直接跳过，不展示（3.3.1 节要求卸载后立即从列表消失）
                 continue
-            if state["type"] == "plugin" and state["status"] == "disabled":
-                # 禁用的外部插件立即从列表消失，无需重启（3.3.1 节）
+            if state["type"] == "tool" and state["status"] == "disabled" and not include_disabled:
+                # 禁用的外部工具立即从列表消失，无需重启（3.3.1 节）
                 continue
             data = t.to_dict()
             data.update(state)
             tools.append(data)
-        return {"err": "ok", "tools": tools}
+        return {
+            "err": "ok",
+            "tools": tools,
+            "dev_mode": bool(CONF.get("ENABLE_TOOLBOX_DEV_MODE", False)),
+            "store_enabled": ToolboxStoreClient.enabled(),
+        }
 
 
 def _save_upload_to_tmpfile(file_meta) -> str:
@@ -65,7 +76,7 @@ def _save_upload_to_tmpfile(file_meta) -> str:
 
 
 class AdminToolInstallUpload(BaseHandler):
-    """开发者模式：本地上传 zip 安装一个全新的外部插件。见 3.5 节。"""
+    """开发者模式：本地上传 zip 安装一个全新的外部工具。见 3.5 节。"""
 
     @js
     @is_admin
@@ -78,13 +89,13 @@ class AdminToolInstallUpload(BaseHandler):
 
         tmp_path = _save_upload_to_tmpfile(self.request.files["file"][0])
         try:
-            record = plugin_manager.install_from_zip(
+            record = toolbox_manager.install_from_zip(
                 tmp_path, is_update=False, installed_by=self.user_id(),
-                source=plugin_manager.InstalledTool.SOURCE_DEV,
+                source=toolbox_manager.InstalledTool.SOURCE_DEV,
             )
-        except plugin_manager.ToolValidationError as err:
+        except toolbox_manager.ToolValidationError as err:
             return {"err": "tool.invalid", "msg": str(err)}
-        except plugin_manager.ToolStateError as err:
+        except toolbox_manager.ToolStateError as err:
             return {"err": "tool.state", "msg": str(err)}
         finally:
             if os.path.exists(tmp_path):
@@ -94,7 +105,7 @@ class AdminToolInstallUpload(BaseHandler):
 
 
 class AdminToolUpdateUpload(BaseHandler):
-    """开发者模式：本地上传 zip 更新一个已安装的工具（builtin 或 plugin 均可）。见 3.5 节。"""
+    """开发者模式：本地上传 zip 更新一个已安装的工具（builtin 或 tool 均可）。见 3.5 节。"""
 
     @js
     @is_admin
@@ -107,13 +118,13 @@ class AdminToolUpdateUpload(BaseHandler):
 
         tmp_path = _save_upload_to_tmpfile(self.request.files["file"][0])
         try:
-            record = plugin_manager.install_from_zip(
+            record = toolbox_manager.install_from_zip(
                 tmp_path, is_update=True, expected_tool_id=tool_id, installed_by=self.user_id(),
-                source=plugin_manager.InstalledTool.SOURCE_DEV,
+                source=toolbox_manager.InstalledTool.SOURCE_DEV,
             )
-        except plugin_manager.ToolValidationError as err:
+        except toolbox_manager.ToolValidationError as err:
             return {"err": "tool.invalid", "msg": str(err)}
-        except plugin_manager.ToolStateError as err:
+        except toolbox_manager.ToolStateError as err:
             return {"err": "tool.state", "msg": str(err)}
         finally:
             if os.path.exists(tmp_path):
@@ -127,10 +138,10 @@ class AdminToolEnable(BaseHandler):
     @is_admin
     def post(self, tool_id):
         try:
-            record = plugin_manager.enable_tool(tool_id)
-        except plugin_manager.ToolStateError as err:
+            record = toolbox_manager.enable_tool(tool_id)
+        except toolbox_manager.ToolStateError as err:
             return {"err": "tool.not_found", "msg": str(err)}
-        except plugin_manager.ToolPermissionError as err:
+        except toolbox_manager.ToolPermissionError as err:
             self.set_status(403)
             return {"err": "tool.permission", "msg": str(err)}
         return {"err": "ok", "msg": _("已启用"), "data": record.to_dict()}
@@ -141,10 +152,10 @@ class AdminToolDisable(BaseHandler):
     @is_admin
     def post(self, tool_id):
         try:
-            record = plugin_manager.disable_tool(tool_id)
-        except plugin_manager.ToolStateError as err:
+            record = toolbox_manager.disable_tool(tool_id)
+        except toolbox_manager.ToolStateError as err:
             return {"err": "tool.not_found", "msg": str(err)}
-        except plugin_manager.ToolPermissionError as err:
+        except toolbox_manager.ToolPermissionError as err:
             self.set_status(403)
             return {"err": "tool.permission", "msg": str(err)}
         return {"err": "ok", "msg": _("已禁用"), "data": record.to_dict()}
@@ -155,13 +166,85 @@ class AdminToolUninstall(BaseHandler):
     @is_admin
     def delete(self, tool_id):
         try:
-            plugin_manager.uninstall_tool(tool_id)
-        except plugin_manager.ToolStateError as err:
+            toolbox_manager.uninstall_tool(tool_id)
+        except toolbox_manager.ToolStateError as err:
             return {"err": "tool.not_found", "msg": str(err)}
-        except plugin_manager.ToolPermissionError as err:
+        except toolbox_manager.ToolPermissionError as err:
             self.set_status(403)
             return {"err": "tool.permission", "msg": str(err)}
         return {"err": "ok", "msg": _("已卸载，重启后彻底生效")}
+
+
+class AdminToolStoreIndex(BaseHandler):
+    """商店可安装工具列表（3.4 节 `GET toolbox/index` 的内部代理，带 TTL 缓存）。
+
+    `ENABLE_TOOLBOX_STORE=False`（默认）时 `get_cached_index()` 恒为空列表，接口照常返回
+    `200`，前端商店面板展示"暂无可安装工具"而不是报错（3.4.1 节）。
+    """
+
+    @js
+    @is_admin
+    def get(self):
+        force = self.get_argument("refresh", "") == "1"
+        tools = []
+        for entry in get_cached_index(force=force):
+            tool_id = entry.get("tool_id")
+            record = toolbox_manager.InstalledTool.get(tool_id) if tool_id else None
+            data = dict(entry)
+            data["installed"] = record is not None
+            data["installed_revision"] = record.installed_revision if record else ""
+            tools.append(data)
+        return {"err": "ok", "enabled": ToolboxStoreClient.enabled(), "tools": tools}
+
+
+class AdminToolStoreInstall(BaseHandler):
+    """从商店安装/更新一个工具（3.4 节）。目标 tool_id 已安装时按更新语义处理，否则按安装。
+
+    对应架构图里的 `POST /api/toolbox/{tool_id}/install`；`revision` 可选，缺省用商店索引里
+    该工具的 `latest_revision`。下载后**必须**校验 `sha256`（3.4 节），不通过拒绝安装。
+    """
+
+    @js
+    @is_admin
+    def post(self, tool_id):
+        if not ToolboxStoreClient.enabled():
+            self.set_status(403)
+            return {"err": "store.disabled", "msg": _("工具商店未开启")}
+
+        entry = find_in_index(tool_id)
+        if not entry:
+            return {"err": "store.not_found", "msg": _("商店中未找到工具「%s」") % tool_id}
+
+        # 索引目前只暴露 latest_revision 对应的下载地址（3.4 节）；如果未来商店支持安装/回退
+        # 到历史版本，需要 index 结构先带上按版本分组的 download_url，这里再改为读请求体里的
+        # revision 去查对应条目。
+        download_url = entry.get("download_url")
+        sha256 = entry.get("sha256")
+        if not download_url:
+            return {"err": "store.invalid", "msg": _("商店索引缺少下载地址")}
+
+        is_update = toolbox_manager.InstalledTool.get(tool_id) is not None
+
+        try:
+            zip_path = ToolboxStoreClient().download(download_url, sha256)
+        except ToolboxStoreError as err:
+            return {"err": "store.download_failed", "msg": str(err)}
+
+        try:
+            record = toolbox_manager.install_from_zip(
+                zip_path, is_update=is_update, expected_tool_id=tool_id if is_update else None,
+                installed_by=self.user_id(), source=toolbox_manager.InstalledTool.SOURCE_STORE,
+            )
+        except toolbox_manager.ToolValidationError as err:
+            return {"err": "tool.invalid", "msg": str(err)}
+        except toolbox_manager.ToolStateError as err:
+            return {"err": "tool.state", "msg": str(err)}
+        finally:
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+
+        msg = _("已更新，重启后生效") if is_update else _("已安装，重启后生效")
+        return {"err": "ok", "msg": msg, "data": record.to_dict()}
 
 
 class AdminRareBookDownloader(BaseHandler):
@@ -1173,12 +1256,14 @@ class AdminEpubBeautifyProgress(BaseHandler):
 
 
 def routes():
-    # 动态 import 外部插件 / 被更新覆盖的内置工具，只在这里（进程启动、路由拼接时）跑一次，
+    # 动态 import 外部工具 / 被更新覆盖的内置工具，只在这里（进程启动、路由拼接时）跑一次，
     # 对应 document/Toolbox_Dynamic_Design.md 3.3.1 节确认的"重启生效"模型。
-    plugin_manager.load_all()
+    toolbox_manager.load_all()
 
     return [
                 (r"/api/toolbox/list", AdminToolList),
+                (r"/api/toolbox/store/index", AdminToolStoreIndex),
+                (r"/api/toolbox/([a-z0-9_]+)/install", AdminToolStoreInstall),
                 (r"/api/toolbox/install/upload", AdminToolInstallUpload),
                 (r"/api/toolbox/([a-z0-9_]+)/update/upload", AdminToolUpdateUpload),
                 (r"/api/toolbox/([a-z0-9_]+)/enable", AdminToolEnable),
@@ -1233,7 +1318,7 @@ def routes():
                 (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
                 (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
                 (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
-    ] + plugin_manager.collect_plugin_routes() + [
+    ] + toolbox_manager.collect_tool_routes() + [
                 # 必须放在整个列表最后：这是个不加区分的单段路径通配（DELETE 卸载），
                 # 排在前面会抢先匹配到上面所有单段路径的工具路由（如
                 # /api/toolbox/rare_book_downloader、/api/toolbox/author_clean），

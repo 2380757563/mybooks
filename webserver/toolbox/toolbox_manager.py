@@ -1,13 +1,17 @@
 """
-Toolbox 插件生命周期管理 —— plugin_manager
+Toolbox 工具生命周期管理 —— toolbox_manager
 
 对应 document/Toolbox_Dynamic_Design.md 第三节。M1 阶段只实现"开发者模式"这一条安装/更新
 路径（本地 zip 上传，见 3.5 节），商店安装（3.4 节）留给 M5。
 
+术语：MyBooks 里统一用"工具"（tool）指代 Toolbox 里的功能单元，不用"插件"（plugin）这个
+词——`type=builtin` 是随仓库自带的工具，`type=tool` 是通过 zip 安装的非内置工具（无论
+来源是商店下载还是开发者模式本地上传）。
+
 核心模型：
-- 每个工具（无论 `builtin` 还是 `plugin`）在 `InstalledTool` 表里有且只有一条记录。
-- `<PLUGIN_ROOT>/<tool_id>/` 存在与否决定这个 tool_id 是否有"覆盖产物"：
-    - `type=plugin` 的工具：这就是它的全部代码所在。
+- 每个工具（无论 `builtin` 还是 `tool`）在 `InstalledTool` 表里有且只有一条记录。
+- `<TOOL_ROOT>/<tool_id>/` 存在与否决定这个 tool_id 是否有"覆盖产物"：
+    - `type=tool` 的工具：这就是它的全部代码所在。
     - `type=builtin` 的工具：目录不存在时用仓库自带实现（`webserver/toolbox/<tool_id>.py`，
       随 `ToolSet.collect_tools()` 静态注册）；目录存在时说明被"更新"过，动态加载目录里的
       版本，优先于仓库自带实现（见 3.3 节"内置工具的更新机制"）。
@@ -45,7 +49,7 @@ REQUIRED_MANIFEST_FIELDS = (
 _TOOL_ID_RE = re.compile(r"^[a-z0-9_]+$")
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
-# tool_id -> 动态加载得到的 BaseTool 子类（外部插件，或被更新覆盖过的内置工具）
+# tool_id -> 动态加载得到的 BaseTool 子类（外部工具，或被更新覆盖过的内置工具）
 _loaded_classes: Dict[str, Type[BaseTool]] = {}
 # 进程启动这次 load_all() 时，实际成功加载了覆盖产物的 tool_id 集合，用于计算 pending_restart
 _loaded_at_startup: Set[str] = set()
@@ -60,21 +64,21 @@ class ToolStateError(ValueError):
 
 
 class ToolPermissionError(PermissionError):
-    """对 builtin 工具做了只允许 plugin 的操作（如卸载）。"""
+    """对 builtin 工具做了只允许 tool 类型的操作（如卸载）。"""
 
 
-def plugin_root() -> str:
-    root = CONF.get("PLUGIN_ROOT") or "/data/books/tool_plugins/"
+def tool_root() -> str:
+    root = CONF.get("TOOL_ROOT") or "/data/books/tools/"
     os.makedirs(root, exist_ok=True)
     return root
 
 
 def _tool_dir(tool_id: str) -> str:
-    return os.path.join(plugin_root(), tool_id)
+    return os.path.join(tool_root(), tool_id)
 
 
 def has_override(tool_id: str) -> bool:
-    """该 tool_id 是否在 PLUGIN_ROOT 下有覆盖产物（外部插件的全部代码，或内置工具的更新覆盖）。"""
+    """该 tool_id 是否在 TOOL_ROOT 下有覆盖产物（外部工具的全部代码，或内置工具的更新覆盖）。"""
     return os.path.isdir(_tool_dir(tool_id))
 
 
@@ -138,13 +142,13 @@ def install_from_zip(
     installed_by: Optional[int] = None,
     source: str = InstalledTool.SOURCE_DEV,
 ) -> InstalledTool:
-    """校验并把 zip 解压落盘到 PLUGIN_ROOT/<tool_id>/，写入/更新 InstalledTool 记录。
+    """校验并把 zip 解压落盘到 TOOL_ROOT/<tool_id>/，写入/更新 InstalledTool 记录。
 
     只做文件系统 + 数据库操作，不做任何动态 import / 路由注册 —— 那些只在下次进程启动、
     `load_all()` 运行时才会发生（"重启生效"模型，见 3.3.1 节）。
 
-    :param is_update: True 表示走"更新"语义（tool_id 必须已安装，builtin/plugin 均可）；
-                       False 表示走"安装"语义（tool_id 必须尚未安装，只能是全新的外部插件）。
+    :param is_update: True 表示走"更新"语义（tool_id 必须已安装，builtin/tool 均可）；
+                       False 表示走"安装"语义（tool_id 必须尚未安装，只能是全新的外部工具）。
     :param expected_tool_id: 更新时用于校验 manifest 里的 tool_id 与目标一致（防止传错文件）。
     :param source: 记录到 InstalledTool.source；M1 只会用到 SOURCE_DEV。
     """
@@ -185,9 +189,9 @@ def install_from_zip(
         else:
             if existing:
                 raise ToolStateError(_("工具「%s」已安装，请使用更新而不是重复安装") % tool_id)
-            # 通过 install 接口新增的一律是外部插件；builtin 只能通过"更新"获得覆盖版本，
+            # 通过 install 接口新增的一律是外部工具；builtin 只能通过"更新"获得覆盖版本，
             # 不能凭空通过 install 创建（builtin 记录只在 sync_builtin_records() 里生成）。
-            tool_type = InstalledTool.TYPE_PLUGIN
+            tool_type = InstalledTool.TYPE_TOOL
 
         target_dir = _tool_dir(tool_id)
         if os.path.isdir(target_dir):
@@ -213,7 +217,7 @@ def install_from_zip(
             record.save()
 
         logging.info(
-            "[plugin_manager] %s tool=%s revision=%s source=%s (等待重启生效)",
+            "[toolbox_manager] %s tool=%s revision=%s source=%s (等待重启生效)",
             "更新" if is_update else "安装", tool_id, manifest["revision"], source,
         )
         return record
@@ -224,7 +228,7 @@ def install_from_zip(
 
 def enable_tool(tool_id: str) -> InstalledTool:
     record = _require_installed(tool_id)
-    if record.type != InstalledTool.TYPE_PLUGIN:
+    if record.type != InstalledTool.TYPE_TOOL:
         raise ToolPermissionError(_("内置工具不支持启用/禁用"))
     record.enabled = True
     record.update_time = datetime.datetime.now()
@@ -234,7 +238,7 @@ def enable_tool(tool_id: str) -> InstalledTool:
 
 def disable_tool(tool_id: str) -> InstalledTool:
     record = _require_installed(tool_id)
-    if record.type != InstalledTool.TYPE_PLUGIN:
+    if record.type != InstalledTool.TYPE_TOOL:
         raise ToolPermissionError(_("内置工具不支持启用/禁用"))
     record.enabled = False
     record.update_time = datetime.datetime.now()
@@ -243,15 +247,15 @@ def disable_tool(tool_id: str) -> InstalledTool:
 
 
 def uninstall_tool(tool_id: str) -> InstalledTool:
-    """删除插件目录与安装记录；不清理 TOOLBOX_DATA_ROOT 下的历史数据（3.3.1 节）。
-    仅允许对 type=plugin 操作，builtin 抛 ToolPermissionError。"""
+    """删除工具目录与安装记录；不清理 TOOLBOX_DATA_ROOT 下的历史数据（3.3.1 节）。
+    仅允许对 type=tool 操作，builtin 抛 ToolPermissionError。"""
     record = _require_installed(tool_id)
-    if record.type != InstalledTool.TYPE_PLUGIN:
+    if record.type != InstalledTool.TYPE_TOOL:
         raise ToolPermissionError(_("内置工具不可卸载"))
 
     shutil.rmtree(_tool_dir(tool_id), ignore_errors=True)
     record.delete()
-    logging.info("[plugin_manager] 已卸载插件 %s（重启后彻底生效）", tool_id)
+    logging.info("[toolbox_manager] 已卸载工具 %s（重启后彻底生效）", tool_id)
     return record
 
 
@@ -270,8 +274,8 @@ def _require_installed(tool_id: str) -> InstalledTool:
 # api_routes 声明的 handler 很可能落在同一个 backend/tool.py 文件里（如
 # `tool.DemoTool` + `tool.SearchHandler`），如果各自单独调一次
 # importlib.util.spec_from_file_location，会把同一份源码 import 成两个不同的模块对象、
-# 两份不同的类定义——DemoTool 类上设置的 PLUGIN_SERVICE_TYPE 只会出现在 _load_tool_class()
-# 这一份上，Handler 里 `from tool import DemoTool` 拿到的却是另一份，PLUGIN_SERVICE_TYPE
+# 两份不同的类定义——DemoTool 类上设置的 TOOL_SERVICE_TYPE 只会出现在 _load_tool_class()
+# 这一份上，Handler 里 `from tool import DemoTool` 拿到的却是另一份，TOOL_SERVICE_TYPE
 # 读回来是 None，后台任务的 service_type 就悄悄退回 SERVICE_TYPE_OTHER——这是曾经真实
 # 出现过的 bug，用这个缓存保证同一个 (tool_id, module_rel) 在一次 load_all() 里只 import
 # 一次、处处拿到同一个模块/同一份类对象。
@@ -284,7 +288,7 @@ def _import_backend_module(tool_id: str, tool_dir: str, module_rel: str):
         return _module_cache[cache_key]
 
     module_file = _module_file_for(tool_dir, module_rel)
-    module_name = f"mybooks_plugin_{tool_id}_{module_rel.replace('.', '_')}"
+    module_name = f"mybooks_tool_{tool_id}_{module_rel.replace('.', '_')}"
 
     spec = importlib.util.spec_from_file_location(module_name, module_file)
     if spec is None or spec.loader is None:
@@ -326,11 +330,11 @@ def sync_builtin_records() -> None:
 
 def load_all() -> None:
     """进程启动时调用一次：同步内置工具记录 + 动态加载所有有覆盖产物的工具
-    （外部插件 + 被更新过的内置工具），刷新它们在 ToolSet 里的元数据。
+    （外部工具 + 被更新过的内置工具），刷新它们在 ToolSet 里的元数据。
 
     正常的"重启生效"模型下这个函数一个进程生命周期只跑一次，`ToolSet` 从空字典开始，不存在
     残留问题；但为了在同一进程内重复调用也是安全的（例如测试、未来可能出现的重载路径），先把
-    上一次 load_all() 注册过的 tool_id 从 ToolSet 里撤销，再重新走一遍——这样如果某个插件在
+    上一次 load_all() 注册过的 tool_id 从 ToolSet 里撤销，再重新走一遍——这样如果某个工具在
     两次调用之间被卸载了，它就不会继续残留在 ToolSet 里。
     """
     for tool_id in _loaded_at_startup:
@@ -342,28 +346,28 @@ def load_all() -> None:
     sync_builtin_records()
 
     for record in InstalledTool.all():
-        if record.type == InstalledTool.TYPE_PLUGIN and not record.enabled:
-            continue  # 禁用的外部插件：保留安装记录，但不加载代码、不挂路由
+        if record.type == InstalledTool.TYPE_TOOL and not record.enabled:
+            continue  # 禁用的外部工具：保留安装记录，但不加载代码、不挂路由
 
         tool_dir = _tool_dir(record.tool_id)
         if not os.path.isdir(tool_dir):
-            if record.type == InstalledTool.TYPE_PLUGIN:
+            if record.type == InstalledTool.TYPE_TOOL:
                 logging.warning(
-                    "[plugin_manager] 已安装的插件 %s 缺少目录 %s，跳过加载", record.tool_id, tool_dir
+                    "[toolbox_manager] 已安装的工具 %s 缺少目录 %s，跳过加载", record.tool_id, tool_dir
                 )
             continue  # builtin 且没有覆盖目录：沿用仓库自带实现，ToolSet 里已经有静态注册
 
         try:
             cls = _load_tool_class(record.tool_id, tool_dir)
         except Exception as err:
-            logging.error("[plugin_manager] 加载工具 %s 失败，跳过: %s", record.tool_id, err)
+            logging.error("[toolbox_manager] 加载工具 %s 失败，跳过: %s", record.tool_id, err)
             continue
 
-        if record.type == InstalledTool.TYPE_PLUGIN:
-            cls.PLUGIN_SERVICE_TYPE = f"plugin:{record.tool_id}"
+        if record.type == InstalledTool.TYPE_TOOL:
+            cls.TOOL_SERVICE_TYPE = f"tool:{record.tool_id}"
 
         # ToolSet 的元数据来自 cls.info()（BaseTool 子类必须实现的 staticmethod），但
-        # manifest.json 里 page/repo_url 这两个"打包描述"字段不要求插件作者在 info() 里
+        # manifest.json 里 page/repo_url 这两个"打包描述"字段不要求工具作者在 info() 里
         # 重复一遍——那样两处容易改一处漏一处（tool_builder 生成的模板都会填，但手写的
         # manifest.json 未必会记得同步）。这里把 manifest.json 当兜底：只在 info() 没给出
         # 时才用 manifest 里的值补上，不覆盖 info() 已经给出的值。
@@ -381,7 +385,7 @@ def load_all() -> None:
         _loaded_at_startup.add(record.tool_id)
 
     logging.info(
-        "[plugin_manager] load_all() 完成：%d 个工具带覆盖产物被加载 (%s)",
+        "[toolbox_manager] load_all() 完成：%d 个工具带覆盖产物被加载 (%s)",
         len(_loaded_at_startup), ", ".join(sorted(_loaded_at_startup)) or "无",
     )
 
@@ -405,7 +409,7 @@ def is_pending_restart(tool_id: str) -> bool:
 def tool_state(tool_id: str) -> Optional[dict]:
     """供 /api/toolbox/list 拼接 type/source/status/pending_restart 字段，见 3.3.1 节。
 
-    返回 None 表示这个 tool_id 已经没有 InstalledTool 记录——只会发生在"外部插件被卸载，
+    返回 None 表示这个 tool_id 已经没有 InstalledTool 记录——只会发生在"外部工具被卸载，
     但进程还没有重启、ToolSet 里的静态注册还没清掉"这个空档期，调用方（AdminToolList）应该
     把这种工具从列表里剔除，而不是回退展示成 builtin：3.3.1 节明确要求"工具已经从
     /api/toolbox/list 消失"，展示成来源错误的 builtin 元数据比直接不显示更容易误导管理员。
@@ -441,7 +445,7 @@ def _wrap_with_enabled_check(handler_cls, tool_id: str):
     return wrapped
 
 
-def collect_plugin_routes() -> List[tuple]:
+def collect_tool_routes() -> List[tuple]:
     """从每个已加载工具的 manifest.json 里读取可选的 api_routes 声明，动态挂载路由。
     只在 load_all() 之后调用一次（main.py 启动时的路由拼接阶段），见 3.6 节。"""
     routes = []
@@ -456,22 +460,22 @@ def collect_plugin_routes() -> List[tuple]:
             path = entry.get("path")
             handler_name = entry.get("handler")
             if not path or not handler_name:
-                logging.warning("[plugin_manager] %s 的 api_routes 声明不完整，跳过：%s", tool_id, entry)
+                logging.warning("[toolbox_manager] %s 的 api_routes 声明不完整，跳过：%s", tool_id, entry)
                 continue
             module_rel, handler_cls_name = handler_name.rsplit(".", 1)
             try:
                 # 复用 _import_backend_module() 的缓存：handler 常常和 entry_backend 同在
                 # 一个模块文件里（如 tool.DemoTool + tool.PingHandler），必须拿到同一个模块
-                # 对象、同一份类定义，否则 entry_backend 类上设置的 PLUGIN_SERVICE_TYPE 类
+                # 对象、同一份类定义，否则 entry_backend 类上设置的 TOOL_SERVICE_TYPE 类
                 # 属性对 handler 里实例化出来的对象不可见（曾经真实触发过的 bug）。
                 module = _import_backend_module(tool_id, tool_dir, module_rel)
                 handler_cls = getattr(module, handler_cls_name)
             except Exception as err:
-                logging.error("[plugin_manager] 加载 %s 的自定义路由 handler 失败: %s", tool_id, err)
+                logging.error("[toolbox_manager] 加载 %s 的自定义路由 handler 失败: %s", tool_id, err)
                 continue
 
             wrapped = _wrap_with_enabled_check(handler_cls, tool_id)
-            route_path = rf"/api/toolbox/plugin/{re.escape(tool_id)}/{path.lstrip('/')}"
+            route_path = rf"/api/toolbox/tool/{re.escape(tool_id)}/{path.lstrip('/')}"
             routes.append((route_path, wrapped))
 
     return routes

@@ -273,18 +273,18 @@ class ToolIconHandler(BaseHandler):
 class ToolFrontendIndexHandler(BaseHandler):
     """工具前端入口页面，见 document/Toolbox_Dynamic_Design.md 4.4 节。
 
-    只对 `source` 为 `store`/`dev` 的工具生效（即 PLUGIN_ROOT/<tool_id>/frontend/ 下有实际
-    产物的工具，无论 type 是 builtin 还是 plugin）；`source=bundled` 的内置工具没有独立的
+    只对 `source` 为 `store`/`dev` 的工具生效（即 TOOL_ROOT/<tool_id>/frontend/ 下有实际
+    产物的工具，无论 type 是 builtin 还是 tool）；`source=bundled` 的内置工具没有独立的
     index.html，其 `.vue` 页面随核心 App 一起构建，走现状的 /toolbox/{page} 静态路由。
     """
 
     def get(self, tool_id):
-        from webserver.toolbox import plugin_manager
+        from webserver.toolbox import toolbox_manager
 
-        if not plugin_manager.is_tool_enabled(tool_id):
+        if not toolbox_manager.is_tool_enabled(tool_id):
             raise web.HTTPError(404, "Tool not found or disabled")
 
-        index_path = os.path.join(plugin_manager.plugin_root(), tool_id, "frontend", "index.html")
+        index_path = os.path.join(toolbox_manager.tool_root(), tool_id, "frontend", "index.html")
         if not os.path.exists(index_path):
             raise web.HTTPError(404, "Tool frontend not found")
 
@@ -298,12 +298,12 @@ class ToolFrontendAssetHandler(BaseHandler):
     """工具前端引用的其它静态资源（JS/CSS/图片/字体等），见 4.4 节。"""
 
     def get(self, tool_id, asset_path):
-        from webserver.toolbox import plugin_manager
+        from webserver.toolbox import toolbox_manager
 
-        if not plugin_manager.is_tool_enabled(tool_id):
+        if not toolbox_manager.is_tool_enabled(tool_id):
             raise web.HTTPError(404, "Tool not found or disabled")
 
-        frontend_dir = os.path.abspath(os.path.join(plugin_manager.plugin_root(), tool_id, "frontend"))
+        frontend_dir = os.path.abspath(os.path.join(toolbox_manager.tool_root(), tool_id, "frontend"))
         target_path = os.path.abspath(os.path.join(frontend_dir, asset_path))
         # 防止 ../ 路径穿越读到 frontend/ 目录之外的文件
         if not target_path.startswith(frontend_dir + os.sep):
