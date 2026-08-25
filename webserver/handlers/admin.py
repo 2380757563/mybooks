@@ -30,6 +30,7 @@ from webserver.services.resource_service import ResourceService
 from webserver.services.save_meta_to_files import SaveMetaToFilesService
 from webserver.services.mail import MailService
 from webserver.services.book_barn import BookBarnClient, BookBarnService
+from webserver.services.download_quota_service import DownloadQuotaService, DOWNLOAD_QUOTA_FOLLOW_GLOBAL
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.services.book_search import BookSearch
 from webserver.handlers.base import BaseHandler, auth, js, is_admin
@@ -96,6 +97,7 @@ class AdminUsers(BaseHandler):
             f = f.desc()
 
         enable_vip_quota = CONF.get(ENABLE_VIP_QUOTA_KEY, False)
+        enable_download_quota = CONF.get("ENABLE_DOWNLOAD_QUOTA", False)
         query = self.sqlite_session.query(Reader)
         if push_count_subq is not None:
             query = query.outerjoin(push_count_subq, Reader.id == push_count_subq.c.reader_id)
@@ -114,6 +116,10 @@ class AdminUsers(BaseHandler):
             )
             reading_counts = {(reader_id, action): cnt for reader_id, action, cnt in rows}
         items = []
+        user_config = {
+            "allow_read_range_setting": CONF.get("ALLOW_READ_RANGE_SETTING", False),
+            "enable_download_quota": enable_download_quota,
+        }
         for user in page_users:
             has_social_account = (
                 hasattr(user, "social_auth") and user.social_auth.count() > 0
@@ -160,6 +166,13 @@ class AdminUsers(BaseHandler):
                 d["vip_expire"] = (
                     user.vipexpire.strftime("%Y-%m-%d") if user.vipexpire else ""
                 )
+            if enable_download_quota:
+                usage = DownloadQuotaService.get_usage(user)
+                d["download_quota_used"] = usage.used
+                d["download_quota_limit"] = usage.quota
+                d["download_daily_quota"] = (user.extra.get("downloads") or {}).get(
+                    "daily_quota", DOWNLOAD_QUOTA_FOLLOW_GLOBAL
+                )
             for attr in dir(user):
                 if attr.startswith("can_"):
                     d[attr] = getattr(user, attr)()
@@ -175,10 +188,6 @@ class AdminUsers(BaseHandler):
                     "upload_history_count", 0
                 )
             items.append(d)
-            user_config = {}
-            user_config["allow_read_range_setting"] = CONF.get(
-                "ALLOW_READ_RANGE_SETTING", False
-            )
         return {
             "err": "ok",
             "users": {"items": items, "total": total},
@@ -235,6 +244,23 @@ class AdminUsers(BaseHandler):
             user.limit_categories = data["limit_categories"]
         if "limit_tags" in data:
             user.limit_tags = data["limit_tags"]
+
+        if "download_daily_quota" in data:
+            try:
+                daily_quota = int(data["download_daily_quota"])
+            except (TypeError, ValueError):
+                return {
+                    "err": "params.download_daily_quota.invalid",
+                    "msg": _("下载配额参数不对"),
+                }
+            if daily_quota < DOWNLOAD_QUOTA_FOLLOW_GLOBAL:
+                return {
+                    "err": "params.download_daily_quota.invalid",
+                    "msg": _("下载配额参数不对"),
+                }
+            downloads = dict(user.extra.get("downloads") or {})
+            downloads["daily_quota"] = daily_quota
+            user.extra["downloads"] = downloads
 
         if "password" in data:
             new_password = (data["password"] or "").strip()
@@ -421,6 +447,8 @@ class AdminSettings(BaseHandler):
         KEYS = [
             "ALLOW_GUEST_DOWNLOAD",
             "ALLOW_GUEST_PUSH",
+            "ENABLE_DOWNLOAD_QUOTA",
+            "GLOBAL_DOWNLOAD_QUOTA",
             "ALLOW_GUEST_READ",
             "ALLOW_GUEST_UPLOAD",
             "ALLOW_REGISTER",

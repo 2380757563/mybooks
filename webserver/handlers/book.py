@@ -42,6 +42,7 @@ from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, ListHandler, auth, js
 from webserver.models import Item, Reading, ReadingState, Reader
 from webserver.services.reading_stats_service import ReadingStatsService
+from webserver.services.download_quota_service import DownloadQuotaService
 from webserver.services.book_review_service import BookReviewService
 from webserver.plugins.meta import douban, youshu, douban_v2
 from webserver.plugins.meta.bookbarn_tags import BookBarnTags
@@ -1826,6 +1827,9 @@ class BookDownload(BaseHandler, web.StaticFileHandler):
         book = self.get_book(bid)
         book_id = book["id"]
         if self.current_user:
+            result = DownloadQuotaService.check_and_consume(self.current_user)
+            if not result.allowed:
+                raise web.HTTPError(429, reason=_("今日下载次数已达上限(%d/%d)，请明天再试") % (result.used, result.quota))
             protocol = Reading.PROTOCOL_OPDS if self.is_opds else Reading.PROTOCOL_WEB
             ReadingStatsService.record_download(self.current_user.id, book_id, protocol)
         if "fmt_%s" % fmt not in book:

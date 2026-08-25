@@ -49,6 +49,10 @@ CALIBRE_COLUMN_DYNAMIC_COVER = "#dynamic_cover"
 ENABLE_VIP_QUOTA_KEY = "ENABLE_VIP_QUOTA"
 ENABLE_AUDIO_CONVERSION_LOG = "ENABLE_AUDIO_CONVERSION_LOG"
 
+# 每用户每日下载配额，见 webserver/services/download_quota_service.py
+ENABLE_DOWNLOAD_QUOTA_KEY = "ENABLE_DOWNLOAD_QUOTA"
+GLOBAL_DOWNLOAD_QUOTA_KEY = "GLOBAL_DOWNLOAD_QUOTA"
+
 # Performance profiling options
 # 当设置中此选项设为True时，表示每隔5分钟对后台占用的内存进行统计分析
 # 统计的结果输出到/data/logs/profiling.log中

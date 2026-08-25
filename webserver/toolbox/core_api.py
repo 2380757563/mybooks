@@ -1,5 +1,6 @@
 """
 Toolbox Core API 层
+@author: PoxenStudio, 2026-8
 
 给工具（无论是内置工具还是未来的外部插件）提供一份版本化、语义化的接口，把工具代码与
 Calibre / SQLAlchemy 的内部实现细节解耦。设计背景见

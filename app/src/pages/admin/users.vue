@@ -25,6 +25,9 @@
             <template v-slot:item.total_reading_seconds="{ item }">
                 {{ (item.total_reading_seconds / 3600).toFixed(1) }}
             </template>
+            <template v-slot:item.download_quota="{ item }">
+                {{ item.download_quota_used || 0 }}/{{ item.download_quota_limit ? item.download_quota_limit : '∞' }}
+            </template>
             <template v-slot:item.create_time="{ item }">
                 <div>{{ splitDateTime(item.create_time).date }}</div>
                 <div>{{ splitDateTime(item.create_time).time }}</div>
@@ -47,7 +50,7 @@
                 </td>
             </template>
             <template v-slot:item.actions="{ item }">
-                <v-btn small color="#31D18A" class="white--text" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
+                <v-btn small color="primary" class="white--text" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
                 <v-menu offset-y right>
                     <template v-slot:activator="{ on }">
                         <v-btn color="primary" small v-on="on">{{ $t('admin.users.actions') }} <v-icon small>more_vert</v-icon></v-btn>
@@ -364,8 +367,9 @@ export default {
         loading: true,
         expandedUserId: null,
         options: { sortBy: ["access_time"], sortDesc: [true] },
-        headers: [],
+        baseHeaders: [],
         permissions: [],
+        enableDownloadQuota: false,
         showAddUserDialog: false,
         addingUser: false,
         addUserError: "",
@@ -409,7 +413,7 @@ export default {
         },
     }),
     created() {
-        this.headers = [
+        this.baseHeaders = [
             { text: this.$t('admin.users.id'), sortable: true, value: "id" },
             { text: this.$t('admin.users.username'), sortable: true, value: "username" },
             { text: this.$t('admin.users.nickname'), sortable: false, value: "name" },
@@ -420,6 +424,7 @@ export default {
             { text: this.$t('admin.users.login_ip'), sortable: false, value: "login_ip" },
             { text: this.$t('admin.users.total_reading_hours'), sortable: true, value: "total_reading_seconds" },
             { text: this.$t('admin.users.download_count'), sortable: true, value: "download_count" },
+            { text: this.$t('admin.users.download_quota'), sortable: false, value: "download_quota" },
             { text: this.$t('admin.users.push_count'), sortable: true, value: "push_count" },
             { text: this.$t('admin.users.detail'), sortable: false, value: "detail" },
             { text: this.$t('admin.users.actions'), sortable: false, value: "actions" },
@@ -452,6 +457,9 @@ export default {
         },
         expandedItems() {
             return this.items.filter((i) => i.id === this.expandedUserId);
+        },
+        headers() {
+            return this.baseHeaders.filter((h) => h.value !== "download_quota" || this.enableDownloadQuota);
         },
     },
     methods: {
@@ -659,6 +667,7 @@ export default {
                     this.items = rsp.users.items;
                     this.total = rsp.users.total;
                     this.allowReadRangeSetting = rsp.settings?.allow_read_range_setting || false;
+                    this.enableDownloadQuota = rsp.settings?.enable_download_quota || false;
                 })
                 .finally(() => {
                     this.loading = false;

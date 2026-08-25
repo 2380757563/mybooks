@@ -239,6 +239,18 @@
                 </v-row>
               </template>
               <v-text-field
+                v-else-if="f.type === 'number'"
+                v-model.number="settings[f.key]"
+                :key="f.key + '-number'"
+                :label="$t(f.label)"
+                type="number"
+                min="0"
+              >
+                <template v-if="f.icon" v-slot:prepend>
+                  <v-icon :color="f.color">{{ f.icon }}</v-icon>
+                </template>
+              </v-text-field>
+              <v-text-field
                 v-else
                 v-model="settings[f.key]"
                 :key="f.key + '-text'"
@@ -271,6 +283,7 @@
               >
               </v-checkbox>
               <template v-if="settings[g.key]">
+                <div class="pl-6">
                 <template v-for="f in g.fields">
                   <v-checkbox
                     small
@@ -298,6 +311,7 @@
                     type="text"
                   ></v-text-field>
                 </template>
+                </div>
               </template>
             </template>
             </div>
@@ -1013,6 +1027,7 @@ export default {
         groups: [
           {
             key: "INVITE_MODE",
+            icon: "mdi-security",
             label: "settings.private_library_mode",
             fields: [
               {
@@ -1186,6 +1201,19 @@ export default {
                 key: "ENABLE_AUTO_NEW_USER_APPROVAL",
                 label: "settings.enable_auto_new_user_approval",
                 type: "checkbox",
+              }
+            ],
+          },
+          {
+            key: "ENABLE_DOWNLOAD_QUOTA",
+            icon: "mdi-download-lock-outline",
+            label: "settings.enable_download_quota",
+            fields: [
+              {
+                icon: "mdi-counter",
+                key: "GLOBAL_DOWNLOAD_QUOTA",
+                label: "settings.global_download_quota",
+                type: "number"
               }
             ],
           },
