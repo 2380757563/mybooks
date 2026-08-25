@@ -368,7 +368,10 @@ def _parse_nav_doc(data: bytes) -> list:
             if child is not None:
                 walk(child, level + 1)
 
-    first_ul = nav.find(_q('ol', _NS_XHTML)) or nav.find(_q('ul', _NS_XHTML))
+    # Element 真值判断已弃用（空 <ol/> 为假会误回落到 ul），必须用 is not None
+    first_ul = nav.find(_q('ol', _NS_XHTML))
+    if first_ul is None:
+        first_ul = nav.find(_q('ul', _NS_XHTML))
     if first_ul is not None:
         walk(first_ul, 0)
     return items
@@ -451,7 +454,9 @@ def _prune_nav_bytes(data: bytes) -> tuple:
         ntype = n.get('{http://www.idpf.org/2007/ops}type') or ''
         if 'toc' not in ntype:
             continue
-        top = n.find(_q('ol', _NS_XHTML)) or n.find(_q('ul', _NS_XHTML))
+        top = n.find(_q('ol', _NS_XHTML))
+        if top is None:
+            top = n.find(_q('ul', _NS_XHTML))
         if top is not None:
             _clean_ol(top)
     if not pruned:
@@ -492,7 +497,8 @@ def _build_toc_page(toc_items: list, ref_dir: str, truncated: bool = False,
             anchor = '#' + anchor
         else:
             zip_path, anchor = zip_href, ''
-        rel = _quote_href(_relative_href(ref_dir + MB_TOC_NAME, zip_path)) + anchor
+        # 锚点来自书内 NCX/nav，属性上下文需转义（防引号破坏 href 结构）
+        rel = _quote_href(_relative_href(ref_dir + MB_TOC_NAME, zip_path)) + _esc(anchor)
         lv = 'lv1' if level <= 1 else 'lv2'
         num_span = ''
         if lv == 'lv1':
@@ -593,8 +599,15 @@ def _inject_css_link(html_str: str, rel_href: str) -> str:
 
 # 目录页文件名特征（书内目录文档）
 _TOC_FILE_RE = re.compile(r'(mulu|toc|contents|nav)', re.IGNORECASE)
+# nav 语义目录页标记（内容含 <nav epub:type="toc">）
+_NAV_TOC_RE = re.compile(r'<nav\b[^>]*epub:type\s*=\s*["\']toc', re.IGNORECASE)
 # 目录文档标记（body 上打 mb-toc-page 供 CSS 精确作用）
 _TOC_BODY_CLASS = 'mb-toc-page'
+
+
+def _has_nav_toc_semantics(html_str: str) -> bool:
+    """HTML 头部是否含 ``<nav epub:type="toc">`` 结构。"""
+    return bool(_NAV_TOC_RE.search(html_str or ''))
 
 
 def _is_toc_doc(zip_path: str, html_str: str = '') -> bool:
@@ -603,7 +616,7 @@ def _is_toc_doc(zip_path: str, html_str: str = '') -> bool:
     base = zip_path.rsplit('/', 1)[-1]
     if _TOC_FILE_RE.search(base):
         return True
-    return bool(re.search(r'<nav\b[^>]*epub:type\s*=\s*["\']toc', html_str, re.IGNORECASE))
+    return _has_nav_toc_semantics(html_str)
 
 
 def _mark_toc_page_body(html_str: str) -> str:
@@ -798,6 +811,45 @@ def mark_dialogue_in_html(html_str: str) -> tuple:
 
 # ── 分析（preview 用）─────────────────────────────────────────────────────────
 
+def _sample_preview_chapter(html_str: str) -> dict:
+    """从单个正文文件提取首章真实预览：首个标题块 + 至多 3 段后续正文。
+
+    标题判定与 mark_chapters_in_html 同源（h1-h6 标签或段落文本章节正则）；
+    遇到下一个标题块即停止收录；输出纯文本（剥内联标签、压空白、截断）。
+    仅扫描 p/h/blockquote/li 块——Calibre 类汤的纯 div 平铺文件不参与
+    （无块可匹配时返回 None，由后续文件兜底）。
+    """
+    blocks = list(_BLOCK_RE.finditer(html_str))
+    start = -1
+    for i, m in enumerate(blocks):
+        tag = m.group(1).lower()
+        text = _block_text(m.group(3))
+        if not text:
+            continue
+        if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6') or \
+                chapter_patterns.paragraph_is_heading(text):
+            start = i
+            break
+    if start < 0:
+        return None
+    title = _block_text(blocks[start].group(3))[:80]
+    paras = []
+    for m in blocks[start + 1:]:
+        tag = m.group(1).lower()
+        text = _block_text(m.group(3))
+        if not text:
+            continue
+        if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6') or \
+                chapter_patterns.paragraph_is_heading(text):
+            break
+        paras.append(text[:120])
+        if len(paras) >= 3:
+            break
+    if not paras:
+        return None
+    return {'title': title, 'paragraphs': paras}
+
+
 def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
     """扫描 EPUB，返回美化方案分析（不写文件）。
 
@@ -827,14 +879,22 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
     if ctx.nav_path and ctx.nav_path in entries:
         nav_count = len(_parse_nav_doc(entries[ctx.nav_path]))
 
-    has_inbook_toc = any(
-        _is_front_file(t) and any(k in t.lower() for k in ('mulu', 'toc', 'nav', 'contents'))
-        for t in text_entries
-    )
+    # 与 beautify 同源判定（_is_toc_doc）：文件名或 nav 结构均为目录页；
+    # nav 语义页运行时会被替换为普通结构目录页，不计为「书内已有」
+    has_inbook_toc = False
+    for t in text_entries:
+        if t not in entries:
+            continue
+        head = _decode(entries[t])[:4000]
+        if _is_toc_doc(t, head) and not _has_nav_toc_semantics(head):
+            has_inbook_toc = True
+            break
 
     h_stats = {'h1': 0, 'h2': 0, 'h3': 0, 'h4': 0, 'h5': 0, 'h6': 0}
     text_headings = 0
     sampled = 0
+    # 首章真实内容（前端预览用）：{title, paragraphs:[≤3]}
+    preview_chapter = None
     # 健康报告采样：段首空格占比 / 空段估计 / p 开闭不齐文件数 / 对话行估计
     leading_space_paras = 0
     total_paras = 0
@@ -855,6 +915,9 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
         sampled += 1
         html = _decode(entries[t])
         empty_para_est += len(_EMPTY_P_RE.findall(html))
+        # 首章真实预览：取第一个可提取的正文文件（跳过目录页）
+        if preview_chapter is None and not _is_toc_doc(t, html[:2000]):
+            preview_chapter = _sample_preview_chapter(html)
         for tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             h_stats[tag] += len(re.findall(r'<%s\b' % tag, html, re.IGNORECASE))
         for m in _BLOCK_RE.finditer(html):
@@ -902,6 +965,7 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
         'nav_entries': nav_count,
         'heading_stats': h_stats,
         'text_headings': text_headings,
+        'preview_chapter': preview_chapter,
         # ── 健康报告 ──
         'leading_space_paras': leading_space_paras,
         'sampled_paras': total_paras,
@@ -1060,7 +1124,7 @@ def beautify(
     nav_semantic_paths = [
         t for t in text_entries
         if t in entries
-        and re.search(r'<nav\b[^>]*epub:type\s*=\s*["\']toc', _decode(entries[t])[:4000], re.IGNORECASE)
+        and _has_nav_toc_semantics(_decode(entries[t])[:4000])
     ]
     nav_semantic_in_spine = bool(nav_semantic_paths)
     # spine 条目 zip 路径 → idref 映射（用于替换 itemref）。

@@ -214,6 +214,16 @@
                 </div>
               </div>
 
+              <!-- 段距模式：缩进制 / 分段式 -->
+              <div class="eb-grp">
+                <div class="text-subtitle-2 font-weight-medium mb-2">{{ $t('epubBeautify.paraModeTitle') }}</div>
+                <v-btn-toggle v-model="paraMode" mandatory dense>
+                  <v-btn small value="indent">{{ $t('epubBeautify.paraModeIndent') }}</v-btn>
+                  <v-btn small value="spacing">{{ $t('epubBeautify.paraModeSpacing') }}</v-btn>
+                </v-btn-toggle>
+                <div class="caption grey--text mt-1">{{ $t('epubBeautify.paraModeHint') }}</div>
+              </div>
+
               <!-- 内容清理：联动体检推荐 -->
               <div class="eb-grp">
                 <div class="text-subtitle-2 font-weight-medium mb-1 d-flex align-center">
@@ -255,7 +265,7 @@
                 </div>
               </div>
 
-              <!-- 目录层级 + 全书底色 -->
+              <!-- 目录层级 + 双栏 + 全书底色 -->
               <div class="eb-grp">
                 <div class="d-flex align-center flex-wrap">
                   <span class="text-subtitle-2 font-weight-medium mr-3">{{ $t('epubBeautify.tocDepth') }}</span>
@@ -268,7 +278,14 @@
                     style="max-width:160px"
                     class="mt-0"
                   />
+                  <v-switch
+                    v-model="tocColumns"
+                    :label="$t('epubBeautify.tocColumns')"
+                    dense hide-details
+                    class="mt-0 pt-0 ml-6"
+                  />
                 </div>
+                <div class="caption grey--text mt-n1">{{ $t('epubBeautify.tocColumnsDesc') }}</div>
                 <div class="d-flex align-center flex-wrap mt-3">
                   <span class="text-subtitle-2 font-weight-medium mr-3">{{ $t('epubBeautify.pageTintTitle') }}</span>
                   <v-btn-toggle v-model="pageTint" mandatory dense>
@@ -379,8 +396,8 @@
                 <div v-if="currentPreset.id === 'vertclassical'" class="eb-vpad">
                   <div class="eb-vbody" :style="{ background: currentPreset.accent_light, borderLeftColor: currentPreset.border, borderRightColor: currentPreset.border, fontFamily: bodyFont }">
                     <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }">{{ chapterSample }}</div>
-                    <div>天色将明未明，山道上薄雾未散，一行脚印自东而来。</div>
-                    <div>青砖黛瓦的宅院静静卧在雾里，檐角铜铃偶尔轻响一声。</div>
+                    <div>{{ chapterParas[0] }}</div>
+                    <div>{{ chapterParas[1] }}</div>
                   </div>
                   <div class="eb-vnote">← {{ $t('epubBeautify.verticalNote') }}</div>
                 </div>
@@ -398,12 +415,12 @@
                   <div v-if="currentPreset.id === 'classical'" class="eb-sep-dbl" :style="{ borderTopColor: currentPreset.accent, borderBottomColor: hexA(currentPreset.accent, 0.45) }"></div>
                   <div v-else class="eb-sep" :style="{ background: gradLine(currentPreset.accent) }"></div>
 
-                  <!-- 正文 -->
-                  <p class="eb-p" :style="bodyTextStyle">天色将明未明，山道上薄雾未散，一行脚印自东而来，又消失在石桥尽头。</p>
-                  <p class="eb-p eb-indent" :style="bodyTextStyle">青砖黛瓦的宅院静静卧在雾里，檐角铜铃偶尔轻响一声，像是在应和着远处更夫懒散的梆子声。</p>
-                  <p v-if="dialogue" class="eb-p eb-dialog-demo" :style="dialogueStyle">「你终于来了。」他压低了声音。</p>
+                  <!-- 正文（书内真实段落，未命中回落示例；段距模式联动） -->
+                  <p :class="['eb-p', paraMode === 'spacing' ? 'eb-spacing' : 'eb-indent']" :style="bodyTextStyle">{{ chapterParas[0] }}</p>
+                  <p :class="['eb-p', paraMode === 'spacing' ? 'eb-spacing' : 'eb-indent']" :style="bodyTextStyle">{{ chapterParas[1] }}</p>
+                  <p v-if="dialogue" class="eb-p eb-dialog-demo" :class="{ 'eb-spacing': paraMode === 'spacing' }" :style="dialogueStyle">{{ dialogDemoText }}</p>
                   <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」</blockquote>
-                  <p class="eb-p eb-indent" :style="bodyTextStyle">他攥紧了手中的包袱，加快脚步走进雾中。</p>
+                  <p :class="['eb-p', paraMode === 'spacing' ? 'eb-spacing' : 'eb-indent']" :style="bodyTextStyle">{{ chapterParas[2] }}</p>
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
@@ -448,9 +465,9 @@
                 <!-- 原书效果：无样式裸渲染，用于对比 -->
                 <div style="padding: 6px 4px; font-family: Georgia, 'Times New Roman', 宋体, serif; line-height: 1.85; color: #222; font-size: 15px">
                   <h2 style="text-align: center; margin: 0 0 18px; font-size: 17px">{{ chapterSample }}</h2>
-                  <p style="margin: 0 0 14px; text-indent: 2em">天色将明未明，山道上薄雾未散，一行脚印自东而来，又消失在石桥尽头。</p>
-                  <p style="margin: 0 0 14px; text-indent: 2em">青砖黛瓦的宅院静静卧在雾里，檐角铜铃偶尔轻响一声。</p>
-                  <p style="margin: 0 0 14px; text-indent: 2em">张三道：“你来了。”</p>
+                  <p style="margin: 0 0 14px; text-indent: 2em">{{ chapterParas[0] }}</p>
+                  <p style="margin: 0 0 14px; text-indent: 2em">{{ chapterParas[1] }}</p>
+                  <p style="margin: 0 0 14px; text-indent: 2em">{{ dialogDemoText }}</p>
                 </div>
               </template>
               <div v-if="selected" class="eb-screen-end grey--text">— {{ $t('epubBeautify.chapterEnd') }} —</div>
@@ -548,6 +565,10 @@ export default {
     dialogue: false,
     // 双行排版（默认关）
     titleSplit: false,
+    // 段距模式：indent 首行缩进（默认）/ spacing 分段式
+    paraMode: 'indent',
+    // 目录双栏（默认关，仅生成的目录页）
+    tocColumns: false,
     // 批量队列（勾选入队的书籍 ID）
     batchIds: [],
     // 背景图片（全局复用一张，默认关）
@@ -588,6 +609,7 @@ export default {
     resultType: 'success',
     newBookId: null,
     pollTimer: null,
+    searchDebounce: null,
   }),
   computed: {
     tocKindText() {
@@ -600,15 +622,35 @@ export default {
     headingCount() {
       if (!this.analysis) return 0;
       const s = this.analysis.heading_stats || {};
-      return (s.h1 || 0) + (s.h2 || 0) + (s.h3 || 0) + this.analysis.text_headings;
+      // 与后端 analyze 口径一致：h1-h6 全量 + 段落文本识别数
+      return ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].reduce((n, k) => n + (s[k] || 0), 0) + this.analysis.text_headings;
     },
     tocPreviewText() {
       const titles = (this.analysis && this.analysis.toc_preview_titles) || [];
       return titles.map((t, i) => (i + 1) + '. ' + t).join('\n');
     },
     chapterSample() {
+      // 优先用首章真实标题（正文识别命中），其次目录预览标题
+      const pc = this.analysis && this.analysis.preview_chapter;
+      if (pc && pc.title) return pc.title;
       const t = this.analysis && this.analysis.toc_preview_titles;
       return (t && t[0]) || '第一章 血尸';
+    },
+    // 首章真实段落（≤3）；不足或未命中时回落示例文案
+    chapterParas() {
+      const MOCKS = [
+        '天色将明未明，山道上薄雾未散，一行脚印自东而来，又消失在石桥尽头。',
+        '青砖黛瓦的宅院静静卧在雾里，檐角铜铃偶尔轻响一声，像是在应和着远处更夫懒散的梆子声。',
+        '他攥紧了手中的包袱，加快脚步走进雾中。',
+      ];
+      const real = (this.analysis && this.analysis.preview_chapter && this.analysis.preview_chapter.paragraphs) || [];
+      return [0, 1, 2].map((i) => real[i] || MOCKS[i]);
+    },
+    // 对话演示行：真实段落中以开引号起始者优先
+    dialogDemoText() {
+      const real = (this.analysis && this.analysis.preview_chapter && this.analysis.preview_chapter.paragraphs) || [];
+      const hit = real.find((t) => t && '「『“＂'.indexOf(t[0]) >= 0);
+      return hit || '「你终于来了。」他压低了声音。';
     },
     tocSampleRows() {
       const t = (this.analysis && this.analysis.toc_preview_titles) || [];
@@ -686,6 +728,8 @@ export default {
         : this.pageTint === 'on' ? this.$t('epubBeautify.pageTintOn') : this.$t('epubBeautify.pageTintOff');
       let s = fm + '｜' + this.$t('epubBeautify.sumClean') + ' ' + this.cleanCount + '/3｜'
         + this.$t('epubBeautify.sumDepth') + ' ' + dl + '｜' + this.$t('epubBeautify.sumTint') + ' ' + dt;
+      if (this.paraMode === 'spacing') s += '｜' + this.$t('epubBeautify.paraModeSpacing');
+      if (this.tocColumns) s += '｜' + this.$t('epubBeautify.tocColumns');
       if (this.paletteOn) s += '｜' + this.$t('epubBeautify.paletteTitle');
       return s;
     },
@@ -761,7 +805,6 @@ export default {
     if (this.bgObjectUrl) URL.revokeObjectURL(this.bgObjectUrl);
   },
   methods: {
-    searchDebounce: null,
     hexA(hex, a) {
       const h = String(hex || '#000000').replace('#', '');
       const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
@@ -1078,6 +1121,8 @@ export default {
             },
             dialogue: this.dialogue,
             title_split: this.titleSplit,
+            para_mode: this.paraMode,
+            toc_columns: this.tocColumns,
             bg_image: this.bgOn && this.bgHas,
             page_tint: this.pageTint === 'auto' ? null : (this.pageTint === 'on'),
             palette_overrides: this.paletteOverridesPayload(),
@@ -1368,6 +1413,10 @@ export default {
 }
 .eb-indent {
   text-indent: 2em;
+}
+/* 分段式预览：无缩进（段距由 .eb-screen p 的下边距天然提供） */
+.eb-spacing {
+  text-indent: 0;
 }
 .eb-t-card {
   border-top: 3px solid;

@@ -163,12 +163,68 @@ def _apply_page_tint(css: str, page_tint, params: dict) -> str:
     return css.rstrip() + block
 
 
+# ── 段距模式（缩进制 / 分段式）──────────────────────────────────────────────
+PARA_MODES = ("indent", "spacing")
+
+_SPACING_CSS_BLOCK = (
+    '\n\n/* ── 段距模式：分段式（无缩进 + 段距，覆盖预设默认的中文缩进制）── */\n'
+    'p {\n'
+    '    text-indent: 0 !important;\n'
+    '    duokan-text-indent: 0;\n'
+    '    margin: 0 0 0.75em 0 !important;\n'
+    '}\n'
+    'p[data-mb-first] {\n'
+    '    margin-top: 0 !important;\n'
+    '}\n'
+    'blockquote p {\n'
+    '    text-indent: 2em !important;\n'
+    '    duokan-text-indent: 0;\n'
+    '    margin: 0 !important;\n'
+    '}\n'
+)
+
+
+def _apply_para_mode(css: str, para_mode) -> str:
+    """段距模式后处理：spacing 追加分段式覆盖块（层叠序在后必胜）。"""
+    if not para_mode or para_mode == "indent":
+        return css
+    if para_mode != "spacing":
+        raise ValueError("unknown para_mode: %s" % para_mode)
+    return css.rstrip() + _SPACING_CSS_BLOCK
+
+
+# ── 目录双栏（宽屏渐进增强）──────────────────────────────────────────────────
+_TOC_COLUMNS_CSS_BLOCK = (
+    '\n\n/* ── 目录双栏（仅生成的 mb-toc 页；窄屏回落单栏）── */\n'
+    '@media (min-width: 32em) {\n'
+    '  body.mb-toc-page div.mb-toc ol {\n'
+    '    columns: 2;\n'
+    '    -webkit-columns: 2;\n'
+    '    column-gap: 2.5em;\n'
+    '  }\n'
+    '  body.mb-toc-page div.mb-toc ol li {\n'
+    '    break-inside: avoid;\n'
+    '    -webkit-column-break-inside: avoid;\n'
+    '  }\n'
+    '}\n'
+)
+
+
+def _apply_toc_columns(css: str, on) -> str:
+    """目录双栏后处理：只作用于生成目录页的 ol/li 结构（seal 表格天然不受影响）。"""
+    if not on:
+        return css
+    return css.rstrip() + _TOC_COLUMNS_CSS_BLOCK
+
+
 def get_preset_css(preset_id: str, use_system_fonts: bool = True,
                    toc_style: str = DEFAULT_TOC_STYLE,
                    font_overrides: dict = None,
                    palette_overrides: dict = None,
                    page_tint=None,
-                   bg_image: dict = None) -> str:
+                   bg_image: dict = None,
+                   para_mode: str = None,
+                   toc_columns: bool = False) -> str:
     """加载指定预设模板并插值；preset_id / toc_style / 色板非法时抛 ValueError。
 
     font_overrides:     细粒度字体开关，见 _interpolate。
@@ -176,12 +232,17 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
     page_tint:          全书主题底色三态，见 _apply_page_tint。
     bg_image:           全书背景图片 {'url': 'mb-bg.jpg', 'night_dim': float}，
                         见 _apply_bg_image；激活时日间取代纸色铺满。
+    para_mode:          段距模式 indent 缩进制（默认）/ spacing 分段式，
+                        见 _apply_para_mode。
+    toc_columns:        True 时目录页双栏排布，见 _apply_toc_columns。
     """
     presets = list_presets()
     if preset_id not in presets:
         raise ValueError("unknown preset: %s" % preset_id)
     if toc_style not in TOC_STYLES:
         raise ValueError("unknown toc_style: %s" % toc_style)
+    if para_mode is not None and para_mode not in PARA_MODES:
+        raise ValueError("unknown para_mode: %s" % para_mode)
     params = presets[preset_id]
     if palette_overrides:
         params = _apply_palette_overrides(params, palette_overrides)
@@ -211,6 +272,8 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
             template = template.rstrip() + "\n\n/* ── responsive injected ── */\n" + responsive_css
 
     css = _interpolate(template, params, use_system_fonts, font_overrides)
+    css = _apply_para_mode(css, para_mode)
+    css = _apply_toc_columns(css, toc_columns)
     css = _apply_page_tint(css, page_tint, params)
     if bg_image:
         css = _apply_bg_image(css, bg_image)

@@ -187,7 +187,9 @@ class EpubBeautifyTool(BaseTool):
             page_tint: Optional[bool] = None,
             dialogue: Optional[bool] = None,
             title_split: Optional[bool] = None,
-            bg_image: Optional[bool] = None) -> None:
+            bg_image: Optional[bool] = None,
+            para_mode: Optional[str] = None,
+            toc_columns: Optional[bool] = None) -> None:
         """后台执行美化并生成新书（支持批量队列）。
 
         :param book_ids:         批量书籍 ID 列表（去重后按序执行，不限本数）。
@@ -209,6 +211,9 @@ class EpubBeautifyTool(BaseTool):
         :param title_split:      双行排版开关（True=纯文本章题拆为章节号小字 + 标题大字）。默认关闭。
         :param bg_image:         背景图片开关（True=把已上传的背景图写入包内并铺满；
                                  激活时接管 page_tint 的底色语义，夜间自动压暗保可读）。默认关闭。
+        :param para_mode:        段距模式：indent 首行缩进（默认）/ spacing 分段式
+                                 （无缩进 + 段距，适配网文阅读习惯）。
+        :param toc_columns:      目录双栏开关（True=生成的目录页宽屏双栏排布）。默认关闭。
 
         批量语义：单本失败不断批，逐本汇总结果；进度按书数折算
         （progress_data 携带 book_index/book_total/current_title）。
@@ -263,9 +268,11 @@ class EpubBeautifyTool(BaseTool):
                     palette_overrides=palette_overrides,
                     page_tint=(None if bg_image else page_tint),
                     bg_image=({'url': 'mb-bg.jpg'} if bg_image else None),
+                    para_mode=para_mode or None,
+                    toc_columns=bool(toc_columns),
                 )
             except ValueError as err:
-                error_message = _("参数不合法（预设/目录形式/配色）：%s") % err
+                error_message = _("参数不合法（预设/目录形式/配色/段距）：%s") % err
                 logging.error("[EpubBeautifyTool] Bad params %r/%r [uid:%d]", preset, toc_style, user_id)
                 return
 

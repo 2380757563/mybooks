@@ -1742,7 +1742,7 @@
     "previewIdleSub": "Preview updates live with your style",
     "verticalNote": "Vertical RTL spine",
     "chapterEnd": "End of chapter",
-    "previewNote": "Simulated reader view · not a real render",
+    "previewNote": "Real title & body text from the book · styles simulated",
     "noBookChip": "No book selected",
     "tocChip": " TOC",
     "dialogueTitle": "Dialogue styling",
@@ -1760,6 +1760,12 @@
     "bgEnable": "Use background image",
     "bgEnableDesc": "Overrides the tint option when active; auto-dimmed in dark mode for readability",
     "bgDelete": "Remove",
-    "bgNone": "No image yet"
+    "bgNone": "No image yet",
+    "paraModeTitle": "Paragraph Spacing",
+    "paraModeIndent": "First-line Indent",
+    "paraModeSpacing": "Paragraph Gap",
+    "paraModeHint": "Indent follows Chinese publishing convention (2em first line, no gaps); paragraph gap style suits web-novel reading.",
+    "tocColumns": "Two-column TOC",
+    "tocColumnsDesc": "Generated TOC page flows in two columns on wide screens; seal table and preserved in-book TOC pages are unaffected."
   }
 }

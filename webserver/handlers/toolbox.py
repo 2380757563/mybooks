@@ -901,6 +901,12 @@ class AdminEpubBeautifyRun(BaseHandler):
         dialogue = bool(data.get("dialogue", False))
         # 双行排版开关（默认关）
         title_split = bool(data.get("title_split", False))
+        # 段距模式：indent 首行缩进（默认）/ spacing 分段式
+        para_mode = data.get("para_mode") or "indent"
+        if para_mode not in ("indent", "spacing"):
+            return {"err": "params.invalid", "msg": _("未知段距模式：%s") % para_mode}
+        # 目录双栏开关（默认关，仅作用于生成的目录页）
+        toc_columns = bool(data.get("toc_columns", False))
 
         tool = EpubBeautifyTool()
         if tool.is_running():
@@ -919,6 +925,10 @@ class AdminEpubBeautifyRun(BaseHandler):
             kwargs["page_tint"] = bool(page_tint)
         kwargs["dialogue"] = dialogue
         kwargs["title_split"] = title_split
+        if para_mode != "indent":
+            kwargs["para_mode"] = para_mode
+        if toc_columns:
+            kwargs["toc_columns"] = True
         tool.run(book_ids=book_ids, preset=preset, use_system_fonts=use_system_fonts,
                  toc_style=toc_style, suffix=suffix, user_id=self.user_id(), **kwargs)
         return {"err": "ok", "msg": _("美化任务已启动，右上角可以查看进度")}

@@ -1742,7 +1742,7 @@
     "previewIdleSub": "预览将随所选风格实时变化",
     "verticalNote": "竖排右翻（RTL spine）",
     "chapterEnd": "本章完",
-    "previewNote": "模拟阅读器视图 · 非真实渲染",
+    "previewNote": "标题与正文取自书内真实内容 · 样式为模拟渲染",
     "noBookChip": "未选择书籍",
     "tocChip": "目录",
     "dialogueTitle": "对话行点缀",
@@ -1760,6 +1760,12 @@
     "bgEnable": "启用背景图",
     "bgEnableDesc": "激活时接管底色三态；夜间自动压暗保证可读",
     "bgDelete": "删除",
-    "bgNone": "尚未上传"
+    "bgNone": "尚未上传",
+    "paraModeTitle": "段距模式",
+    "paraModeIndent": "首行缩进",
+    "paraModeSpacing": "分段留空",
+    "paraModeHint": "缩进制为中文出版惯例（段首空两格、段间不留白）；分段式顶格 + 段间留空，适合网文阅读。",
+    "tocColumns": "目录双栏",
+    "tocColumnsDesc": "宽屏时生成的目录页分双栏排布；朱印表格与书内原目录页不受影响。"
   }
 }

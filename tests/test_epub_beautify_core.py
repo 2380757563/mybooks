@@ -1257,5 +1257,74 @@ class TestPaletteAndTint(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+class TestPreviewChapter(unittest.TestCase):
+    """analyze_epub 的首章真实内容采样（preview_chapter）。"""
+
+    def test_preview_chapter_extracted(self):
+        """首个含标题文件：标题 + 后续正文（遇下一个标题即止）。"""
+        tmp = os.path.join(TESTS_DIR, "_tmp_pc_src.epub")
+        build_mini_epub(tmp)
+        try:
+            a = lib.analyze_epub(tmp)
+            pc = a.get("preview_chapter")
+            self.assertIsInstance(pc, dict)
+            self.assertEqual(pc["title"], "第一章 序章")
+            # 第二章 开端 是下一个标题 → 收录在它之前的一段正文后停止
+            self.assertEqual(pc["paragraphs"], ["正文从这里开始，描写一段长长的故事。"])
+        finally:
+            os.remove(tmp)
+
+    def test_preview_chapter_absent_without_headings(self):
+        """无任何标题特征的书：preview_chapter 为 None。"""
+        tmp = os.path.join(TESTS_DIR, "_tmp_pc_none.epub")
+        opf = (
+            '<?xml version="1.0"?>'
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+            '<metadata><dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">无标题书</dc:title></metadata>'
+            '<manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest>'
+            '<spine><itemref idref="c1"/></spine></package>'
+        )
+        ch = (
+            '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>x</title></head>'
+            '<body><p>这是一段很普通的叙述文字，完全没有任何标题特征可言。</p></body></html>'
+        )
+        with zipfile.ZipFile(tmp, "w") as zf:
+            zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+            zf.writestr("META-INF/container.xml", CONTAINER)
+            zf.writestr("OEBPS/content.opf", opf)
+            zf.writestr("OEBPS/c1.xhtml", ch)
+        try:
+            a = lib.analyze_epub(tmp)
+            self.assertIsNone(a.get("preview_chapter"))
+        finally:
+            os.remove(tmp)
+
+
+class TestParaModeAndTocColumns(unittest.TestCase):
+    """段距模式与目录双栏的 CSS 后处理。"""
+
+    def test_para_mode_spacing_block(self):
+        css = get_preset_css("classic")
+        self.assertNotIn("段距模式：分段式", css)
+        sp = get_preset_css("classic", para_mode="spacing")
+        self.assertIn("段距模式：分段式", sp)
+        # 分段式核心声明：无缩进 + 段距；引文内恢复缩进
+        self.assertIn("margin: 0 0 0.75em 0 !important", sp)
+        self.assertIn("blockquote p", sp)
+
+    def test_para_mode_invalid(self):
+        with self.assertRaises(ValueError):
+            get_preset_css("classic", para_mode="loose")
+
+    def test_toc_columns_block(self):
+        css = get_preset_css("classic")
+        self.assertNotIn("columns: 2", css)
+        two = get_preset_css("classic", toc_columns=True)
+        self.assertIn("columns: 2", two)
+        # 选择器只命中生成目录页的 ol/li 结构（seal 表格天然免疫）
+        self.assertIn("div.mb-toc ol", two)
+        self.assertIn("@media (min-width: 32em)", two)
+
+
 if __name__ == "__main__":
     unittest.main()

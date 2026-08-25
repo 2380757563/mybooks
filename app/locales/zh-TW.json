@@ -1741,7 +1741,7 @@
     "previewIdleSub": "預覽將隨所選風格即時變化",
     "verticalNote": "豎排右翻（RTL spine）",
     "chapterEnd": "本章完",
-    "previewNote": "模擬閱讀器視圖 · 非真實渲染",
+    "previewNote": "標題與正文取自書內真實內容 · 樣式為模擬渲染",
     "noBookChip": "未選擇書籍",
     "tocChip": "目錄",
     "dialogueTitle": "對話行點綴",
@@ -1759,6 +1759,12 @@
     "bgEnable": "啟用背景圖",
     "bgEnableDesc": "啟用時接管底色三態；夜間自動壓暗保證可讀",
     "bgDelete": "刪除",
-    "bgNone": "尚未上傳"
+    "bgNone": "尚未上傳",
+    "paraModeTitle": "段距模式",
+    "paraModeIndent": "首行縮排",
+    "paraModeSpacing": "分段留空",
+    "paraModeHint": "縮排制為中文出版慣例（段首空兩格、段間不留白）；分段式頂格 + 段間留空，適合網文閱讀。",
+    "tocColumns": "目錄雙欄",
+    "tocColumnsDesc": "寬螢幕時生成的目錄頁分雙欄排佈；朱印表格與書內原目錄頁不受影響。"
   }
 }
