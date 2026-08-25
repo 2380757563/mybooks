@@ -1761,11 +1761,13 @@
     "bgEnableDesc": "Overrides the tint option when active; auto-dimmed in dark mode for readability",
     "bgDelete": "Remove",
     "bgNone": "No image yet",
-    "paraModeTitle": "Paragraph Spacing",
-    "paraModeIndent": "First-line Indent",
-    "paraModeSpacing": "Paragraph Gap",
-    "paraModeHint": "Indent follows Chinese publishing convention (2em first line, no gaps); paragraph gap style suits web-novel reading.",
+    "paraModeTitle": "Paragraph Layout",
     "tocColumns": "Two-column TOC",
-    "tocColumnsDesc": "Generated TOC page flows in two columns on wide screens; seal table and preserved in-book TOC pages are unaffected."
+    "tocColumnsDesc": "Generated TOC page flows in two columns on wide screens; seal table and preserved in-book TOC pages are unaffected.",
+    "paraIndentLabel": "First-line indent",
+    "paraIndentDesc": "When off, all body paragraphs are flush-left; quotes keep preset styling",
+    "paraGapLabel": "Paragraph gap",
+    "paraGapOn": "Enabled: {n} em (quotes stay compact)",
+    "paraGapOff": "Follows preset (no extra gap, CJK indent style)"
   }
 }

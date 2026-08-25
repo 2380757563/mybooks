@@ -901,10 +901,23 @@ class AdminEpubBeautifyRun(BaseHandler):
         dialogue = bool(data.get("dialogue", False))
         # 双行排版开关（默认关）
         title_split = bool(data.get("title_split", False))
-        # 段距模式：indent 首行缩进（默认）/ spacing 分段式
-        para_mode = data.get("para_mode") or "indent"
-        if para_mode not in ("indent", "spacing"):
+        # 段落排版：首行缩进独立开关 + 段间距数值（em）；兼容旧 para_mode
+        para_mode = data.get("para_mode")
+        if para_mode not in (None, "", "indent", "spacing"):
             return {"err": "params.invalid", "msg": _("未知段距模式：%s") % para_mode}
+        if "para_indent" in data:
+            para_indent = bool(data.get("para_indent"))
+        elif para_mode == "spacing":
+            para_indent = False
+        else:
+            para_indent = None  # 默认跟随预设（缩进制）
+        para_gap = data.get("para_gap")
+        try:
+            para_gap = round(float(para_gap), 3) if para_gap not in (None, "", 0) else 0.0
+        except (TypeError, ValueError):
+            return {"err": "params.invalid", "msg": _("段间距数值不合法：%s") % data.get("para_gap")}
+        if not 0 <= para_gap <= 3:
+            para_gap = max(0.0, min(3.0, para_gap))
         # 目录双栏开关（默认关，仅作用于生成的目录页）
         toc_columns = bool(data.get("toc_columns", False))
 
@@ -925,8 +938,10 @@ class AdminEpubBeautifyRun(BaseHandler):
             kwargs["page_tint"] = bool(page_tint)
         kwargs["dialogue"] = dialogue
         kwargs["title_split"] = title_split
-        if para_mode != "indent":
-            kwargs["para_mode"] = para_mode
+        if para_indent is not None:
+            kwargs["para_indent"] = para_indent
+        if para_gap:
+            kwargs["para_gap"] = para_gap
         if toc_columns:
             kwargs["toc_columns"] = True
         tool.run(book_ids=book_ids, preset=preset, use_system_fonts=use_system_fonts,

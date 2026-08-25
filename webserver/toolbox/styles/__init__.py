@@ -163,34 +163,67 @@ def _apply_page_tint(css: str, page_tint, params: dict) -> str:
     return css.rstrip() + block
 
 
-# ── 段距模式（缩进制 / 分段式）──────────────────────────────────────────────
-PARA_MODES = ("indent", "spacing")
+# ── 段落排版自定义（首行缩进开关 + 段间距数值）────────────────────────────────
+# 默认跟随预设：缩进制（text-indent 2em、段间 0）；两者均默认时不追加任何规则。
 
-_SPACING_CSS_BLOCK = (
-    '\n\n/* ── 段距模式：分段式（无缩进 + 段距，覆盖预设默认的中文缩进制）── */\n'
-    'p {\n'
-    '    text-indent: 0 !important;\n'
-    '    duokan-text-indent: 0;\n'
-    '    margin: 0 0 0.75em 0 !important;\n'
-    '}\n'
-    'p[data-mb-first] {\n'
-    '    margin-top: 0 !important;\n'
-    '}\n'
-    'blockquote p {\n'
-    '    text-indent: 2em !important;\n'
-    '    duokan-text-indent: 0;\n'
-    '    margin: 0 !important;\n'
-    '}\n'
-)
+_PARA_BLOCK_HEAD = '\n\n/* ── 段落排版（用户自定义：缩进/段距）── */\n'
 
 
-def _apply_para_mode(css: str, para_mode) -> str:
-    """段距模式后处理：spacing 追加分段式覆盖块（层叠序在后必胜）。"""
-    if not para_mode or para_mode == "indent":
+def _clamp_gap(value) -> float:
+    """段间距归一为 [0, 3] 的浮点 em 值；None/非法输入回落 0。"""
+    if value is None:
+        return 0.0
+    try:
+        gap = round(float(value), 3)
+    except (TypeError, ValueError):
+        raise ValueError("invalid para_gap: %r" % (value,))
+    if gap < 0:
+        gap = 0.0
+    elif gap > 3:
+        gap = 3.0
+    return gap
+
+
+def _apply_para_style(css: str, para_indent: bool = True, para_gap=None) -> str:
+    """段落排版后处理（层叠序在后必胜）：
+
+    - para_indent=False → 全部段落顶格（引文块由原书更高特异性的
+      ``blockquote p`` 规则自动保留缩进）；
+    - para_gap>0 → 段落下边距取该值（em），并恢复引文内紧凑无段距。
+    均为默认时原样返回，保证存量输出零变化。
+    """
+    gap = _clamp_gap(para_gap)
+    indent_off = (para_indent is False)
+    if not indent_off and gap == 0:
         return css
-    if para_mode != "spacing":
-        raise ValueError("unknown para_mode: %s" % para_mode)
-    return css.rstrip() + _SPACING_CSS_BLOCK
+
+    p_rules = []
+    if indent_off:
+        p_rules += [
+            '    text-indent: 0 !important;',
+            '    duokan-text-indent: 0;',
+        ]
+    if gap > 0:
+        p_rules.append('    margin: 0 0 %sem 0 !important;' % ('%g' % gap))
+    block = _PARA_BLOCK_HEAD + 'p {\n' + '\n'.join(p_rules) + '\n}'
+
+    # 缩进仍开启且调整了段距时，章首段顶格需重申（否则被上面的通用规则覆盖）
+    if not indent_off:
+        block += (
+            '\np[data-mb-first] {\n'
+            '    text-indent: 0 !important;\n'
+            '    duokan-text-indent: 0;\n'
+            '}'
+        )
+    if gap > 0:
+        block += (
+            '\nblockquote p {\n'
+            '    text-indent: 2em !important;\n'
+            '    duokan-text-indent: 2em;\n'
+            '    margin: 0 !important;\n'
+            '}'
+        )
+    return css.rstrip() + block
 
 
 # ── 目录双栏（宽屏渐进增强）──────────────────────────────────────────────────
@@ -223,7 +256,8 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
                    palette_overrides: dict = None,
                    page_tint=None,
                    bg_image: dict = None,
-                   para_mode: str = None,
+                   para_indent: bool = True,
+                   para_gap=None,
                    toc_columns: bool = False) -> str:
     """加载指定预设模板并插值；preset_id / toc_style / 色板非法时抛 ValueError。
 
@@ -232,8 +266,9 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
     page_tint:          全书主题底色三态，见 _apply_page_tint。
     bg_image:           全书背景图片 {'url': 'mb-bg.jpg', 'night_dim': float}，
                         见 _apply_bg_image；激活时日间取代纸色铺满。
-    para_mode:          段距模式 indent 缩进制（默认）/ spacing 分段式，
-                        见 _apply_para_mode。
+    para_indent:        首行缩进开关（False=全部段落顶格），见 _apply_para_style。
+    para_gap:           段间距数值（em，0=跟随预设，范围 [0,3]），
+                        见 _apply_para_style。
     toc_columns:        True 时目录页双栏排布，见 _apply_toc_columns。
     """
     presets = list_presets()
@@ -241,8 +276,6 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
         raise ValueError("unknown preset: %s" % preset_id)
     if toc_style not in TOC_STYLES:
         raise ValueError("unknown toc_style: %s" % toc_style)
-    if para_mode is not None and para_mode not in PARA_MODES:
-        raise ValueError("unknown para_mode: %s" % para_mode)
     params = presets[preset_id]
     if palette_overrides:
         params = _apply_palette_overrides(params, palette_overrides)
@@ -272,7 +305,7 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
             template = template.rstrip() + "\n\n/* ── responsive injected ── */\n" + responsive_css
 
     css = _interpolate(template, params, use_system_fonts, font_overrides)
-    css = _apply_para_mode(css, para_mode)
+    css = _apply_para_style(css, para_indent, para_gap)
     css = _apply_toc_columns(css, toc_columns)
     css = _apply_page_tint(css, page_tint, params)
     if bg_image:

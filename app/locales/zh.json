@@ -1761,11 +1761,13 @@
     "bgEnableDesc": "激活时接管底色三态；夜间自动压暗保证可读",
     "bgDelete": "删除",
     "bgNone": "尚未上传",
-    "paraModeTitle": "段距模式",
-    "paraModeIndent": "首行缩进",
-    "paraModeSpacing": "分段留空",
-    "paraModeHint": "缩进制为中文出版惯例（段首空两格、段间不留白）；分段式顶格 + 段间留空，适合网文阅读。",
+    "paraModeTitle": "段距与缩进",
     "tocColumns": "目录双栏",
-    "tocColumnsDesc": "宽屏时生成的目录页分双栏排布；朱印表格与书内原目录页不受影响。"
+    "tocColumnsDesc": "宽屏时生成的目录页分双栏排布；朱印表格与书内原目录页不受影响。",
+    "paraIndentLabel": "首行缩进",
+    "paraIndentDesc": "关闭后正文段落全部顶格；引文块仍按预设样式",
+    "paraGapLabel": "段间距",
+    "paraGapOn": "已启用：{n} em（引文内保持紧凑）",
+    "paraGapOff": "跟随预设（默认无段距，中文缩进制）"
   }
 }

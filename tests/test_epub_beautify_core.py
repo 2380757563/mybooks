@@ -1300,21 +1300,46 @@ class TestPreviewChapter(unittest.TestCase):
             os.remove(tmp)
 
 
-class TestParaModeAndTocColumns(unittest.TestCase):
-    """段距模式与目录双栏的 CSS 后处理。"""
+class TestParaStyleAndTocColumns(unittest.TestCase):
+    """段落排版（缩进开关 + 段距数值）与目录双栏的 CSS 后处理。"""
 
-    def test_para_mode_spacing_block(self):
+    def test_para_defaults_noop(self):
+        """默认（缩进开 + 无段距）不追加任何规则，与存量输出零差异。"""
         css = get_preset_css("classic")
-        self.assertNotIn("段距模式：分段式", css)
-        sp = get_preset_css("classic", para_mode="spacing")
-        self.assertIn("段距模式：分段式", sp)
-        # 分段式核心声明：无缩进 + 段距；引文内恢复缩进
-        self.assertIn("margin: 0 0 0.75em 0 !important", sp)
-        self.assertIn("blockquote p", sp)
+        self.assertNotIn("段落排版", css)
 
-    def test_para_mode_invalid(self):
+    def test_para_indent_off(self):
+        css = get_preset_css("classic", para_indent=False)
+        self.assertIn("段落排版", css)
+        self.assertIn("text-indent: 0 !important", css)
+
+    def test_para_gap_only(self):
+        css = get_preset_css("classic", para_gap=0.6)
+        self.assertIn("段落排版", css)
+        self.assertIn("margin: 0 0 0.6em 0 !important", css)
+        block = css[css.index("段落排版"):]
+        # 缩进仍开启：通用 p 规则只改段距、不写缩进声明；章首段顶格重申 + 引文恢复紧凑
+        gen_rule = block.split("p[data-mb-first]")[0]
+        self.assertIn("margin: 0 0 0.6em", gen_rule)
+        self.assertNotIn("text-indent", gen_rule)
+        self.assertIn("p[data-mb-first]", block)
+        self.assertIn("blockquote p", block)
+
+    def test_para_indent_and_gap_combined(self):
+        css = get_preset_css("classic", para_indent=False, para_gap=1.2)
+        self.assertIn("margin: 0 0 1.2em 0 !important", css)
+        # 全部顶格时不再需要 data-mb-first 重申
+        head, sep, tail = css.partition("段落排版")
+        self.assertTrue(sep)
+        self.assertNotIn("data-mb-first", tail)
+
+    def test_para_gap_clamp(self):
+        big = get_preset_css("classic", para_gap=99)
+        self.assertIn("margin: 0 0 3em 0 !important", big)
+
+    def test_para_gap_invalid_raises(self):
         with self.assertRaises(ValueError):
-            get_preset_css("classic", para_mode="loose")
+            get_preset_css("classic", para_gap="wide")
 
     def test_toc_columns_block(self):
         css = get_preset_css("classic")

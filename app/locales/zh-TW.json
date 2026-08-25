@@ -1760,11 +1760,13 @@
     "bgEnableDesc": "啟用時接管底色三態；夜間自動壓暗保證可讀",
     "bgDelete": "刪除",
     "bgNone": "尚未上傳",
-    "paraModeTitle": "段距模式",
-    "paraModeIndent": "首行縮排",
-    "paraModeSpacing": "分段留空",
-    "paraModeHint": "縮排制為中文出版慣例（段首空兩格、段間不留白）；分段式頂格 + 段間留空，適合網文閱讀。",
+    "paraModeTitle": "段距與縮排",
     "tocColumns": "目錄雙欄",
-    "tocColumnsDesc": "寬螢幕時生成的目錄頁分雙欄排佈；朱印表格與書內原目錄頁不受影響。"
+    "tocColumnsDesc": "寬螢幕時生成的目錄頁分雙欄排佈；朱印表格與書內原目錄頁不受影響。",
+    "paraIndentLabel": "首行縮排",
+    "paraIndentDesc": "關閉後正文段落全部頂格；引文塊仍按預設樣式",
+    "paraGapLabel": "段間距",
+    "paraGapOn": "已啟用：{n} em（引文內保持緊湊）",
+    "paraGapOff": "跟隨預設（預設無段距，中文縮排制）"
   }
 }

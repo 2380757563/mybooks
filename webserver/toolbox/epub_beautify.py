@@ -188,8 +188,10 @@ class EpubBeautifyTool(BaseTool):
             dialogue: Optional[bool] = None,
             title_split: Optional[bool] = None,
             bg_image: Optional[bool] = None,
+            toc_columns: Optional[bool] = None,
             para_mode: Optional[str] = None,
-            toc_columns: Optional[bool] = None) -> None:
+            para_indent: Optional[bool] = None,
+            para_gap=None) -> None:
         """后台执行美化并生成新书（支持批量队列）。
 
         :param book_ids:         批量书籍 ID 列表（去重后按序执行，不限本数）。
@@ -211,9 +213,13 @@ class EpubBeautifyTool(BaseTool):
         :param title_split:      双行排版开关（True=纯文本章题拆为章节号小字 + 标题大字）。默认关闭。
         :param bg_image:         背景图片开关（True=把已上传的背景图写入包内并铺满；
                                  激活时接管 page_tint 的底色语义，夜间自动压暗保可读）。默认关闭。
-        :param para_mode:        段距模式：indent 首行缩进（默认）/ spacing 分段式
-                                 （无缩进 + 段距，适配网文阅读习惯）。
+        :param para_mode:        【兼容旧参数】indent/spacing；spacing 等价于
+                                 para_indent=False。新代码请用下面两个。
         :param toc_columns:      目录双栏开关（True=生成的目录页宽屏双栏排布）。默认关闭。
+        :param para_indent:      首行缩进开关（True=缩进制默认 / False=全部顶格），
+                                 独立于段距。
+        :param para_gap:         段间距数值（em，0=跟随预设，范围 [0,3]，非法值抛错），
+                                 可与任意缩进组合。
 
         批量语义：单本失败不断批，逐本汇总结果；进度按书数折算
         （progress_data 携带 book_index/book_total/current_title）。
@@ -262,13 +268,20 @@ class EpubBeautifyTool(BaseTool):
 
             # 参数校验一次（与具体书籍无关）：预设 / 目录形式 / 配色 / 字体开关
             try:
+                if para_mode not in (None, "", "indent", "spacing"):
+                    raise ValueError("unknown para_mode: %s" % para_mode)
+                # 段落排版：新参数优先；旧 para_mode="spacing" 映射为关缩进
+                eff_indent = para_indent
+                if eff_indent is None and para_mode == "spacing":
+                    eff_indent = False
                 overrides = self._normalize_font_overrides(use_system_fonts, font_overrides)
                 preset_css = get_preset_css(
                     preset, use_system_fonts, toc_style, overrides,
                     palette_overrides=palette_overrides,
                     page_tint=(None if bg_image else page_tint),
                     bg_image=({'url': 'mb-bg.jpg'} if bg_image else None),
-                    para_mode=para_mode or None,
+                    para_indent=(True if eff_indent is None else eff_indent),
+                    para_gap=para_gap,
                     toc_columns=bool(toc_columns),
                 )
             except ValueError as err:

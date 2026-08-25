@@ -214,14 +214,32 @@
                 </div>
               </div>
 
-              <!-- 段距模式：缩进制 / 分段式 -->
+              <!-- 段落排版：首行缩进独立开关 + 段间距可调 -->
               <div class="eb-grp">
-                <div class="text-subtitle-2 font-weight-medium mb-2">{{ $t('epubBeautify.paraModeTitle') }}</div>
-                <v-btn-toggle v-model="paraMode" mandatory dense>
-                  <v-btn small value="indent">{{ $t('epubBeautify.paraModeIndent') }}</v-btn>
-                  <v-btn small value="spacing">{{ $t('epubBeautify.paraModeSpacing') }}</v-btn>
-                </v-btn-toggle>
-                <div class="caption grey--text mt-1">{{ $t('epubBeautify.paraModeHint') }}</div>
+                <div class="text-subtitle-2 font-weight-medium mb-1">{{ $t('epubBeautify.paraModeTitle') }}</div>
+                <div class="eb-crow">
+                  <v-switch v-model="paraIndent" dense hide-details class="mt-0 pt-0" />
+                  <div class="min-width-0">
+                    <div class="body-2">{{ $t('epubBeautify.paraIndentLabel') }}</div>
+                    <div class="caption grey--text">{{ $t('epubBeautify.paraIndentDesc') }}</div>
+                  </div>
+                </div>
+                <div class="d-flex align-center mt-1">
+                  <span class="body-2 mr-4" style="min-width:56px">{{ $t('epubBeautify.paraGapLabel') }}</span>
+                  <v-slider
+                    v-model="paraGap"
+                    :min="0"
+                    :max="1.5"
+                    :step="0.05"
+                    thumb-label="always"
+                    dense
+                    hide-details
+                    class="mt-0 pt-0"
+                    style="max-width:230px"
+                  />
+                  <span class="caption grey--text ml-3">em</span>
+                </div>
+                <div class="caption grey--text mt-n2">{{ paraGapText }}</div>
               </div>
 
               <!-- 内容清理：联动体检推荐 -->
@@ -415,12 +433,12 @@
                   <div v-if="currentPreset.id === 'classical'" class="eb-sep-dbl" :style="{ borderTopColor: currentPreset.accent, borderBottomColor: hexA(currentPreset.accent, 0.45) }"></div>
                   <div v-else class="eb-sep" :style="{ background: gradLine(currentPreset.accent) }"></div>
 
-                  <!-- 正文（书内真实段落，未命中回落示例；段距模式联动） -->
-                  <p :class="['eb-p', paraMode === 'spacing' ? 'eb-spacing' : 'eb-indent']" :style="bodyTextStyle">{{ chapterParas[0] }}</p>
-                  <p :class="['eb-p', paraMode === 'spacing' ? 'eb-spacing' : 'eb-indent']" :style="bodyTextStyle">{{ chapterParas[1] }}</p>
-                  <p v-if="dialogue" class="eb-p eb-dialog-demo" :class="{ 'eb-spacing': paraMode === 'spacing' }" :style="dialogueStyle">{{ dialogDemoText }}</p>
+                  <!-- 正文（书内真实段落，未命中回落示例；缩进/段距实时联动） -->
+                  <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[0] }}</p>
+                  <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[1] }}</p>
+                  <p v-if="dialogue" class="eb-p eb-dialog-demo" :class="{ 'eb-spacing': !paraIndent }" :style="dialogueStyle">{{ dialogDemoText }}</p>
                   <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」</blockquote>
-                  <p :class="['eb-p', paraMode === 'spacing' ? 'eb-spacing' : 'eb-indent']" :style="bodyTextStyle">{{ chapterParas[2] }}</p>
+                  <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[2] }}</p>
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
@@ -565,8 +583,9 @@ export default {
     dialogue: false,
     // 双行排版（默认关）
     titleSplit: false,
-    // 段距模式：indent 首行缩进（默认）/ spacing 分段式
-    paraMode: 'indent',
+    // 段落排版：首行缩进独立开关 + 段间距数值（em，0=跟随预设）
+    paraIndent: true,
+    paraGap: 0,
     // 目录双栏（默认关，仅生成的目录页）
     tocColumns: false,
     // 批量队列（勾选入队的书籍 ID）
@@ -652,6 +671,17 @@ export default {
       const hit = real.find((t) => t && '「『“＂'.indexOf(t[0]) >= 0);
       return hit || '「你终于来了。」他压低了声音。';
     },
+    paraGapText() {
+      return this.paraGap > 0
+        ? this.$t('epubBeautify.paraGapOn', { n: this.paraGap.toFixed(2) })
+        : this.$t('epubBeautify.paraGapOff');
+    },
+    // 正文段样式：字体/行高 + 自定义段距
+    paraPStyle() {
+      const s = Object.assign({}, this.bodyTextStyle);
+      if (this.paraGap > 0) s.marginBottom = this.paraGap + 'em';
+      return s;
+    },
     tocSampleRows() {
       const t = (this.analysis && this.analysis.toc_preview_titles) || [];
       if (!t.length) return this.tocMockRows;
@@ -728,7 +758,8 @@ export default {
         : this.pageTint === 'on' ? this.$t('epubBeautify.pageTintOn') : this.$t('epubBeautify.pageTintOff');
       let s = fm + '｜' + this.$t('epubBeautify.sumClean') + ' ' + this.cleanCount + '/3｜'
         + this.$t('epubBeautify.sumDepth') + ' ' + dl + '｜' + this.$t('epubBeautify.sumTint') + ' ' + dt;
-      if (this.paraMode === 'spacing') s += '｜' + this.$t('epubBeautify.paraModeSpacing');
+      if (!this.paraIndent) s += '｜顶格';
+      if (this.paraGap > 0) s += '｜段距 ' + this.paraGap.toFixed(2) + 'em';
       if (this.tocColumns) s += '｜' + this.$t('epubBeautify.tocColumns');
       if (this.paletteOn) s += '｜' + this.$t('epubBeautify.paletteTitle');
       return s;
@@ -1121,7 +1152,8 @@ export default {
             },
             dialogue: this.dialogue,
             title_split: this.titleSplit,
-            para_mode: this.paraMode,
+            para_indent: this.paraIndent,
+            para_gap: this.paraGap > 0 ? this.paraGap : null,
             toc_columns: this.tocColumns,
             bg_image: this.bgOn && this.bgHas,
             page_tint: this.pageTint === 'auto' ? null : (this.pageTint === 'on'),
