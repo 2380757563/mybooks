@@ -412,6 +412,10 @@
                                     <v-icon>mdi-card-bulleted-outline</v-icon>
                                     {{ $t('book.generateShareCard') }}
                                 </v-list-item>
+                                <v-list-item @click="exchangeBookType">
+                                    <v-icon>mdi-swap-horizontal-bold</v-icon>
+                                    {{ book.book_type==this.BOOK_TYPE.PHYSICAL ? $t('book.exchangeToEbook') : $t('book.exchangeToPhysical') }}
+                                </v-list-item>
                                 <v-list-item @click="dialog_delete_book = true">
                                     <v-icon>delete_forever</v-icon>
                                     {{ $t('book.deleteBook') }}
@@ -2460,6 +2464,38 @@ export default {
                     location.reload();
                 } else {
                     this.$alert("error", rsp.msg);
+                }
+            });
+        },
+        exchangeBookType() {
+            // 图书类型互转：电子书 <-> 实体书
+            if (this.book.book_type != this.BOOK_TYPE.PHYSICAL) {
+                // 电子书转实体书：需先检查是否已有格式文件、是否有ISBN
+                const has_formats = this.book.files && this.book.files.length > 0;
+                if (has_formats) {
+                    this.$alert("error", this.$t('book.exchangeTypeHasFormats'));
+                    return;
+                }
+                if (!this.book.isbn) {
+                    this.$alert("error", this.$t('book.exchangeTypeNoIsbn'));
+                    return;
+                }
+            }
+
+            this.$backend("/book/exchange_type", {
+                method: "POST",
+                body: JSON.stringify({"idlist": [this.book.id]}),
+            }).then((rsp) => {
+                if (rsp.err !== "ok") {
+                    this.$alert("error", rsp.msg);
+                    return;
+                }
+                const result = rsp.results && rsp.results[0];
+                if (result && result.status === "success") {
+                    this.$alert("success", result.msg);
+                    location.reload();
+                } else {
+                    this.$alert("error", (result && result.msg) || rsp.msg);
                 }
             });
         },

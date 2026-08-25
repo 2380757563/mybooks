@@ -584,6 +584,9 @@ class BaseHandler(web.RequestHandler):
                 count += 1
         return count
 
+    def reset_physical_books_count_cache(self):
+        BaseHandler._physical_books_count_cache_time = 0
+
     def get_physical_books_count(self):
         # 统计实体书数量, 通过自定义栏位CALIBRE_COLUMN_BOOK_TYPE来统计，缓存5分钟
         now = time.time()

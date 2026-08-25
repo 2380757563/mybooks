@@ -3657,12 +3657,16 @@ class BookExchangeType(BaseHandler):
                     results.append({"book_id": book_id, "status": "success", "msg": _("已转为实体书")})
                     success_count += 1
 
+                    self.calibre_db_cache.set_field(CALIBRE_COLUMN_BOOK_TYPE, {book_id: BOOK_TYPE_PHYSICAL})
+                    self.calibre_db_cache.set_field(CALIBRE_COLUMN_PHY_COUNT, {book_id: 1})
+
                 # 如果是实体书，转为电子书
                 elif current_type == BOOK_TYPE_PHYSICAL:
                     item.book_type = BOOK_TYPE_EBOOK
                     item.book_count = 1
                     results.append({"book_id": book_id, "status": "success", "msg": _("已转为电子书")})
                     success_count += 1
+                    self.calibre_db_cache.set_field(CALIBRE_COLUMN_BOOK_TYPE, {book_id: BOOK_TYPE_EBOOK})
 
                 else:
                     results.append({"book_id": book_id, "status": "skip", "msg": _("未知类型")})
@@ -3674,6 +3678,8 @@ class BookExchangeType(BaseHandler):
                 skip_count += 1
 
         # 提交所有更改
+        if success_count > 0:
+            self.reset_physical_books_count_cache()
         try:
             self.sqlite_session.commit()
         except Exception as e:
