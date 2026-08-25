@@ -21,8 +21,9 @@
                                 </v-col>
                                 <v-col class='py-0' cols=12 sm=6>
                                     <!-- AUTHORS -->
-                                    <v-combobox v-model="book.authors" :items="book.authors" :label="$t('book.edit.fields.authors')"
-                                                :search-input.sync="author_input" hide-selected multiple small-chips>
+                                    <v-combobox v-model="book.authors" :items="authorNames" :label="$t('book.edit.fields.authors')"
+                                                :search-input.sync="author_input" :loading="authors_loading"
+                                                hide-selected multiple small-chips>
                                         <template v-slot:no-data>
                                             <v-list-item>
                                                 <span v-if="! author_input">{{ $t('book.edit.fields.authors.noData') }}</span>
@@ -172,6 +173,9 @@ export default {
         publishers_loading: false,
         tags_list: [],
         tags_loading: false,
+        authors_list: [],
+        authors_loading: false,
+        author_search_timer: null,
         debug: false,
         mail_to: "",
         dialog_kindle: false,
@@ -194,6 +198,17 @@ export default {
         tagNames() {
             return this.tags_list.map(t => t.name);
         },
+        authorNames() {
+            return this.authors_list.map(a => a.name);
+        },
+    },
+    watch: {
+        author_input(val) {
+            if (this.author_search_timer) clearTimeout(this.author_search_timer);
+            this.author_search_timer = setTimeout(() => {
+                this.searchAuthors(val || '');
+            }, 300);
+        },
     },
     async mounted() {
         this.publishers_loading = true;
@@ -202,6 +217,7 @@ export default {
             const [pubRsp, tagRsp] = await Promise.all([
                 this.$backend('/publisher'),
                 this.$backend('/tag'),
+                this.searchAuthors(''),
             ]);
             if (pubRsp && pubRsp.items) {
                 this.publishers = pubRsp.items.slice(0, 100);
@@ -273,6 +289,19 @@ export default {
         },
         tagFilter(item, queryText) {
             return item.toLowerCase().includes(queryText.toLowerCase());
+        },
+        async searchAuthors(q) {
+            this.authors_loading = true;
+            try {
+                const rsp = await this.$backend('/authors/search?q=' + encodeURIComponent(q) + '&limit=100');
+                if (rsp && rsp.err === 'ok') {
+                    this.authors_list = rsp.authors || [];
+                }
+            } catch (e) {
+                // ignore, 保留上一次的查询结果
+            } finally {
+                this.authors_loading = false;
+            }
         },
         languageName(code) {
             const found = this.languageOptions.find(opt => opt.code === code);

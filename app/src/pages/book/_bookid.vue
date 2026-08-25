@@ -1019,25 +1019,17 @@
     </v-dialog>
 
     <!-- 删除书籍确认对话框 -->
-    <v-dialog v-model="dialog_delete_book" persistent max-width="500">
+    <v-dialog v-model="dialog_delete_book" persistent transition="dialog-bottom-transition" width="500">
         <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2" color="error">delete_forever</v-icon>
-                {{ $t('book.deleteBook') }}
-            </v-card-title>
+            <v-toolbar flat dense dark color="error"> {{ $t('book.deleteBook') }} </v-toolbar>
+            <v-card-title></v-card-title>
             <v-card-text>
-                <v-alert type="warning" text dense class="mt-2">
-                    {{ $t('book.deleteBookConfirm') }}
-                </v-alert>
+                <p>{{ $t('book.deleteBookConfirm') }}</p>
             </v-card-text>
             <v-card-actions>
+                <v-btn @click="dialog_delete_book = false">{{ $t('common.cancel') }}</v-btn>
                 <v-spacer></v-spacer>
-                <v-btn text @click="dialog_delete_book = false">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn color="error" @click="confirmDeleteBook">
-                    {{ $t('book.confirmDeleteBook') }}
-                </v-btn>
+                <v-btn color="error" @click="confirmDeleteBook">{{ $t('book.confirmDeleteBook') }}</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>

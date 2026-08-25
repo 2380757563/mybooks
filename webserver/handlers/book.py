@@ -503,6 +503,29 @@ class TagSearch(BaseHandler):
             return {"err": "internal", "msg": _("获取标签列表失败")}
 
 
+class AuthorSearch(BaseHandler):
+    @js
+    def get(self):
+        """按输入内容动态查询已有作者，供编辑书籍时的作者输入框做自动完成。
+
+        不传q（或q为空）时，默认按藏书量降序返回前100位作者。
+        """
+        q = (self.get_argument("q", "") or "").strip()
+        limit = min(100, int(self.get_argument("limit", 100)))
+        sql = """SELECT authors.name, count(distinct book) as count
+        FROM authors left join books_authors_link on authors.id = books_authors_link.author
+        WHERE authors.name LIKE ? ESCAPE '\\'
+        GROUP BY authors.id ORDER BY count DESC LIMIT ?"""
+        try:
+            with self.db_lock:
+                rows = self.calibre_db_cache.backend.conn.get(sql, (q + "%", limit))
+            authors = [{"name": r[0], "count": r[1]} for r in rows]
+            return {"err": "ok", "authors": authors}
+        except Exception as e:
+            logging.error(f"Error searching authors: {e}")
+            return {"err": "internal", "msg": _("获取作者列表失败")}
+
+
 class BookConverter(BaseHandler):
     @js
     @auth
@@ -3716,6 +3739,7 @@ def routes():
         (r"/api/book/([0-9]+)/location", BookLocation),
         (r"/api/categories", BookCategories),
         (r"/api/tags/search", TagSearch),
+        (r"/api/authors/search", AuthorSearch),
         (r"/api/book/([0-9]+)/suggestion", BookSuggestion),
         (r"/api/book/([0-9]+)/separate", BookSperate),
         (r"/api/book/([0-9]+)/savemeta", BookSaveMeta),
