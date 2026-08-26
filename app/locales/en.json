@@ -1768,6 +1768,20 @@
     "paraIndentDesc": "When off, all body paragraphs are flush-left; quotes keep preset styling",
     "paraGapLabel": "Paragraph gap",
     "paraGapOn": "Enabled: {n} em (quotes stay compact)",
-    "paraGapOff": "Follows preset (no extra gap, CJK indent style)"
+    "paraGapOff": "Follows preset (no extra gap, CJK indent style)",
+    "notesTitle": "Popup Notes / Markers",
+    "notesEnable": "Beautify note markers & note cards",
+    "notesDesc": "{n} popup notes detected in book; style-only, structure-safe. Works in DuoKan / Apple Books / KOReader; toggle off anytime to revert",
+    "noteMarkLabel": "Marker style",
+    "markOrig": "Original icon (from book)",
+    "markSym": "Symbol ※",
+    "markNum": "Number [n]",
+    "markSvgDot": "Shape · Dot ring",
+    "markSvgFold": "Shape · Page fold",
+    "markSvgInkdrop": "Shape · Ink drop",
+    "markSvgSpark": "Shape · Spark star",
+    "markSvgSealdot": "Shape · Seal square",
+    "anaNotes": "{count} popup notes",
+    "notesPreviewLine": "Sample note: popup/end-of-chapter notes will render with this card style."
   }
 }

@@ -920,6 +920,12 @@ class AdminEpubBeautifyRun(BaseHandler):
             para_gap = max(0.0, min(3.0, para_gap))
         # 目录双栏开关（默认关，仅作用于生成的目录页）
         toc_columns = bool(data.get("toc_columns", False))
+        # 弹注/标注美化（默认关）+ 标注样式（orig/sym/num/svg:<模板>）
+        notes_on = bool(data.get("notes", False))
+        note_mark = data.get("note_mark") or "orig"
+        _svg_ok = note_mark.startswith("svg:") and len(note_mark) > 4
+        if note_mark != "orig" and note_mark not in ("sym", "num") and not _svg_ok:
+            return {"err": "params.invalid", "msg": _("未知标注样式：%s") % note_mark}
 
         tool = EpubBeautifyTool()
         if tool.is_running():
@@ -944,6 +950,10 @@ class AdminEpubBeautifyRun(BaseHandler):
             kwargs["para_gap"] = para_gap
         if toc_columns:
             kwargs["toc_columns"] = True
+        if notes_on:
+            kwargs["notes"] = True
+            if note_mark != "orig":
+                kwargs["note_mark"] = note_mark
         tool.run(book_ids=book_ids, preset=preset, use_system_fonts=use_system_fonts,
                  toc_style=toc_style, suffix=suffix, user_id=self.user_id(), **kwargs)
         return {"err": "ok", "msg": _("美化任务已启动，右上角可以查看进度")}

@@ -710,6 +710,10 @@ def mark_chapters_in_html(html_str: str, split_title: bool = False) -> tuple:
 
     def _handle_block(tag, attrs, inner, is_div=False):
         nonlocal stats, heading_seen, first_done
+        # 弹注条目豁免（mb-note-item 由 mark_notes_in_html 打标）：注释内容
+        # 不是章节标题，且 ◎《…》/短条目可能撞上弱正则
+        if 'mb-note-item' in (attrs or ''):
+            return None
         # 同名标签嵌套（多级 li 大纲 / 嵌套引用）：正则的惰性匹配会把内层
         # 闭合标签吞进 outer match，重建后结构破坏——直接跳过不修改
         if re.search(r'<%s\b' % tag, inner or '', re.IGNORECASE):
@@ -807,6 +811,158 @@ def mark_dialogue_in_html(html_str: str) -> tuple:
         return '<%s%s>%s</%s>' % (tag, _add_class(attrs or '', 'mb-dialog'), inner, tag)
 
     return _BLOCK_RE.sub(_replace_p, html_str), marked
+
+
+# ── 弹注/标注（mb-notemark / mb-notes）───────────────────────────────────────
+
+# 文内标注符：<a class="duokan-footnote" ...>…</a>（A 型带 epub:type/id，B 型仅 class+href）
+_NOTE_REF_RE = re.compile(
+    r'<a\b([^>]*?class\s*=\s*["\'][^"\']*duokan-footnote[^"\']*["\'][^>]*?)>(.*?)</a>',
+    re.I | re.S,
+)
+# 注释容器：aside[epub:type~=footnote]（A 型）或裸 ol.duokan-footnote-content（B 型）
+_FOOTNOTE_ASIDE_RE = re.compile(r'<aside\b[^>]*epub:type\s*=\s*["\'][^"\']*footnote', re.I)
+_NOTES_OL_BLOCK_RE = re.compile(
+    r'<ol\b[^>]*duokan-footnote-content[^>]*>.*?</ol>', re.I | re.S)
+_NOTE_ITEM_CNT_RE = re.compile(r'class\s*=\s*["\'][^"\']*duokan-footnote-item', re.I)
+
+# 自绘 SVG 标注模板（viewBox 24×24，fill=currentColor 随预设主题染色；
+# 全部为本插件原创 path，可随插件分发）
+NOTE_MARK_SVGS = {
+    'dot': (
+        '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/>'
+        '<circle cx="12" cy="12" r="2.6"/>'
+    ),
+    'fold': (
+        '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2"/>'
+        '<path d="M15 3v4h4" fill="none" stroke="currentColor" stroke-width="2"/>'
+        '<circle cx="12" cy="14.5" r="2"/>'
+    ),
+    'inkdrop': (
+        '<path d="M12 3.5c3.2 4.4 6 7.6 6 11a6 6 0 1 1-12 0c0-3.4 2.8-6.6 6-11z"/>'
+    ),
+    'spark': (
+        '<path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"/>'
+    ),
+    'sealdot': (
+        '<rect x="5" y="5" width="14" height="14" rx="2" fill="none" '
+        'stroke="currentColor" stroke-width="2"/>'
+        '<rect x="10.4" y="10.4" width="3.2" height="3.2" rx="0.6"/>'
+    ),
+}
+
+NOTE_MARK_MODES = ('orig', 'sym', 'num')
+
+
+def _validate_note_mark(note_mark: str) -> None:
+    """校验标注样式 id：orig/sym/num 或 svg:<模板id>；非法抛 ValueError。"""
+    if note_mark in NOTE_MARK_MODES:
+        return
+    if isinstance(note_mark, str) and note_mark.startswith('svg:'):
+        if note_mark[4:] in NOTE_MARK_SVGS:
+            return
+        raise ValueError('unknown svg note mark: %s' % note_mark)
+    raise ValueError('unknown note_mark: %r' % (note_mark,))
+
+
+def _make_mark_inner(note_mark: str, seq: int) -> str:
+    """按样式生成标注符内部元素（替换原 <img>；外层 <a> 与属性不动）。"""
+    if note_mark == 'sym':
+        return '<sup class="mb-marktxt">※</sup>'
+    if note_mark == 'num':
+        return '<sup class="mb-marktxt">[%d]</sup>' % seq
+    if note_mark.startswith('svg:'):
+        return ('<svg class="mb-marksvg" viewBox="0 0 24 24" aria-hidden="true">%s</svg>'
+                % NOTE_MARK_SVGS[note_mark[4:]])
+    raise ValueError('note_mark %r does not replace inner element' % (note_mark,))
+
+
+def _add_epub_type_noteref(attrs: str) -> str:
+    """为缺语义的标注 <a> 补 epub:type="noteref"（已有则原样）。"""
+    if re.search(r'epub:type\s*=', attrs or '', re.I):
+        return attrs
+    return attrs.rstrip() + ' epub:type="noteref"'
+
+
+def mark_notes_in_html(html_str: str, normalize: bool = True,
+                       note_mark: str = 'orig') -> tuple:
+    """美化书内多看系弹注：标注符与注释容器打标，可选语义归一化/换标记元素。
+
+    - 所有 `a.duokan-footnote` 追加 ``mb-notemark`` 类与 ``data-mb-mark``；
+      note_mark != 'orig' 时把内部 `<img>` 替换为文本/SVG 标记（序号按文件内顺序）；
+      normalize 时为缺 `epub:type` 的 ref 补 `noteref`；
+    - 容器：已有 `aside[epub:type~=footnote]` 打 ``mb-notes`` 类；
+      裸 `ol.duokan-footnote-content` 且无 aside 时包进
+      `<aside epub:type="footnote" class="mb-notes">`（提升 EPUB3 引擎弹出兼容）；
+    - 条目 li 追加 ``mb-note-item`` 豁免类——章末注释不会被章节标题扫描误标。
+
+    安全红线：只增不改不删（除用户显式选择的 img 替换），href/id/class 原样保留。
+    幂等：已含 mb-notemark 的文件直接原样返回。
+    :return: (new_html, stats)；stats = {refs, items, normalized, wrapped}
+    """
+    _validate_note_mark(note_mark)
+    empty = {'refs': 0, 'items': 0, 'normalized': 0, 'wrapped': 0}
+    if 'mb-notemark' in html_str or 'mb-notes' in html_str:
+        return html_str, dict(empty)
+    refs_found = _NOTE_REF_RE.findall(html_str)
+    items_found = _NOTE_ITEM_CNT_RE.findall(html_str)
+    if not refs_found and not items_found:
+        return html_str, dict(empty)
+
+    stats = {'refs': len(refs_found), 'items': len(items_found),
+             'normalized': 0, 'wrapped': 0}
+    seq = {'n': 0}
+
+    def _ref_repl(m):
+        attrs, inner = m.group(1), m.group(2)
+        seq['n'] += 1
+        new_attrs = _add_class(attrs, 'mb-notemark')
+        new_attrs += ' data-mb-mark="%s"' % note_mark
+        if normalize and not re.search(r'epub:type\s*=', new_attrs, re.I):
+            new_attrs = _add_epub_type_noteref(new_attrs)
+            stats['normalized'] += 1
+        if note_mark != 'orig':
+            inner = _make_mark_inner(note_mark, seq['n'])
+        return '<a%s>%s</a>' % (new_attrs, inner)
+
+    html_str = _NOTE_REF_RE.sub(_ref_repl, html_str)
+
+    # 条目豁免类（防章节标题扫描误标）
+    def _item_repl(m):
+        return m.group(0).replace('duokan-footnote-item', 'duokan-footnote-item mb-note-item', 1)
+    html_str = re.sub(
+        r'<li\b[^>]*class\s*=\s*["\'][^"\']*duokan-footnote-item[^"\']*["\'][^>]*>',
+        _item_repl, html_str, flags=re.I)
+
+    has_aside = bool(_FOOTNOTE_ASIDE_RE.search(html_str))
+    if has_aside:
+        # A 型：给 footnote aside 追加容器类
+        def _aside_repl(m):
+            tag = m.group(0)
+            cls_m = re.search(r'\bclass\s*=\s*"([^"]*)"', tag)
+            if cls_m:
+                if 'mb-notes' in cls_m.group(1):
+                    return tag
+                return tag.replace(cls_m.group(0),
+                                   'class="%s mb-notes"' % cls_m.group(1), 1)
+            return tag[:-1] + ' class="mb-notes">'
+        html_str = re.sub(r'<aside\b[^>]*epub:type\s*=\s*["\'][^"\']*footnote[^>]*>',
+                          _aside_repl, html_str, flags=re.I)
+    elif normalize:
+        # B 型归一化：裸 ol 包进 aside（EPUB3 引擎弹出信号）
+        def _wrap_repl(m):
+            stats['wrapped'] += 1
+            return '<aside epub:type="footnote" class="mb-notes">\n%s\n</aside>' % m.group(0)
+        html_str = _NOTES_OL_BLOCK_RE.sub(_wrap_repl, html_str)
+    else:
+        # 不归一化也要让 CSS 命中裸 ol：追加容器类
+        def _ol_cls_repl(m):
+            block = m.group(0)
+            tag_end = block.index('>') + 1
+            return _add_class(block[:tag_end], 'mb-notes') + block[tag_end:]
+        html_str = _NOTES_OL_BLOCK_RE.sub(_ol_cls_repl, html_str)
+
+    return html_str, stats
 
 
 # ── 分析（preview 用）─────────────────────────────────────────────────────────
@@ -933,6 +1089,16 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
             if chapter_patterns.paragraph_is_heading(_block_text(inner)):
                 text_headings += 1
 
+    # 弹注统计（全量正文文件，健康报告与推荐徽章用）
+    notes_refs = 0
+    notes_items = 0
+    for t in text_entries:
+        if t not in entries:
+            continue
+        h = _decode(entries[t])
+        notes_refs += len(_NOTE_REF_RE.findall(h))
+        notes_items += len(_NOTE_ITEM_CNT_RE.findall(h))
+
     # 目录预览：应用排除规则后的前若干条标题（与生成逻辑同源）
     toc_preview_titles = []
     raw_toc = []
@@ -966,6 +1132,8 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
         'heading_stats': h_stats,
         'text_headings': text_headings,
         'preview_chapter': preview_chapter,
+        'notes_refs': notes_refs,
+        'notes_items': notes_items,
         # ── 健康报告 ──
         'leading_space_paras': leading_space_paras,
         'sampled_paras': total_paras,
@@ -1017,6 +1185,8 @@ def beautify(
     dialogue: bool = False,
     split_title: bool = False,
     extra_assets: dict = None,
+    notes: bool = False,
+    note_mark: str = 'orig',
 ) -> dict:
     """执行美化并写新 EPUB。
 
@@ -1034,11 +1204,16 @@ def beautify(
         mb-ch-title 两行 span，卷级不拆）。
     :param extra_assets: 附加资源 {zip内文件名: (bytes, media_type)}，
         如背景图片 {'mb-bg.jpg': (data, 'image/jpeg')}；写入包体并注册 manifest（幂等）。
+    :param notes: 弹注/标注美化开关（标注符与注释容器打标 + B 型语义归一化）。
+    :param note_mark: 标注样式 orig/sym/num/svg:<模板id>，见 mark_notes_in_html。
     :return: 统计 dict（marked_headers / marked_volumes / titles_split /
         toc_generated / toc_entries / injected_css / chapters / rtl /
         cleaned_leading / removed_empty / toc_excluded / toc_links_ok /
-        toc_links_total / dialogues_marked）
+        toc_links_total / dialogues_marked / notes_refs / notes_items /
+        notes_normalized / notes_wrapped）
     """
+    if notes:
+        _validate_note_mark(note_mark)
     cleanup_n = _normalize_cleanup(cleanup)
     entries = _read_zip_entries(epub_path)
     ctx = _parse_opf(entries)
@@ -1234,11 +1409,23 @@ def beautify(
     cleaned_leading = 0
     removed_empty = 0
     dialogues_marked = 0
+    notes_refs = notes_items = notes_normalized = notes_wrapped = 0
     for t in text_entries:
         if t not in entries:
             continue
         html = _decode(entries[t])
         changed = False
+        # 弹注/标注美化（先于章节标记执行，豁免类才能生效；目录/前置页不做）
+        if notes and not _is_toc_doc(t, html) and not _is_front_file(t):
+            new_html, nstats = mark_notes_in_html(html, normalize=True,
+                                                  note_mark=note_mark)
+            if nstats['refs'] or nstats['items']:
+                notes_refs += nstats['refs']
+                notes_items += nstats['items']
+                notes_normalized += nstats['normalized']
+                notes_wrapped += nstats['wrapped']
+                changed = True
+                html = new_html
         # 内容清理（段首空格归一/空段/meta），目录页不做文本清理避免破坏布局
         if not _is_toc_doc(t, html):
             new_html, n_lead, n_empty = _clean_html_body(html, cleanup_n)
@@ -1307,6 +1494,11 @@ def beautify(
         'toc_links_ok': toc_links_ok if toc_generated else 0,
         'toc_links_total': toc_links_total if toc_generated else 0,
         'dialogues_marked': dialogues_marked,
+        'notes_refs': notes_refs,
+        'notes_items': notes_items,
+        'notes_normalized': notes_normalized,
+        'notes_wrapped': notes_wrapped,
+        'note_mark': note_mark if notes else '',
         'toc_blank_pruned': toc_blank_pruned,
         'extra_assets': extra_count,
     }

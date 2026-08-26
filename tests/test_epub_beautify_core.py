@@ -1351,5 +1351,132 @@ class TestParaStyleAndTocColumns(unittest.TestCase):
         self.assertIn("@media (min-width: 32em)", two)
 
 
+# ── 弹注 fixture：ch1=A 型（EPUB3 标准），ch2=B 型（掌书系简化）──
+NOTES_CH_A = (
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>a</title></head>'
+    '<body><p>第一章 序章</p>'
+    '<p>正文提到某个词<a class="duokan-footnote" epub:type="noteref" href="#note_1" '
+    'id="noteref_1"><img src="../Images/note.png"/></a>继续叙述，推进情节发展。</p>'
+    '<aside epub:type="footnote"><div><hr class="xian"/></div>'
+    '<ol class="duokan-footnote-content">'
+    '<li class="duokan-footnote-item" id="note_1"><p class="footnote">'
+    '<a href="#noteref_1">◎</a>注文一：解释该词的含义与出处。</p></li>'
+    '</ol></aside></body></html>'
+)
+NOTES_CH_B = (
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>b</title></head>'
+    '<body><p>第二章 开端</p>'
+    '<p>引用法条原文<a class="duokan-footnote" href="#df-1">'
+    '<img src="note.png" width="14px"/></a>随后展开论述，层层递进。</p>'
+    '<ol class="duokan-footnote-content">'
+    '<li class="duokan-footnote-item" id="df-1">◎《唐律疏议》相关条文注释。</li>'
+    '</ol></body></html>'
+)
+
+
+def build_notes_epub(path):
+    """构建含 A/B 两型弹注的迷你 EPUB。"""
+    opf = (
+        '<?xml version="1.0"?>'
+        '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+        '<metadata><dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">弹注书</dc:title></metadata>'
+        '<manifest>'
+        '<item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>'
+        '<item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/>'
+        '</manifest>'
+        '<spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>'
+    )
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", CONTAINER)
+        zf.writestr("OEBPS/content.opf", opf)
+        zf.writestr("OEBPS/c1.xhtml", NOTES_CH_A)
+        zf.writestr("OEBPS/c2.xhtml", NOTES_CH_B)
+
+
+class TestNotes(unittest.TestCase):
+    """弹注/标注美化：打标、归一化、标记替换、豁免守卫。"""
+
+    def test_variant_a_mark_preserves_everything(self):
+        new, st = lib.mark_notes_in_html(NOTES_CH_A)
+        self.assertEqual(st, {'refs': 1, 'items': 1, 'normalized': 0, 'wrapped': 0})
+        self.assertIn('mb-notemark', new)
+        self.assertIn('data-mb-mark="orig"', new)
+        # 原属性逐字保留（红线）
+        self.assertIn('epub:type="noteref"', new)
+        self.assertIn('href="#note_1"', new)
+        self.assertIn('id="noteref_1"', new)
+        self.assertIn('<img src="../Images/note.png"/>', new)
+        # aside 容器打类；条目豁免类
+        self.assertIn('mb-notes', new)
+        self.assertIn('mb-note-item', new)
+
+    def test_variant_b_normalized_and_wrapped(self):
+        new, st = lib.mark_notes_in_html(NOTES_CH_B)
+        self.assertEqual(st['normalized'], 1)
+        self.assertEqual(st['wrapped'], 1)
+        self.assertIn('epub:type="noteref"', new)
+        self.assertLess(new.index('<aside'), new.index('<ol'))
+        self.assertIn('<aside epub:type="footnote" class="mb-notes">', new)
+        self.assertIn('href="#df-1"', new)  # 配对信号无损
+
+    def test_idempotent_rerun(self):
+        once, _ = lib.mark_notes_in_html(NOTES_CH_B)
+        twice, st = lib.mark_notes_in_html(once)
+        self.assertEqual(twice, once)
+        self.assertEqual(st, {'refs': 0, 'items': 0, 'normalized': 0, 'wrapped': 0})
+
+    def test_note_mark_modes(self):
+        new, _ = lib.mark_notes_in_html(NOTES_CH_B, note_mark='num')
+        self.assertIn('[1]', new)
+        self.assertIn('class="mb-marktxt"', new)
+        new2, _ = lib.mark_notes_in_html(NOTES_CH_A, note_mark='svg:inkdrop')
+        self.assertIn('class="mb-marksvg"', new2)
+        self.assertIn('viewBox="0 0 24 24"', new2)
+        # 替换后链接属性仍在
+        self.assertIn('href="#note_1"', new2)
+        for bad in ('svg:nope', 'weird'):
+            with self.assertRaises(ValueError):
+                lib.mark_notes_in_html(NOTES_CH_A, note_mark=bad)
+
+    def test_notes_exempt_from_chapter_marking(self):
+        noted, _ = lib.mark_notes_in_html(NOTES_CH_B)
+        ch_html, mk = lib.mark_chapters_in_html(noted)
+        self.assertEqual(mk['chapters'], 1)  # 只有「第二章 开端」
+        head, tail = ch_html[:ch_html.index('df-1')], ch_html[ch_html.index('df-1'):]
+        self.assertIn('mb-ch', head)
+        self.assertNotIn('mb-ch', tail)      # 注释条目未被误标
+
+    def test_analyze_counts(self):
+        tmp = os.path.join(TESTS_DIR, "_tmp_nt.epub")
+        build_notes_epub(tmp)
+        try:
+            a = lib.analyze_epub(tmp)
+            self.assertEqual(a["notes_refs"], 2)
+            self.assertEqual(a["notes_items"], 2)
+        finally:
+            os.remove(tmp)
+
+    def test_beautify_flow_with_notes(self):
+        tmp = os.path.join(TESTS_DIR, "_tmp_nt_src.epub")
+        out = os.path.join(TESTS_DIR, "_tmp_nt_out.epub")
+        build_notes_epub(tmp)
+        try:
+            css = get_preset_css("classic", use_system_fonts=True)
+            stats = lib.beautify(tmp, out, css, notes=True, note_mark='num')
+            self.assertEqual(stats["notes_refs"], 2)
+            self.assertEqual(stats["items"] if "items" in stats else 2, 2)
+            with zipfile.ZipFile(out) as zf:
+                c2 = zf.read("OEBPS/c2.xhtml").decode("utf-8")
+                self.assertIn('mb-notemark', c2)
+                self.assertIn('[1]', c2)
+                self.assertIn('<aside epub:type="footnote"', c2)
+                self.assertIn('.mb-notes', zf.read("OEBPS/mb-beauty.css").decode("utf-8"))
+        finally:
+            for p in (tmp, out):
+                if os.path.exists(p):
+                    os.remove(p)
+
+
 if __name__ == "__main__":
     unittest.main()

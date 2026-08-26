@@ -191,7 +191,9 @@ class EpubBeautifyTool(BaseTool):
             toc_columns: Optional[bool] = None,
             para_mode: Optional[str] = None,
             para_indent: Optional[bool] = None,
-            para_gap=None) -> None:
+            para_gap=None,
+            notes: Optional[bool] = None,
+            note_mark: Optional[str] = None) -> None:
         """后台执行美化并生成新书（支持批量队列）。
 
         :param book_ids:         批量书籍 ID 列表（去重后按序执行，不限本数）。
@@ -220,6 +222,10 @@ class EpubBeautifyTool(BaseTool):
                                  独立于段距。
         :param para_gap:         段间距数值（em，0=跟随预设，范围 [0,3]，非法值抛错），
                                  可与任意缩进组合。
+        :param notes:            弹注/标注美化开关（标注符随预设着色、注释卡样式、
+                                 B 型掌书系书自动补齐 EPUB3 弹注语义）。默认关。
+        :param note_mark:        标注样式：orig 原图标（默认）/ sym ※ / num [n] /
+                                 svg:<dot|fold|inkdrop|spark|sealdot> 自绘图形（随主题染色）。
 
         批量语义：单本失败不断批，逐本汇总结果；进度按书数折算
         （progress_data 携带 book_index/book_total/current_title）。
@@ -285,9 +291,16 @@ class EpubBeautifyTool(BaseTool):
                     toc_columns=bool(toc_columns),
                 )
             except ValueError as err:
-                error_message = _("参数不合法（预设/目录形式/配色/段距）：%s") % err
+                error_message = _("参数不合法（预设/目录形式/配色/段距/弹注）：%s") % err
                 logging.error("[EpubBeautifyTool] Bad params %r/%r [uid:%d]", preset, toc_style, user_id)
                 return
+            if notes:
+                try:
+                    epub_beautify_lib._validate_note_mark(note_mark or 'orig')
+                except ValueError as err:
+                    error_message = _("标注样式不合法：%s") % err
+                    logging.error("[EpubBeautifyTool] Bad note_mark %r [uid:%d]", note_mark, user_id)
+                    return
 
             # 竖排等预设可声明翻页方向（page_progression: rtl）
             page_progression = (list_presets().get(preset) or {}).get("page_progression") or None
@@ -335,6 +348,7 @@ class EpubBeautifyTool(BaseTool):
                         toc_depth=toc_depth, cleanup=cleanup,
                         dialogue=bool(dialogue), split_title=bool(title_split),
                         extra_assets=extra_assets,
+                        notes=bool(notes), note_mark=(note_mark or 'orig'),
                     )
 
                     self.update_task_progress(task_id, _pct(80), dict(prog_common, stage="saving"))
@@ -352,10 +366,11 @@ class EpubBeautifyTool(BaseTool):
                         dict(prog_common, stage="saving", new_book_id=new_book_id),
                     )
                     logging.info(
-                        "[EpubBeautifyTool] Beautified book_id=%d (headers=%d, vols=%d, splits=%d, toc=%s, rtl=%s, dialogs=%d) -> new book_id=%d [uid:%d]",
+                        "[EpubBeautifyTool] Beautified book_id=%d (headers=%d, vols=%d, splits=%d, toc=%s, rtl=%s, dialogs=%d, notes=%s/%s) -> new book_id=%d [uid:%d]",
                         bid, stats.get("marked_headers", 0), stats.get("marked_volumes", 0),
                         stats.get("titles_split", 0), stats.get("toc_generated"),
                         stats.get("page_progression") or "-", stats.get("dialogues_marked", 0),
+                        stats.get("notes_refs", 0), stats.get("note_mark") or "-",
                         new_book_id, user_id,
                     )
                     self.cleanup_work_dir(work_dir)

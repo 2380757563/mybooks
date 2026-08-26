@@ -1768,6 +1768,20 @@
     "paraIndentDesc": "关闭后正文段落全部顶格；引文块仍按预设样式",
     "paraGapLabel": "段间距",
     "paraGapOn": "已启用：{n} em（引文内保持紧凑）",
-    "paraGapOff": "跟随预设（默认无段距，中文缩进制）"
+    "paraGapOff": "跟随预设（默认无段距，中文缩进制）",
+    "notesTitle": "弹注/标注",
+    "notesEnable": "美化弹注标注符与注释卡",
+    "notesDesc": "书内检测到 {n} 处弹注；仅增样式不改结构，多看/Apple Books/KOReader 兼容，可随时关闭回退",
+    "noteMarkLabel": "标注样式",
+    "markOrig": "原图标（书内自带）",
+    "markSym": "符号 ※",
+    "markNum": "编号 [n]",
+    "markSvgDot": "图形 · 圆点环",
+    "markSvgFold": "图形 · 书角折页",
+    "markSvgInkdrop": "图形 · 墨滴",
+    "markSvgSpark": "图形 · 装饰星",
+    "markSvgSealdot": "图形 · 方印点",
+    "anaNotes": "弹注 {count} 处",
+    "notesPreviewLine": "示例注释：弹注内容将以这张卡片样式呈现（弹出/章末两用）。"
   }
 }

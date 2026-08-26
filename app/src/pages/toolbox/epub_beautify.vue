@@ -108,6 +108,7 @@
                     <v-chip v-if="analysis.css_conflict_risk" x-small outlined color="warning" class="mr-2 mb-1">{{ $t('epubBeautify.anaConflict', { count: analysis.css_important_count }) }}</v-chip>
                     <v-chip v-if="analysis.image_count" x-small outlined class="mb-1">{{ $t('epubBeautify.anaImages', { count: analysis.image_count, big: analysis.image_oversize || 0 }) }}</v-chip>
                     <v-chip v-if="analysis.dialogue_paras" x-small outlined color="secondary" class="mr-2 mb-1">{{ $t('epubBeautify.anaDialogue', { count: analysis.dialogue_paras }) }}</v-chip>
+                    <v-chip v-if="analysis.notes_refs" x-small outlined color="secondary" class="mr-2 mb-1">{{ $t('epubBeautify.anaNotes', { count: analysis.notes_refs }) }}</v-chip>
                   </div>
                   <div v-if="tocPreviewText" class="mt-2 caption grey--text eb-toc-preview">
                     <div class="font-weight-medium">{{ $t('epubBeautify.tocPreviewTitle') }}</div>
@@ -271,17 +272,44 @@
                 </div>
               </div>
 
-              <!-- 对话行点缀 -->
-              <div class="eb-grp">
-                <div class="text-subtitle-2 font-weight-medium mb-1">{{ $t('epubBeautify.dialogueTitle') }}</div>
-                <div class="eb-crow">
-                  <v-switch v-model="dialogue" dense hide-details class="mt-0 pt-0" />
-                  <div class="min-width-0">
-                    <div class="body-2">{{ $t('epubBeautify.dialogueEnable') }}</div>
-                    <div class="caption grey--text">{{ dialogueHint }}</div>
-                  </div>
-                </div>
-              </div>
+        <!-- 对话行点缀 -->
+        <div class="eb-grp">
+          <div class="text-subtitle-2 font-weight-medium mb-1">{{ $t('epubBeautify.dialogueTitle') }}</div>
+          <div class="eb-crow">
+            <v-switch v-model="dialogue" dense hide-details class="mt-0 pt-0" />
+            <div class="min-width-0">
+              <div class="body-2">{{ $t('epubBeautify.dialogueEnable') }}</div>
+              <div class="caption grey--text">{{ dialogueHint }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 弹注/标注 -->
+        <div class="eb-grp">
+          <div class="text-subtitle-2 font-weight-medium mb-1">{{ $t('epubBeautify.notesTitle') }}</div>
+          <div class="eb-crow">
+            <v-switch v-model="notesOn" dense hide-details class="mt-0 pt-0" />
+            <div class="min-width-0">
+              <div class="body-2">{{ $t('epubBeautify.notesEnable') }}<span v-if="notesRec" class="eb-recb ml-1">{{ $t('epubBeautify.recBadge') }}</span></div>
+              <div class="caption grey--text">{{ notesHint }}</div>
+            </div>
+          </div>
+          <v-expand-transition>
+            <div v-if="notesOn" class="d-flex align-center ml-6 mt-1">
+              <span class="body-2 mr-3" style="min-width:64px">{{ $t('epubBeautify.noteMarkLabel') }}</span>
+              <v-select
+                v-model="noteMark"
+                :items="noteMarkItems"
+                item-text="label"
+                item-value="value"
+                dense hide-details
+                style="max-width:210px"
+                class="mt-0"
+              />
+              <sup class="ml-3" :style="{color: currentPreset.accent, fontWeight: 700}">{{ markGlyph }}</sup>
+            </div>
+          </v-expand-transition>
+        </div>
 
               <!-- 目录层级 + 双栏 + 全书底色 -->
               <div class="eb-grp">
@@ -438,7 +466,11 @@
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[1] }}</p>
                   <p v-if="dialogue" class="eb-p eb-dialog-demo" :class="{ 'eb-spacing': !paraIndent }" :style="dialogueStyle">{{ dialogDemoText }}</p>
                   <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」</blockquote>
-                  <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[2] }}</p>
+                  <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[2] }}<sup v-if="notesOn" :style="{color: currentPreset.accent, fontWeight: 700, fontSize: '0.78em'}"> {{ markGlyph }}</sup></p>
+                  <!-- 弹注注释卡预览（章末/弹出内容样式） -->
+                  <div v-if="notesOn" :style="{background: currentPreset.quote_bg, borderLeft: '3px solid ' + currentPreset.accent, borderRadius: '3px', padding: '7px 9px', marginTop: '14px'}">
+                    <div class="caption" :style="{fontFamily: kaiFont, color: '#666', lineHeight: 1.6}"><span :style="{color: currentPreset.muted}">{{ markGlyph }}</span> {{ $t('epubBeautify.notesPreviewLine') }}</div>
+                  </div>
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
@@ -581,6 +613,9 @@ export default {
     cleanMeta: true,
     // 对话行点缀（默认关）
     dialogue: false,
+    // 弹注/标注（默认开：纯样式增强 + B 型语义归一化，可一键关闭回退）
+    notesOn: true,
+    noteMark: 'orig',
     // 双行排版（默认关）
     titleSplit: false,
     // 段落排版：首行缩进独立开关 + 段间距数值（em，0=跟随预设）
@@ -682,6 +717,30 @@ export default {
       if (this.paraGap > 0) s.marginBottom = this.paraGap + 'em';
       return s;
     },
+    notesRec() {
+      return !!(this.analysis && this.analysis.notes_refs);
+    },
+    notesHint() {
+      const n = (this.analysis && this.analysis.notes_refs) || 0;
+      return this.$t('epubBeautify.notesDesc', { n });
+    },
+    noteMarkItems() {
+      return [
+        { value: 'orig', label: this.$t('epubBeautify.markOrig') },
+        { value: 'sym', label: this.$t('epubBeautify.markSym') },
+        { value: 'num', label: this.$t('epubBeautify.markNum') },
+        { value: 'svg:dot', label: this.$t('epubBeautify.markSvgDot') },
+        { value: 'svg:fold', label: this.$t('epubBeautify.markSvgFold') },
+        { value: 'svg:inkdrop', label: this.$t('epubBeautify.markSvgInkdrop') },
+        { value: 'svg:spark', label: this.$t('epubBeautify.markSvgSpark') },
+        { value: 'svg:sealdot', label: this.$t('epubBeautify.markSvgSealdot') },
+      ];
+    },
+    markGlyph() {
+      // 选择器旁的即时预览字符（SVG 模板用近似字形示意）
+      const map = { orig: '●', sym: '※', num: '[1]', 'svg:dot': '◉', 'svg:fold': '❏', 'svg:inkdrop': '❍', 'svg:spark': '✦', 'svg:sealdot': '▣' };
+      return map[this.noteMark] || '●';
+    },
     tocSampleRows() {
       const t = (this.analysis && this.analysis.toc_preview_titles) || [];
       if (!t.length) return this.tocMockRows;
@@ -761,6 +820,7 @@ export default {
       if (!this.paraIndent) s += '｜顶格';
       if (this.paraGap > 0) s += '｜段距 ' + this.paraGap.toFixed(2) + 'em';
       if (this.tocColumns) s += '｜' + this.$t('epubBeautify.tocColumns');
+      if (this.notesOn) s += '｜弹注·美化';
       if (this.paletteOn) s += '｜' + this.$t('epubBeautify.paletteTitle');
       return s;
     },
@@ -1155,6 +1215,8 @@ export default {
             para_indent: this.paraIndent,
             para_gap: this.paraGap > 0 ? this.paraGap : null,
             toc_columns: this.tocColumns,
+            notes: this.notesOn,
+            note_mark: this.noteMark,
             bg_image: this.bgOn && this.bgHas,
             page_tint: this.pageTint === 'auto' ? null : (this.pageTint === 'on'),
             palette_overrides: this.paletteOverridesPayload(),
