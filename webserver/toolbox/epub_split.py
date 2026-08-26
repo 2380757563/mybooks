@@ -18,7 +18,7 @@ from webserver.i18n import _
 from webserver.services import AsyncService
 from webserver.toolbox.base_tool import BaseTool
 from webserver.toolbox.epub_split_lib import SplitEpub, strip_html, get_title_of_html
-from webserver import loader, utils
+from webserver import utils
 from webserver.constants import AUTO_FILL_META
 from webserver.models import Item
 from webserver.services.autofill import AutoFillService
@@ -154,7 +154,7 @@ class EpubSplitTool(BaseTool):
         finally:
             self.cleanup_work_dir(work_dir)
 
-        if loader.get_settings().get(AUTO_FILL_META, False):
+        if self.api.settings.get(AUTO_FILL_META, False):
             threading.Thread(target=AutoFillService().auto_fill, args=(new_book_id,), daemon=True).start()
 
         return {"book_id": new_book_id, "title": mi.title}

@@ -2,16 +2,18 @@
 """CoreAPI 单元测试（不依赖真实 Calibre/DB，用轻量 fake owner 验证命名空间转发逻辑）。
 
 覆盖 document/Toolbox_Dynamic_Design.md 第二节描述的 M0 交付物：
-- CoreAPI.calibre / .db / .tasks / .messages / .storage 五个命名空间存在且可用
+- CoreAPI.calibre / .db / .tasks / .messages / .storage / .settings 六个命名空间存在且可用
 - 已有 BaseTool 方法（import_file / merge_book_formats / delete_book_by_id /
   create_task / ...）的 CoreAPI 封装原样转发，不改变行为
 - CoreAPI.storage 的 get_config/set_config 新增能力
+- CoreAPI.settings 的白名单只读语义：白名单内的 key 转发到 CONF，白名单外的 key
+  一律返回 default，不触碰真实 CONF
 """
 import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from webserver.toolbox.core_api import CORE_API_VERSION, CoreAPI
 
@@ -53,7 +55,7 @@ class TestCoreAPINamespaces(unittest.TestCase):
         self.assertRegex(CORE_API_VERSION, r"^\d+\.\d+\.\d+$")
 
     def test_namespaces_exist(self):
-        for ns in ("calibre", "db", "tasks", "messages", "storage"):
+        for ns in ("calibre", "db", "tasks", "messages", "storage", "settings"):
             self.assertTrue(hasattr(self.api, ns), f"CoreAPI 缺少命名空间 {ns}")
 
     # --- CoreAPI.calibre：转发到 owner 已有方法，行为不变 ---
@@ -184,6 +186,25 @@ class TestCoreAPINamespaces(unittest.TestCase):
         # 不应该抛异常，也不应该触及 session
         self.api.messages.send_message(0, "hello")
         self.api.messages.send_message(None, "hello")
+
+    # --- CoreAPI.settings：白名单只读，不在名单内的 key 一律返回 default ---
+
+    @patch("webserver.toolbox.core_api.loader.get_settings")
+    def test_settings_get_allowed_key_reads_conf(self, mock_get_settings):
+        mock_get_settings.return_value = {"auto_fill_meta": True}
+        self.assertTrue(self.api.settings.get("auto_fill_meta", False))
+
+    @patch("webserver.toolbox.core_api.loader.get_settings")
+    def test_settings_get_allowed_key_missing_from_conf_uses_default(self, mock_get_settings):
+        mock_get_settings.return_value = {}
+        self.assertEqual(self.api.settings.get("audio_output_folder", "/fallback/"), "/fallback/")
+
+    @patch("webserver.toolbox.core_api.loader.get_settings")
+    def test_settings_get_rejects_key_outside_whitelist(self, mock_get_settings):
+        # 即便 CONF 里真的有这个敏感 key，不在白名单里也不能读出来
+        mock_get_settings.return_value = {"BOOKBARN_TOKEN": "super-secret"}
+        self.assertEqual(self.api.settings.get("BOOKBARN_TOKEN", None), None)
+        mock_get_settings.assert_not_called()
 
 
 if __name__ == "__main__":

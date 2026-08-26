@@ -13,6 +13,7 @@ Calibre / SQLAlchemy 的内部实现细节解耦。设计背景见
 - `CoreAPI.tasks`     —— 后台任务生命周期
 - `CoreAPI.messages`  —— 站内消息
 - `CoreAPI.storage`   —— 工具专属数据目录 + 持久配置
+- `CoreAPI.settings`  —— 系统配置只读白名单（`SettingsAPI.ALLOWED_KEYS`）
 
 M0 阶段只做接口收敛，不改变现有 14 个内置工具的行为：凡是 `BaseTool` 已有对应方法
 的（`import_file`、`merge_book_formats`、`delete_book_by_id`、`get_all_book_ids`、
@@ -37,12 +38,13 @@ import logging
 import os
 from typing import Callable, List, Optional
 
+from webserver import loader
 from webserver.i18n import _
 
-# Core API 的语义化版本号，插件 manifest.json 里的 core_api_version 据此做兼容性检查
-# （见 document/Toolbox_Dynamic_Design.md 2.3 节）。M0 阶段还没有插件加载机制，这个常量
-# 先只是占位声明。
-CORE_API_VERSION = "1.0.0"
+# Core API 的语义化版本号，工具 manifest.json 里的 core_api_version 据此做兼容性检查
+# （见 document/Toolbox_Dynamic_Design.md 2.3 节）。新增向后兼容的能力（如新命名空间/新方法）
+# bump 次版本号；破坏兼容性的改动 bump 主版本号。1.1.0：新增 CoreAPI.settings 命名空间。
+CORE_API_VERSION = "1.1.0"
 
 
 class _NamespaceBase:
@@ -269,6 +271,31 @@ class StorageAPI(_NamespaceBase):
             raise RuntimeError(_("保存工具配置失败")) from err
 
 
+class SettingsAPI(_NamespaceBase):
+    """系统配置只读访问，White-list 制——`webserver.settings`/`auto.py`/`manual.py`
+    合并后的 `CONF` 里混有数据库连接串、各种第三方 API key/token 等敏感项，不能整份透出
+    给工具（尤其是未来的外部工具），所以这里只允许读 `ALLOWED_KEYS` 里显式登记过的
+    非敏感只读配置项，不在名单里的 key 一律返回调用方传入的 `default`。
+
+    需要新增可读配置项时，把 key 加进 `ALLOWED_KEYS` 并在后面的注释里写清楚这一项
+    为什么可以放行；不要为了方便某个工具就放开整份 `CONF`。
+    """
+
+    # key -> 一句话说明为什么这项配置可以只读透出给工具
+    ALLOWED_KEYS = {
+        "auto_fill_meta": "是否自动补全导入书籍的元数据，纯行为开关，不含敏感信息",
+        "audio_output_folder": "音频类工具的输出目录路径，本地文件系统路径，不含敏感信息",
+        "DEFAULT_LANGUAGE": "站点默认语言，用于工具自行做多语言展示的兜底",
+    }
+
+    def get(self, key: str, default=None):
+        """读取一项白名单内的系统配置；不在白名单内的 key 直接返回 default，不抛异常。"""
+        if key not in self.ALLOWED_KEYS:
+            logging.warning("[CoreAPI.settings] Key %r not in ALLOWED_KEYS, returning default", key)
+            return default
+        return loader.get_settings().get(key, default)
+
+
 class CoreAPI:
     """按命名空间聚合的 Core API 入口，`BaseTool.__init__` 里构造一次并挂在 `self.api`。"""
 
@@ -280,3 +307,4 @@ class CoreAPI:
         self.tasks = TasksAPI(owner)
         self.messages = MessagesAPI(owner)
         self.storage = StorageAPI(owner)
+        self.settings = SettingsAPI(owner)

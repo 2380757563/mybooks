@@ -20,10 +20,8 @@ from webserver.i18n import _
 from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.toolbox.base_tool import BaseTool
-from webserver import loader
 
-CONF = loader.get_settings()
-AUDIO_OUTPUT_FOLDER = CONF.get("audio_output_folder", "/data/books/audios/")
+DEFAULT_AUDIO_OUTPUT_FOLDER = "/data/books/audios/"
 DEFAULT_CHAT_URL = "https://api.xiaomimimo.com/v1/chat/completions"
 DEFAULT_CHAT_MODEL = "mimo-v2.5-tts"
 VOICE_CLONE_MODEL = "mimo-v2.5-tts-voiceclone"
@@ -535,7 +533,8 @@ class MimoTTSTool(BaseTool):
             if total_chapters == 0:
                 raise RuntimeError(_("未从 EPUB 中提取到任何章节内容"))
 
-            output_dir = os.path.join(AUDIO_OUTPUT_FOLDER, str(book_id))
+            audio_output_folder = self.api.settings.get("audio_output_folder", DEFAULT_AUDIO_OUTPUT_FOLDER)
+            output_dir = os.path.join(audio_output_folder, str(book_id))
             os.makedirs(output_dir, exist_ok=True)
 
             # Save the cover image to the output dir
