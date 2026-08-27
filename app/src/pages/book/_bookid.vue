@@ -555,7 +555,7 @@
                                             </nuxt-link>
                                             <v-tooltip bottom>
                                                 <template v-slot:activator="{ on, attrs }">
-                                                    <v-chip v-bind="attrs" v-on="on" rounded small dark color="indigo" :to="{ path: '/author', query: { name: author } }">
+                                                    <v-chip v-bind="attrs" v-on="on" rounded small dark color="indigo" :to="{ path: '/author', query: { name: translator } }">
                                                         {{ translator }}
                                                     </v-chip>
                                                 </template>

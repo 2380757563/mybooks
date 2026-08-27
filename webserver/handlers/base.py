@@ -955,6 +955,54 @@ class BaseHandler(web.RequestHandler):
                 )
             return cached
 
+    def get_authors_book_ids_map(self):
+        """返回 {author_name: set(book_id)}，基于calibre的authors表/link表。"""
+        sql = """
+            SELECT A.name, B.book
+            FROM authors A
+            JOIN books_authors_link B ON A.id = B.author
+        """
+        try:
+            with self.db_lock:
+                rows = self.calibre_db_cache.backend.conn.get(sql)
+        except Exception as e:
+            logging.error("get_authors_book_ids_map query failed: %s", str(e))
+            return {}
+        result = {}
+        for name, book_id in rows:
+            result.setdefault(name, set()).add(book_id)
+        return result
+
+    def get_translators_map(self):
+        """返回 {book_id: [translator_name, ...]}，基于自定义字段#translators（逗号分隔）。"""
+        if constants.CALIBRE_COLUMN_TRANSLATORS not in self.calibre_db.field_metadata:
+            return {}
+        meta = self.calibre_db.field_metadata[constants.CALIBRE_COLUMN_TRANSLATORS]
+        table = f"custom_column_{meta['colnum']}"
+        link_table = f"books_{table}_link"
+        sql = f"""
+            SELECT l.book, t.value
+            FROM {table} t
+            JOIN {link_table} l ON t.id = l.value
+        """
+        try:
+            with self.db_lock:
+                rows = self.calibre_db_cache.backend.conn.get(sql)
+        except Exception as e:
+            logging.error("get_translators_map query failed: %s", str(e))
+            return {}
+        result = {}
+        for book_id, value in rows:
+            names = [n.strip() for n in (value or "").split(",") if n.strip()]
+            if names:
+                result[book_id] = names
+        return result
+
+    def get_translator_book_ids(self, name):
+        """返回#translators字段中含有指定译者姓名的书籍id集合。"""
+        translators_map = self.get_translators_map()
+        return {book_id for book_id, names in translators_map.items() if name in names}
+
     def books_by_id(self):
         sql = "SELECT id FROM books order by id desc"
         with self.db_lock:
@@ -1191,13 +1239,14 @@ class BaseHandler(web.RequestHandler):
 
 
 class ListHandler(BaseHandler):
-    def get_item_books(self, category, name, max_count=0):
-        books = []
+    def get_item_books(self, category, name, max_count=0, extra_ids=None):
         item_id = self.calibre_db_cache.get_item_id(category, name)
-        if not item_id:
-            return books
+        ids = set(self.calibre_db.get_books_for_category(category, item_id)) if item_id else set()
+        if extra_ids:
+            ids |= set(extra_ids)
+        if not ids:
+            return []
 
-        ids = self.calibre_db.get_books_for_category(category, item_id)
         if (max_count > 0) and (len(ids) > max_count):
             ids = set(random.sample(list(ids), max_count))
         books = self.calibre_db.get_data_as_dict(ids=ids)

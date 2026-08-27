@@ -415,7 +415,7 @@ export default {
         const query = `authors:"=${this.currentAuthor}"`;
         console.log('[author.vue] fetchBooks - calling /search with query:', query);
         try {
-            const rsp = await this.$backend(`/search?name=${encodeURIComponent(query)}&start=${start}&size=${this.page_size}&order=title`);
+            const rsp = await this.$backend(`/author/${encodeURIComponent(this.currentAuthor)}?start=${start}&size=${this.page_size}&order=title`);
             console.log('[author.vue] fetchBooks - response received, books count:', rsp.books?.length);
             if (rsp.err === 'ok') {
                 this.books = rsp.books;

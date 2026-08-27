@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
+import logging
 import math
 import sys
 from functools import cmp_to_key
@@ -135,6 +136,15 @@ class MetaList(ListHandler):
         title = titles.get(meta, _(u"未知")) % vars()
         # category = meta if meta in ["series", "publisher"] else meta + "s"
         items = self.get_category_with_count(meta)
+        # if meta == "author":
+        #     # 将自定义字段#translators中的译者也作为作者处理，与真实作者按书籍去重合并统计
+        #     author_books = self.get_authors_book_ids_map()
+        #     for book_id, translators in self.get_translators_map().items():
+        #         for translator in translators:
+        #             author_books.setdefault(translator, set()).add(book_id)
+        #     items = [{"id": None, "name": name, "count": len(book_ids)} for name, book_ids in author_books.items()]
+        # else:
+        #     items = self.get_category_with_count(meta)
         count = len(items)
 
         # 获取置顶项目
@@ -194,7 +204,9 @@ class MetaBooks(ListHandler):
             name = int(name)
         elif meta == "language":
             name = LanguageNameUtil.get_language_code(name)
-        books = self.get_item_books(category, name)
+        logging.info(f"Get meta {meta} books of {name}")
+        extra_ids = self.get_translator_book_ids(name) if meta == "author" else None
+        books = self.get_item_books(category, name, extra_ids=extra_ids)
         if meta == "series":
             books.sort(key=cmp_to_key(utils.compare_books_by_series_index_or_name), reverse=False)
         else:
