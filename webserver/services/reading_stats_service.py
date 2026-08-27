@@ -415,7 +415,7 @@ class ReadingStatsService:
         db = Reading._session()
         rows = (
             db.query(BookReadingStats)
-            .filter(BookReadingStats.reader_id == reader_id, BookReadingStats.book_id == book_id)
+            .filter(BookReadingStats.reader_id == reader_id, BookReadingStats.book_id == book_id, BookReadingStats.total_seconds > 10)
             .order_by(BookReadingStats.format)
             .all()
         )
