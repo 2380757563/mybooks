@@ -1117,7 +1117,8 @@ class AdminDeleteBooks(BaseHandler):
             try:
                 AudioUtils.clear_audio(book_id)
                 book = self.get_book(book_id)
-                self.delete_book(book["id"], book.get("title", ""))
+                if book:
+                    self.delete_book(book["id"], book.get("title", ""))
             except Exception as err:
                 logging.error(_("执行异常: %s"), err)
 

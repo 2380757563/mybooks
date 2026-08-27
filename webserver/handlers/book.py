@@ -147,7 +147,7 @@ class BookDetail(BaseHandler):
         book = None
         try:
             book_id = int(bid)
-            book = self.get_book(book_id, raise_exception=False)
+            book = self.get_book(book_id, fully=True, raise_exception=False)
         except Exception as e:
             logging.error("get book %s failed: %s" % (bid, e))
 
@@ -1867,7 +1867,9 @@ class BookDownload(BaseHandler, web.StaticFileHandler):
         bid, fmt = filename.split(".")
         fmt = fmt.lower()
         logging.error("download %s bid=%s, fmt=%s" % (filename, bid, fmt))
-        book = self.get_book(bid)
+        book = self.get_book(bid, raise_exception=False)
+        if not book:
+            raise web.HTTPError(404, reason=_("%s格式无法下载" % fmt))
         book_id = book["id"]
         if self.current_user:
             result = DownloadQuotaService.check_and_consume(self.current_user)
@@ -2681,7 +2683,7 @@ class BookRead(BaseHandler):
             else:
                 raise web.HTTPError(403, reason=_("无权在线阅读"))
 
-        book = self.get_book(bid, raise_exception=False)
+        book = self.get_book(bid, fully=True, raise_exception=False)
         if not book:
             return {"err": "params.book.invalid", "msg": _("书籍已不存在")}
         book_id = book["id"]
@@ -2901,7 +2903,7 @@ class BookTxtParser(BaseHandler):
     def get(self):
         bid = self.get_argument("id", "")
         test_ready = self.get_argument("test", "")
-        book = self.get_book(bid)
+        book = self.get_book(bid, raise_exception=False)
         fpath = book.get("fmt_txt", None)
         if not fpath:
             return {"err": "format error", "msg": _("非text书籍")}
@@ -3628,7 +3630,7 @@ class BookExchangeType(BaseHandler):
                     item.collector_id = self.user_id()
                     self.sqlite_session.add(item)
 
-                current_type = item.book_type
+                current_type = book.get(CALIBRE_COLUMN_BOOK_TYPE, item.book_type)
 
                 # 如果是电子书，转为实体书
                 if current_type == BOOK_TYPE_EBOOK:

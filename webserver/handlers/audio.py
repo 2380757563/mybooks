@@ -275,7 +275,7 @@ class AudioDetail(BaseHandler):
         # if found, return the worker status, otherwise return not found status.
         try:
             book_id = int(book_id)
-            book = self.get_book(book_id)
+            book = self.get_book(book_id, fully=True, raise_exception=False)
             if not book:
                 return {"err": "params.book.invalid", "msg": _("书籍未找到")}
 

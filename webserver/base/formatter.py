@@ -45,12 +45,12 @@ class SimpleBookFormatter:
         b = self.book
         b["ts"] = int(b["timestamp"].timestamp())
         category = self.val(CALIBRE_COLUMN_CATEGORY, '').strip()
-        book_type = self.val(CALIBRE_COLUMN_BOOK_TYPE, self.book.get("book_type", BOOK_TYPE_EBOOK))
-        book_count = self.val(CALIBRE_COLUMN_PHY_COUNT, self.book.get("book_count", 1))
+        book_type = self.val(CALIBRE_COLUMN_BOOK_TYPE, BOOK_TYPE_EBOOK)
+        book_count = self.val(CALIBRE_COLUMN_PHY_COUNT, 1)
         ext_link = self.val(CALIBRE_COLUMN_EXT_LINK, '').strip()
         location = self.val(CALIBRE_COLUMN_LOCATION, '').strip() if book_type == BOOK_TYPE_PHYSICAL else ""
-        dynamic_cover = self.book.get(CALIBRE_COLUMN_DYNAMIC_COVER, 0)
-        comments = self.val("comments", _(u"暂无简介")) if include_comments else ""
+        dynamic_cover = self.val(CALIBRE_COLUMN_DYNAMIC_COVER, 0)
+        comments = self.val("comments", _("暂无简介")) if include_comments else ""
         if strip_comments and comments:
             comments = comments[:120] + "..." if len(comments) > 120 else comments
         return {

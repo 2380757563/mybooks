@@ -663,8 +663,11 @@ class BaseHandler(web.RequestHandler):
         del vals["self"]
         self.write(self.render_string(template, **vals))
 
-    def get_book(self, book_id, raise_exception=True):
-        books = self.get_books(ids=[int(book_id)])
+    def get_book(self, book_id, fully=False, raise_exception=True):
+        if fully:
+            books = self.get_books(ids=[int(book_id)])
+        else:
+            books = self.get_books_simple(ids=[int(book_id)])
         if not books:
             if raise_exception:
                 self.write({"err": "not_found", "msg": _("抱歉，这本书不存在")})
@@ -758,6 +761,46 @@ class BaseHandler(web.RequestHandler):
                 ]
             elif getattr(user, "read_limit", 0) > 0:
                 books = [b for b in books if self.is_book_in_reading_range(b, user)]
+
+        logging.debug(
+            "[%5d ms] select books from database (count = %d)"
+            % (int(1000 * (time.time() - _ts)), len(books))
+        )
+        return books
+
+    def get_books_simple(self, *args, **kwargs):
+        _ts = time.time()
+        books = self.calibre_db.get_data_as_dict(*args, **kwargs)
+
+        # The custom column is returned as int key, e.g. { 1: 'value' }
+        # We need to convert it to { '#field': 'value' }
+        if not hasattr(self, "_custom_column_map"):
+            self._custom_column_map = {}
+            for key, meta in self.calibre_db.field_metadata.items():
+                if meta["is_custom"]:
+                    self._custom_column_map[meta["colnum"]] = key
+
+        item = Item()
+        empty_item = item.to_dict()
+        empty_item["collector"] = (
+            self.sqlite_session.query(Reader).order_by(Reader.id).first()
+        )
+        ids = [book["id"] for book in books]
+        items = (
+            self.sqlite_session.query(Item).filter(Item.book_id.in_(ids)).all()
+            if ids
+            else []
+        )
+        for b in items:
+            d = b.to_dict()
+            c = b.collector.to_dict() if b.collector else empty_item["collector"]
+            d["collector"] = c
+
+        for book in books:
+            for colnum, key in self._custom_column_map.items():
+                if colnum not in book:
+                    continue
+                book[key] = book.pop(colnum)
 
         logging.debug(
             "[%5d ms] select books from database (count = %d)"
