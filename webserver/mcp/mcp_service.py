@@ -6,6 +6,7 @@ MCP Service Module
 @author: PoxenStudio, 2025-12
 """
 
+import datetime
 import logging
 import json
 import traceback
@@ -494,6 +495,121 @@ class MCPService:
 
         except Exception as e:
             error_msg = f"Error saving book metadata to file: {str(e)}"
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
+            return [TextContent(type="text", text=json.dumps({"status": "error", "message": error_msg}))]
+
+    async def get_book_reading_stats(self, arguments: dict[str, Any]) -> Sequence[TextContent]:
+        """
+        获取当前用户对某本书、分格式的阅读时长/进度统计。
+        """
+        user_info = self._require_auth(arguments)
+        if not user_info:
+            return [TextContent(type="text", text=json.dumps({"status": "error", "message": "Authentication required"}))]
+
+        try:
+            book_id = arguments.get("book_id")
+            if book_id is None:
+                return [TextContent(type="text", text=json.dumps({"status": "error",
+                                                                  "message": "Missing required parameter: book_id"}))]
+
+            try:
+                book = self.base_handler.get_book(book_id)
+                bid = book["id"]
+            except Exception as e:
+                return [TextContent(type="text", text=json.dumps({"status": "error", "message": f"Book not found: {str(e)}"}))]
+
+            from webserver.services.reading_stats_service import ReadingStatsService
+            stats = ReadingStatsService.get_book_format_stats(user_info["user_id"], bid)
+
+            result = {
+                "status": "success",
+                "book_id": bid,
+                "title": book.get("title", ""),
+                "stats": stats,
+            }
+            return [TextContent(type="text", text=json.dumps(result))]
+
+        except Exception as e:
+            error_msg = f"Error getting book reading stats: {str(e)}"
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
+            return [TextContent(type="text", text=json.dumps({"status": "error", "message": error_msg}))]
+
+    async def update_book_reading_stats(self, arguments: dict[str, Any]) -> Sequence[TextContent]:
+        """手动更新/纠正当前用户对某本书、某个格式的阅读时长/进度/开始或完成时间。只允许操作当前登录用户
+        自己的统计数据，不接受操作他人数据的参数。
+        """
+        user_info = self._require_auth(arguments)
+        if not user_info:
+            return [TextContent(type="text", text=json.dumps({"status": "error", "message": "Authentication required"}))]
+
+        try:
+            book_id = arguments.get("book_id")
+            fmt = arguments.get("format")
+            if book_id is None or not fmt:
+                return [TextContent(type="text", text=json.dumps({"status": "error",
+                                                                  "message": "Missing required parameter: book_id/format"}))]
+
+            try:
+                book = self.base_handler.get_book(book_id)
+                bid = book["id"]
+            except Exception as e:
+                return [TextContent(type="text", text=json.dumps({"status": "error", "message": f"Book not found: {str(e)}"}))]
+
+            from webserver.models import BookReadingStats
+            from webserver.services.reading_stats_service import ReadingStatsService
+
+            progress = None
+            raw_progress = arguments.get("progress")
+            if isinstance(raw_progress, (list, tuple)) and len(raw_progress) == 2:
+                try:
+                    current, total = int(raw_progress[0]), int(raw_progress[1])
+                except (TypeError, ValueError):
+                    return [TextContent(type="text", text=json.dumps({"status": "error",
+                                                                      "message": "Invalid progress, expected [current, total]"}))]
+                if total <= 0:
+                    return [TextContent(type="text", text=json.dumps({"status": "error",
+                                                                      "message": "Invalid progress, expected [current, total]"}))]
+                progress = (current, total)
+
+            def parse_time(value):
+                if value is None:
+                    return None
+                if isinstance(value, (int, float)):
+                    ts = value / 1000.0 if value > 1e12 else value
+                    return datetime.datetime.utcfromtimestamp(ts)
+                return datetime.datetime.fromisoformat(str(value))
+
+            state = arguments.get("state")
+            if state is not None and state not in (BookReadingStats.STATE_READING, BookReadingStats.STATE_FINISHED):
+                return [TextContent(type="text", text=json.dumps({"status": "error", "message": "Invalid state, expected 0 or 1"}))]
+
+            stats = ReadingStatsService.update_book_format_stats(
+                user_info["user_id"],
+                bid,
+                str(fmt).strip().lower(),
+                duration_seconds=int(arguments.get("duration_seconds") or 0),
+                progress=progress,
+                start_time=parse_time(arguments.get("start_time")),
+                finish_time=parse_time(arguments.get("finish_time")),
+                state=state,
+            )
+
+            result = {
+                "status": "success",
+                "book_id": bid,
+                "title": book.get("title", ""),
+                "stats": stats,
+                "updated_by": user_info["username"],
+            }
+            logging.info(f"Book {bid} reading stats ({fmt}) updated via MCP by {user_info['username']}")
+            return [TextContent(type="text", text=json.dumps(result))]
+
+        except ValueError as e:
+            return [TextContent(type="text", text=json.dumps({"status": "error", "message": f"Invalid time format: {str(e)}"}))]
+        except Exception as e:
+            error_msg = f"Error updating book reading stats: {str(e)}"
             logging.error(error_msg)
             logging.error(traceback.format_exc())
             return [TextContent(type="text", text=json.dumps({"status": "error", "message": error_msg}))]
@@ -1381,6 +1497,78 @@ class MCPService:
                     "required": ["book_id"]
                 }
             ),
+            Tool(
+                name="get_book_reading_stats",
+                description="Get the current user's reading duration/progress statistics for a book, "
+                            "broken down by ebook format (epub/pdf/mobi/etc)." + self.need_login_prompt + "\n\n"
+                            "Returns for each format:\n"
+                            "- state: 0=reading, 1=finished\n"
+                            "- total_seconds: cumulative reading duration in seconds\n"
+                            "- progress_current/progress_total/progress_percent: reading progress\n"
+                            "- start_time/finish_time: when the current/last round started/finished\n"
+                            "- start_count: how many times reading was started for this format\n",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "book_id": {
+                            "type": ["string", "integer"],
+                            "description": "ID of the book to get reading stats for"
+                        }
+                    },
+                    "required": ["book_id"]
+                }
+            ),
+            Tool(
+                name="update_book_reading_stats",
+                description="Manually update/correct the current user's reading duration or progress for a "
+                            "book format. Useful for backfilling historical reading records or marking a book "
+                            "as started/finished when no automatic heartbeat exists (e.g. no sync data)."
+                            + self.need_login_prompt + "\n\n"
+                            "Required parameters:\n"
+                            "- book_id: ID of the book\n"
+                            "- format: ebook format, e.g. epub/pdf/mobi/azw3/txt\n\n"
+                            "Optional parameters (at least one is normally set):\n"
+                            "- duration_seconds: seconds to ADD to the cumulative total (not an absolute value)\n"
+                            "- progress: [current, total], e.g. [120, 488]; reaching ~100% auto-marks finished\n"
+                            "- start_time: ISO8601 string or epoch timestamp; explicitly starts a new reading round\n"
+                            "- finish_time: ISO8601 string or epoch timestamp; explicitly marks this round finished\n"
+                            "- state: 0 (reading) or 1 (finished), alternative to finish_time\n",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "book_id": {
+                            "type": ["string", "integer"],
+                            "description": "ID of the book to update reading stats for"
+                        },
+                        "format": {
+                            "type": "string",
+                            "description": "Ebook format, e.g. epub/pdf/mobi/azw3/txt"
+                        },
+                        "duration_seconds": {
+                            "type": "integer",
+                            "description": "Seconds to add to the cumulative reading duration"
+                        },
+                        "progress": {
+                            "type": "array",
+                            "description": "[current, total] reading progress",
+                            "items": {"type": "integer"}
+                        },
+                        "start_time": {
+                            "type": ["string", "number"],
+                            "description": "ISO8601 string or epoch timestamp; explicitly starts a new reading round"
+                        },
+                        "finish_time": {
+                            "type": ["string", "number"],
+                            "description": "ISO8601 string or epoch timestamp; explicitly marks this round finished"
+                        },
+                        "state": {
+                            "type": "integer",
+                            "description": "0=reading, 1=finished"
+                        }
+                    },
+                    "required": ["book_id", "format"]
+                }
+            ),
             # Tool(
             #     name="upload_book",
             #     description="Upload a new ebook file to the collection. Supports epub, pdf, and azw3 formats. "
@@ -1604,6 +1792,12 @@ class MCPService:
                     return self._create_tool_result(request_id, result[0].text)
                 elif tool_name == "save_meta_to_file":
                     result = await self.save_meta_to_file(arguments)
+                    return self._create_tool_result(request_id, result[0].text)
+                elif tool_name == "get_book_reading_stats":
+                    result = await self.get_book_reading_stats(arguments)
+                    return self._create_tool_result(request_id, result[0].text)
+                elif tool_name == "update_book_reading_stats":
+                    result = await self.update_book_reading_stats(arguments)
                     return self._create_tool_result(request_id, result[0].text)
                 elif tool_name == "upload_book":
                     result = await self.upload_book(arguments)

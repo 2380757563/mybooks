@@ -628,6 +628,52 @@ class MyBooksAPI:
         """Get current user's finished book list."""
         return self._call_with_auto_relogin("GET", "/api/read-done")
 
+    def get_book_reading_stats(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get the current user's reading duration/progress statistics for a
+        book, broken down by ebook format (epub/pdf/mobi/etc).
+
+        Args:
+            book_id (int, required): Book ID
+        """
+        book_id = args.get("book_id")
+        if not book_id:
+            return {"status": "error", "message": "book_id is required"}
+
+        return self._call_with_auto_relogin("GET", f"/api/book/{book_id}/reading_stats")
+
+    def update_book_reading_stats(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Manually update/correct the current user's reading duration or
+        progress for one ebook format of a book. Useful for backfilling
+        historical reading records, or marking a format as started/finished
+        when there is no automatic heartbeat (e.g. reading outside MyReader).
+
+        Args:
+            book_id (int, required): Book ID
+            format (str, required): Ebook format, e.g. epub/pdf/mobi/azw3/txt
+            duration_seconds (int, optional): Seconds to ADD to the cumulative
+                reading duration (not an absolute value)
+            progress (array, optional): [current, total], e.g. [120, 488];
+                reaching ~100% auto-marks the format as finished
+            start_time (str, optional): ISO8601 string or epoch timestamp;
+                explicitly starts a new reading round
+            finish_time (str, optional): ISO8601 string or epoch timestamp;
+                explicitly marks the current round finished
+            state (int, optional): 0=reading, 1=finished (alternative to finish_time)
+        """
+        book_id = args.get("book_id")
+        fmt = args.get("format")
+        if not book_id or not fmt:
+            return {"status": "error", "message": "book_id and format are required"}
+
+        body = {k: v for k, v in args.items() if k not in ("book_id",)}
+        return self._call_with_auto_relogin(
+            "POST",
+            f"/api/book/{book_id}/reading_stats",
+            json=body
+        )
+
     # ========================================================================
     # TTS Tool Methods (MiMo TTS audiobook, admin only)
     # ========================================================================
@@ -906,7 +952,8 @@ class MyBooksAPI:
                 "list_authors", "get_author_books", "book_upload",
                 "book_add_by_isbn", "wants", "list_wants", "favorite",
                 "list_favorites", "reading", "list_reading", "read_done",
-                "list_read_done", "tts_save_config", "tts_test_connection",
+                "list_read_done", "get_book_reading_stats", "update_book_reading_stats",
+                "tts_save_config", "tts_test_connection",
                 "tts_convert", "tts_progress", "tts_clone_upload", "tts_clone_list",
                 "tts_clone_delete", "tts_clone_audio", "tts_prompt_list",
                 "tts_prompt_save", "tts_prompt_delete"

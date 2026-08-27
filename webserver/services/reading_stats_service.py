@@ -5,9 +5,7 @@ Reading/download/push activity tracking, feeding webserver.models.Reading and
 the Reader.total_reading_seconds/download_count aggregates.
 
 Writes never hit the DB synchronously — heartbeat()/record_download()/
-record_push() only touch an in-process memory buffer; a periodic
-tornado.ioloop.PeriodicCallback flushes it in one batched transaction.
-See document/Reading_Stats_Design.md §3, §9, §11 for the full design.
+record_push() only touch an in-process memory buffer
 """
 
 import datetime
@@ -21,16 +19,29 @@ import tornado.ioloop
 from sqlalchemy import text, update
 
 from webserver import loader
-from webserver.models import Item, Reader, Reading
+from webserver.models import BookReadingStats, Item, Reader, Reading
 from webserver.services.reader_cache import ReaderStatsCache
 
 CONF = loader.get_settings()
 
 HEARTBEAT_MAX_GAP = datetime.timedelta(seconds=60)
 
-# MyBooks 云端书籍的 book_hash 形如 "cloud-8502-epub"，8502 是 book_id；
+# 阅读进度达到该百分比即视为"读完"，自动把 BookReadingStats.state 置为 FINISHED
+# （epub 分页误差下很多书读到最后一页也算不满 100%）
+FINISH_PROGRESS_THRESHOLD = 99.5
+
+# MyBooks 云端书籍的 book_hash 形如 "cloud-8502-epub"，8502 是 book_id，"epub" 是格式；
 # 不匹配这个格式的视为本地书籍，本轮不统计。
-_CLOUD_BOOK_HASH_RE = re.compile(r"^cloud-(\d+)-[a-zA-Z0-9]+$")
+_CLOUD_BOOK_HASH_RE = re.compile(r"^cloud-(\d+)-([a-zA-Z0-9]+)$")
+
+
+def parse_format_from_hash(book_hash: Optional[str]) -> Optional[str]:
+    if not book_hash:
+        return None
+    m = _CLOUD_BOOK_HASH_RE.match(book_hash)
+    if not m:
+        return None
+    return m.group(2).lower()
 
 
 def parse_book_id_from_hash(book_hash: Optional[str]) -> Optional[int]:
@@ -90,6 +101,7 @@ class ReadingWriteBuffer:
             key = (reader_id, book_id)
             session = self._sessions.get(key)
             today = now_utc.date()
+            logging.debug(f"[Heartbeat] {reader_id} on {book_id}")
             # 三种情况都视为"开启一行新的天级记录"：从未见过这本书的心跳、日期跨天了、
             # 或者心跳间隔超过阈值（新的一次阅读会话）。跨天时丢弃这次心跳的 delta（最多
             # 相当于一个心跳周期的误差，可接受，见 document/Reading_Stats_Design.md §11.4）。
@@ -98,12 +110,14 @@ class ReadingWriteBuffer:
                 self._sessions[key] = _PendingSession(
                     current_date=today, session_start=now_utc, last_seen=now_utc, protocol=protocol, duration_delta=0, dirty=True
                 )
+                logging.debug("[Heartbeat] Found the new session!")
                 return
             delta = int((now_utc - session.last_seen).total_seconds())
             session.duration_delta += delta
             session.last_seen = now_utc
             session.protocol = protocol
             if delta:
+                logging.debug(f"[Heartbeat] Update the time delta for user {reader_id} with {delta} seconds!")
                 self._reader_seconds_delta[reader_id] = self._reader_seconds_delta.get(reader_id, 0) + delta
 
     def on_event(self, reader_id: int, book_id: int, action: str, protocol: str, now_utc: datetime.datetime) -> None:
@@ -233,17 +247,155 @@ class ReadingWriteBuffer:
                     self._reader_push_delta[reader_id] = self._reader_push_delta.get(reader_id, 0) + delta
 
 
+@dataclass
+class _PendingFormatState:
+    """跟踪一个 (reader_id, book_id, format) 自上次 flush 以来尚未落库的心跳增量。
+    """
+
+    last_seen: datetime.datetime
+    duration_delta: int = 0
+    progress: Optional[Tuple[int, int]] = None
+    touched: bool = False
+
+
+def apply_book_format_update(
+    db,
+    reader_id: int,
+    book_id: int,
+    fmt: str,
+    now_utc: datetime.datetime,
+    duration_delta: int = 0,
+    progress: Optional[Tuple[int, int]] = None,
+    start_time: Optional[datetime.datetime] = None,
+    finish_time: Optional[datetime.datetime] = None,
+    state: Optional[int] = None,
+) -> BookReadingStats:
+    """Insert-or-update the one BookReadingStats row for (reader_id, book_id, fmt).
+
+    Shared by BookFormatStatsBuffer.flush() (automatic heartbeats) and the
+    manual POST /api/book/<id>/reading_stats endpoint (and its MCP tool
+    counterpart), so both paths apply the exact same "new round"/"finished"
+    rules.
+    """
+    row = db.query(BookReadingStats).filter_by(reader_id=reader_id, book_id=book_id, format=fmt).one_or_none()
+    # 已完成状态下，只有真的又花了时间阅读（duration_delta > 0）才判定为"又开始读一轮"——
+    # 单纯重复上报同样的进度（比如读完后又打开看了一眼但没翻页）不应该把 start_count 再 +1。
+    is_new_round = row is None or (row.state == BookReadingStats.STATE_FINISHED and duration_delta > 0)
+    if row is None:
+        row = BookReadingStats(reader_id=reader_id, book_id=book_id, format=fmt, create_time=now_utc, update_time=now_utc)
+        db.add(row)
+    if start_time is not None:
+        # 显式指定开始时间：总是视为开启新一轮，即使当前还在读（用于导入历史数据/手工纠正）
+        is_new_round = True
+    if is_new_round:
+        row.start_time = start_time or now_utc
+        row.finish_time = None
+        row.state = BookReadingStats.STATE_READING
+        row.start_count = (row.start_count or 0) + 1
+
+    row.total_seconds = (row.total_seconds or 0) + max(duration_delta, 0)
+    row.update_time = now_utc
+
+    if progress is not None:
+        current, total = progress
+        row.progress_current = current
+        row.progress_total = total
+        if total:
+            row.progress_percent = round(current * 100.0 / total, 2)
+        if row.progress_percent is not None and row.progress_percent >= FINISH_PROGRESS_THRESHOLD:
+            row.state = BookReadingStats.STATE_FINISHED
+            row.finish_time = row.finish_time or now_utc
+
+    if finish_time is not None:
+        row.state = BookReadingStats.STATE_FINISHED
+        row.finish_time = finish_time
+    elif state is not None:
+        row.state = state
+        if state == BookReadingStats.STATE_FINISHED:
+            row.finish_time = row.finish_time or now_utc
+        else:
+            row.finish_time = None
+
+    return row
+
+
+class BookFormatStatsBuffer:
+    """In-memory write-behind buffer for BookReadingStats heartbeats.
+
+    Flushed on the same PeriodicCallback tick as ReadingWriteBuffer (see
+    ReadingStatsService.flush_now()).
+    """
+
+    def __init__(self):
+        self._states: Dict[Tuple[int, int, str], _PendingFormatState] = {}
+        self._lock = threading.Lock()
+
+    def on_heartbeat(self, reader_id: int, book_id: int, fmt: str, progress: Optional[Tuple[int, int]], now_utc: datetime.datetime) -> None:
+        with self._lock:
+            key = (reader_id, book_id, fmt)
+            state = self._states.get(key)
+            if state is None:
+                self._states[key] = _PendingFormatState(last_seen=now_utc, progress=progress, touched=True)
+                logging.debug(f"Found new session for {book_id} ({reader_id}), fmt:{fmt}")
+                return
+            gap = now_utc - state.last_seen
+            if gap <= HEARTBEAT_MAX_GAP:
+                state.duration_delta += int(gap.total_seconds())
+            state.last_seen = now_utc
+            if progress is not None:
+                state.progress = progress
+            state.touched = True
+            logging.debug(f"[Heartbeat] update time to {state.duration_delta} for {book_id} ({reader_id}), fmt:{fmt}")
+
+    def flush(self) -> None:
+        with self._lock:
+            pending = [
+                (key, s.duration_delta, s.progress, s.last_seen) for key, s in self._states.items() if s.touched or s.duration_delta
+            ]
+            for s in self._states.values():
+                s.duration_delta = 0
+                s.touched = False
+        if not pending:
+            return
+
+        db = Reading._session()
+        try:
+            for (reader_id, book_id, fmt), duration_delta, progress, last_seen in pending:
+                apply_book_format_update(db, reader_id, book_id, fmt, last_seen, duration_delta=duration_delta, progress=progress)
+            db.commit()
+        except Exception:
+            db.rollback()
+            logging.error("[reading_stats] book_format flush failed, data kept for retry on next tick", exc_info=True)
+            with self._lock:
+                for (reader_id, book_id, fmt), duration_delta, progress, last_seen in pending:
+                    state = self._states.get((reader_id, book_id, fmt))
+                    if state is not None:
+                        state.duration_delta += duration_delta
+                        state.touched = True
+                        # progress 留用内存里更新的最新值即可，不需要把旧值塞回去
+
+
 class ReadingStatsService:
     """Public entry points used by sync_service/book.py/webdav/mcp."""
 
     _buffer = ReadingWriteBuffer()
+    _format_buffer = BookFormatStatsBuffer()
     _periodic_callback: Optional[tornado.ioloop.PeriodicCallback] = None
 
     @classmethod
-    def heartbeat(cls, reader_id: int, book_id: int, protocol: str) -> None:
+    def heartbeat(
+        cls,
+        reader_id: int,
+        book_id: int,
+        protocol: str,
+        fmt: Optional[str] = None,
+        progress: Optional[Tuple[int, int]] = None,
+    ) -> None:
         if not ReaderStatsCache().get_allow_statistic(reader_id):
             return
         cls._buffer.on_heartbeat(reader_id, book_id, protocol, datetime.datetime.utcnow())
+        if fmt:
+            cls._format_buffer.on_heartbeat(reader_id, book_id, fmt.lower(), progress, datetime.datetime.utcnow())
 
     @classmethod
     def record_download(cls, reader_id: int, book_id: int, protocol: str) -> None:
@@ -258,8 +410,55 @@ class ReadingStatsService:
         cls._buffer.on_event(reader_id, book_id, Reading.ACTION_PUSH, protocol, datetime.datetime.utcnow())
 
     @classmethod
+    def get_book_format_stats(cls, reader_id: int, book_id: int) -> List[dict]:
+        """所有格式的统计（供 BookDetail/独立接口/MCP get_book_reading_stats 复用）。"""
+        db = Reading._session()
+        rows = (
+            db.query(BookReadingStats)
+            .filter(BookReadingStats.reader_id == reader_id, BookReadingStats.book_id == book_id)
+            .order_by(BookReadingStats.format)
+            .all()
+        )
+        return [row.format_dict() for row in rows]
+
+    @classmethod
+    def update_book_format_stats(
+        cls,
+        reader_id: int,
+        book_id: int,
+        fmt: str,
+        duration_seconds: int = 0,
+        progress: Optional[Tuple[int, int]] = None,
+        start_time: Optional[datetime.datetime] = None,
+        finish_time: Optional[datetime.datetime] = None,
+        state: Optional[int] = None,
+    ) -> dict:
+        """手动更新入口（POST /api/book/<id>/reading_stats 与 MCP update_book_reading_stats 共用）。
+
+        直接写库，不进内存缓冲——请求频率低，没有节流必要，且"改了立刻能查到"更符合直觉。
+        """
+        fmt = fmt.lower()
+        db = Reading._session()
+        now_utc = datetime.datetime.utcnow()
+        row = apply_book_format_update(
+            db,
+            reader_id,
+            book_id,
+            fmt,
+            now_utc,
+            duration_delta=max(int(duration_seconds or 0), 0),
+            progress=progress,
+            start_time=start_time,
+            finish_time=finish_time,
+            state=state,
+        )
+        db.commit()
+        return row.format_dict()
+
+    @classmethod
     def flush_now(cls) -> None:
         cls._buffer.flush()
+        cls._format_buffer.flush()
 
     @classmethod
     def start(cls) -> None:

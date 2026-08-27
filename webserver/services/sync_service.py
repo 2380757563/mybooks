@@ -28,7 +28,7 @@ import tornado.ioloop
 
 from webserver import loader
 from webserver.models import ReadingRecord, Reading, Reader, parse_book_id_from_reading_record_hash
-from webserver.services.reading_stats_service import ReadingStatsService, parse_book_id_from_hash
+from webserver.services.reading_stats_service import ReadingStatsService, parse_book_id_from_hash, parse_format_from_hash
 
 CONF = loader.get_settings()
 
@@ -379,7 +379,23 @@ class MyReaderSyncService:
                             # document/Reading_Stats_Design.md §3.1；books/notes 的 push 不触发。
                             book_id = parse_book_id_from_hash(book_hash)
                             if book_id is not None:
-                                ReadingStatsService.heartbeat(uid, book_id, Reading.PROTOCOL_APP)
+                                fmt = parse_format_from_hash(book_hash)
+                                progress = None
+                                if book_merged:
+                                    raw_progress = book_merged[-1].get("progress")
+                                    if isinstance(raw_progress, (list, tuple)) and len(raw_progress) == 2:
+                                        # progress=[current,total]，total<=0 视为无效不落进度
+                                        try:
+                                            current, total = int(raw_progress[0]), int(raw_progress[1])
+                                            if total > 0:
+                                                progress = (current, total)
+                                        except (TypeError, ValueError):
+                                            progress = None
+                                    else:
+                                        logging.info(f"  Invalid progress in {book_merged[-1]}")
+                                else:
+                                    logging.info(f"Not merged, cannot update the book reading stats")
+                                ReadingStatsService.heartbeat(uid, book_id, Reading.PROTOCOL_APP, fmt=fmt, progress=progress)
                 if merged_list:
                     result[kind] = merged_list
         for scope, book_hash in changed_scopes:

@@ -461,6 +461,30 @@
                                 </span>
                             </div>
                         </div>
+                        <div v-if="book.reading_stats && book.reading_stats.length" class="reading-stats-block">
+                            <div v-for="stat in book.reading_stats" :key="stat.format" class="reading-stats-row">
+                                <span class="reading-stats-item">
+                                    <v-icon x-small>mdi-book-open-page-variant-outline</v-icon>
+                                    {{ stat.format.toUpperCase() }}
+                                </span>
+                                <span v-if="book.state && book.state.read_state === 0" class="reading-stats-item">
+                                    <v-icon x-small>mdi-chart-donut</v-icon>
+                                    {{ formatReadingProgress(stat) }}
+                                </span>
+                                <span class="reading-stats-item">
+                                    <v-icon x-small>mdi-clock-outline</v-icon>
+                                    {{ formatReadingDuration(stat.total_seconds) }}
+                                </span>
+                                <span v-if="stat.state === 1 && stat.finish_time" class="reading-stats-item">
+                                    <v-icon x-small>mdi-check-circle-outline</v-icon>
+                                    {{ formatReadingDate(stat.finish_time) }}
+                                </span>
+                                <span v-else-if="stat.start_time" class="reading-stats-item">
+                                    <v-icon x-small>mdi-flag-outline</v-icon>
+                                    {{ formatReadingDate(stat.start_time) }}
+                                </span>
+                            </div>
+                        </div>
                     </v-col>
                     <v-col cols="12" sm="8">
                         <v-card-text>
@@ -544,7 +568,7 @@
                                             </nuxt-link>
                                             <v-tooltip bottom>
                                                 <template v-slot:activator="{ on, attrs }">
-                                                    <v-chip v-bind="attrs" v-on="on" rounded small dark color="green" :to="{ path: '/author', query: { name: author } }">
+                                                    <v-chip v-bind="attrs" v-on="on" rounded small dark color="#006400" :to="{ path: '/author', query: { name: author } }">
                                                         <v-icon v-if="!showUserInfo">mdi-account-badge-outline</v-icon>
                                                         {{ author }}
                                                     </v-chip>
@@ -2060,6 +2084,25 @@ export default {
         authorAvatarUrl(author) {
             const ts = Math.floor(Date.now() / 10000) * 10000;
             return `/get/author/avatar/${author}?t=${ts}`;
+        },
+        // 分格式阅读时长/进度统计的展示格式化
+        formatReadingDuration(totalSeconds) {
+            const seconds = totalSeconds || 0;
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            if (hours <= 0) {
+                return this.$t('book.readingStats.durationMinutes', { minutes });
+            }
+            return this.$t('book.readingStats.durationHoursMinutes', { hours, minutes });
+        },
+        formatReadingProgress(stat) {
+            if (stat.state === 1) return '100%';
+            if (stat.progress_percent === null || stat.progress_percent === undefined) return '-';
+            return `${stat.progress_percent}%`;
+        },
+        formatReadingDate(isoString) {
+            if (!isoString) return '';
+            return new Date(isoString).toLocaleDateString();
         },
         downloadBook() {
             if (this.book.files && this.book.files.length === 1) {
@@ -3827,6 +3870,31 @@ export default {
    建议列表所用的（无类名）.v-menu__content，否则会连带隐藏建议列表的滚动条。 */
 .mt-category-menu.v-menu__content {
     overflow-y: hidden !important;
+}
+
+.reading-stats-block {
+    margin-top: 8px;
+    width: 100%;
+}
+.reading-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 4px 10px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.6);
+    padding: 2px 0;
+}
+.theme--dark .reading-stats-row {
+    color: rgba(255, 255, 255, 0.7);
+}
+.reading-stats-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
 }
 
 .book-action-btns {

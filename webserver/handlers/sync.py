@@ -233,6 +233,7 @@ class SyncWebSocketHandler(tornado.websocket.WebSocketHandler):
         msg_type = data.get("type")
         if msg_type == "ping":
             self.write_message(tornado.escape.json_encode({"type": "pong"}))
+        logging.info(f"[WebSocket] message: {message}")
         # `hello` is accepted but ignored in this first version (see plan §11.8).
 
     def on_close(self):

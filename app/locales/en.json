@@ -663,6 +663,10 @@
     "enable_shared_notes": "Allow readers to see other users' highlights and notes while reading"
   },
   "book": {
+    "readingStats": {
+      "durationMinutes": "{minutes}m",
+      "durationHoursMinutes": "{hours}h {minutes}m"
+    },
     "edit": {
       "title": "Edit Book Information",
       "cancel": "Cancel",

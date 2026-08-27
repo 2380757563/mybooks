@@ -12,7 +12,7 @@ import zlib
 from webserver.i18n import _
 
 from social_sqlalchemy.storage import JSONType, SQLAlchemyMixin
-from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.orm import relationship, declarative_base
 from webserver.constants import BOOK_TYPE_EBOOK
@@ -591,6 +591,58 @@ class Reading(Base, SQLAlchemyMixin):
         self.date = date or self.update_time.date()
 
 
+# 单本书 · 分格式的阅读时长/进度统计
+# 与 Reading 表（全局、按天分桶、不分格式）是两条并行的统计线：这张表关心"这一遍完整地
+# 读了多久、从哪天开始、哪天读完"，(reader_id, book_id, format) 唯一，一行代表"当前/最近一轮"。
+class BookReadingStats(Base, SQLAlchemyMixin):
+    __tablename__ = "book_reading_stats"
+
+    STATE_READING = 0
+    STATE_FINISHED = 1
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reader_id = Column(Integer, ForeignKey("readers.id"), nullable=False)
+    book_id = Column(Integer, nullable=False)
+    format = Column(String(16), nullable=False)  # epub/pdf/mobi/azw3/txt 等，统一小写
+
+    state = Column(Integer, default=STATE_READING, nullable=False)  # 0=在读 1=已完成
+    total_seconds = Column(Integer, default=0, nullable=False)      # 这个格式的累计阅读时长（秒），跨轮次累加
+
+    progress_current = Column(Integer)  # 来自 sync progress=[current,total] 的 current
+    progress_total = Column(Integer)    # 来自 sync progress=[current,total] 的 total
+    progress_percent = Column(Float)    # 0~100，两位小数；与 current/total 一起存，避免查询时现算
+
+    start_time = Column(DateTime)   # UTC；当前/最近一轮的开始时间
+    finish_time = Column(DateTime)  # UTC；当前/最近一轮的完成时间；重新开始阅读时清空
+    start_count = Column(Integer, default=0, nullable=False)  # 开始阅读的次数（含首次）
+
+    create_time = Column(DateTime, nullable=False)  # 这一行第一次创建的时间，不随轮次变化
+    update_time = Column(DateTime, nullable=False)  # 最后一次写入时间（心跳或手动更新）
+
+    reader = relationship(Reader)
+
+    __table_args__ = (
+        UniqueConstraint("reader_id", "book_id", "format", name="ux_book_reading_stats"),
+        Index("ix_book_reading_stats_reader_book", "reader_id", "book_id"),
+    )
+
+    def format_dict(self):
+        return {
+            "format": self.format,
+            "state": self.state,
+            "total_seconds": self.total_seconds or 0,
+            "progress_current": self.progress_current,
+            "progress_total": self.progress_total,
+            "progress_percent": 100.0 if self.state == self.STATE_FINISHED else self.progress_percent,
+            # start_time/finish_time/update_time 存的是 UTC naive datetime（见类注释），
+            # isoformat() 后补一个 "Z" 后缀，避免前端 `new Date(...)` 把它当成本地时间解析
+            "start_time": self.start_time.isoformat() + "Z" if self.start_time else None,
+            "finish_time": self.finish_time.isoformat() + "Z" if self.finish_time else None,
+            "start_count": self.start_count or 0,
+            "update_time": self.update_time.isoformat() + "Z" if self.update_time else None,
+        }
+
+
 # MyBooks 云端书籍的 book_hash 形如 "cloud-8502-epub"，8502 是 Calibre book_id；
 # 与 webserver/services/reading_stats_service.py::_CLOUD_BOOK_HASH_RE 保持一致（含义相同，
 # 避免相互 import 造成循环依赖，两处各自维护一份同样的正则）。
@@ -907,7 +959,7 @@ def user_syncdb(engine):
 # 表结构随功能迭代新增的表，不希望依赖运维方手动重新执行 `--syncdb` 才能用上
 # （`docker/start.sh` 每次启动都会跑 --syncdb，但手工部署/测试环境不一定会），
 # 在正常的 make_app() 启动路径里也顺带补建一次，checkfirst=True 天然幂等。
-_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview, InstalledTool)
+_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview, InstalledTool, BookReadingStats)
 
 
 def ensure_new_tables(engine):

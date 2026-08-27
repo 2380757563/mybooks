@@ -3,7 +3,7 @@ name: mybooks
 homepage: https://www.mybooks.top
 allowed-tools: Bash(python3:*)
 metadata: {"clawdbot":{},"openclaw":{"requires":{"bins":["python3"],"env":["MYBOOKS_HOST","MYBOOKS_USER","MYBOOKS_PASSWORD"]}}}
-description: "MyBooks是个人书库管理系统，提供电子书及实体书管理，包括存储、分类、搜索和元数据管理功能。你可以帮助用户：查询书库统计信息和阅读统计,搜索/浏览书籍,获取书籍详情,更新书籍元数据（书名、作者、标签、分类、简介等）,自动联网填充书籍信息,发送书籍到邮箱或阅读器设备,上传电子书或通过ISBN添加实体书,管理阅读状态（想读/在读/已读/收藏）,查看作者信息和分类信息,导入第三方阅读App的划线与想法（如微信读书，需配合微信读书 skill 读取原始数据）,以及MiMo TTS有声书功能（配置TTS API、EPUB转有声书、查询转换进度、克隆音色与语音提示词管理，需管理员权限）等"
+description: "MyBooks是个人书库管理系统，提供电子书及实体书管理，包括存储、分类、搜索和元数据管理功能。你可以帮助用户：查询书库统计信息和阅读统计,搜索/浏览书籍,获取书籍详情,更新书籍元数据（书名、作者、标签、分类、简介等）,自动联网填充书籍信息,发送书籍到邮箱或阅读器设备,上传电子书或通过ISBN添加实体书,管理阅读状态（想读/在读/已读/收藏）,查询/手动更新某本书分格式的阅读时长与进度,查看作者信息和分类信息,导入第三方阅读App的划线与想法（如微信读书，需配合微信读书 skill 读取原始数据）,以及MiMo TTS有声书功能（配置TTS API、EPUB转有声书、查询转换进度、克隆音色与语音提示词管理，需管理员权限）等"
 ---
 
 # MyBooks
@@ -877,6 +877,88 @@ export MYBOOKS_SSL_VERIFY="false"   # 如服务器使用自签名证书，设为
 
 ---
 
+### `get_book_reading_stats` — 分格式阅读时长/进度统计
+
+**使用场景**：查看某本书**分格式**（epub/pdf/mobi 等）的阅读时长、阅读进度、开始/完成阅读的时间、开始阅读的次数。与 `reading`/`read_done` 的整本书阅读状态不同，这个接口是"格式"级别的细粒度数据。
+
+- "这本书我读了多久？" / "我读到哪了？" / "这本书 epub 版我什么时候开始读的？"
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `book_id` | int | ✅ | 书籍 ID |
+
+**执行脚本**：
+```bash
+<skill-installation-path>/scripts/mybooks_api.py get_book_reading_stats '{"book_id":42}'
+```
+
+**响应示例**：
+```json
+{
+  "err": "ok",
+  "stats": [
+    {
+      "format": "epub",
+      "state": 0,
+      "total_seconds": 5421,
+      "progress_current": 3,
+      "progress_total": 488,
+      "progress_percent": 0.61,
+      "start_time": "2026-08-20T10:00:00Z",
+      "finish_time": null,
+      "start_count": 1,
+      "update_time": "2026-08-27T09:12:00Z"
+    }
+  ]
+}
+```
+
+`state`：`0`=在读，`1`=已完成。没有任何格式统计数据时 `stats` 为空数组 `[]`（比如从未通过 MyReader/网页阅读器打开过这本书）。
+
+---
+
+### `update_book_reading_stats` — 手动更新阅读时长/进度
+
+**使用场景**：手动补记或纠正某本书某个格式的阅读数据——导入历史阅读记录、用户口述"我刚读完这本书的 PDF 版"、或者网页阅读器等没有自动进度上报的场景。日常通过 MyReader 阅读的书籍会自动统计，**不需要**调用这个工具。
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `book_id` | int | ✅ | 书籍 ID |
+| `format` | string | ✅ | 电子书格式，如 `epub`/`pdf`/`mobi`/`azw3`/`txt` |
+| `duration_seconds` | int | ❌ | 累加到该格式累计阅读时长（是增量，不是覆盖总值） |
+| `progress` | array | ❌ | `[当前, 总数]`，如 `[120, 488]`；达到约 100% 会自动标记为已完成 |
+| `start_time` | string | ❌ | ISO8601 字符串或时间戳；显式开启新一轮阅读（开始次数 +1） |
+| `finish_time` | string | ❌ | ISO8601 字符串或时间戳；显式标记本轮阅读已完成 |
+| `state` | int | ❌ | `0`=在读，`1`=已完成，效果与传 `finish_time` 类似（不需要同时传两个） |
+
+**执行脚本**：
+```bash
+# 补记刚读的 40 分钟，并更新进度
+<skill-installation-path>/scripts/mybooks_api.py update_book_reading_stats \
+  '{"book_id":42,"format":"pdf","duration_seconds":2400,"progress":[50,200]}'
+
+# 手动标记这本书的 epub 版已读完
+<skill-installation-path>/scripts/mybooks_api.py update_book_reading_stats \
+  '{"book_id":42,"format":"epub","state":1}'
+```
+
+**响应示例**：
+```json
+{ "err": "ok", "stats": { "format": "pdf", "state": 0, "total_seconds": 2400, "progress_current": 50, "progress_total": 200, "progress_percent": 25.0, "start_time": "2026-08-27T09:00:00Z", "finish_time": null, "start_count": 1, "update_time": "2026-08-27T09:40:00Z" } }
+```
+
+**常见错误**：
+| `err` 值 | 含义 |
+|----------|------|
+| `"params.invalid"` | 缺少 `format`，或 `progress`/`state` 参数格式错误 |
+| `"params.book.invalid"` | 书籍不存在 |
+
+---
+
 ## TTS 有声书工具列表（MiMo TTS，需管理员权限）
 
 > 将 EPUB 电子书转换为有声书。所有 TTS 接口均需要**管理员权限**。
@@ -1292,6 +1374,12 @@ export MYBOOKS_SSL_VERIFY="false"   # 如服务器使用自签名证书，设为
 ├─ "标记正在读" / "标记已读完"
 │   → reading（read_state: 1 或 2）
 │   → read_done（快捷标记已读完）
+│
+├─ "这本书读了多久？" / "读到哪了？" / "epub 版什么时候开始读的？"
+│   → get_book_reading_stats（分格式的时长/进度/开始完成时间）
+│
+├─ "帮我补记这本书的阅读时长" / "标记这本书 XX 格式已读完"（无自动心跳的场景）
+│   → update_book_reading_stats
 │
 └─ "有哪些分类？" / "XX 作者有哪些书？"
     → categories / list_authors / get_author_books

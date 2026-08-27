@@ -40,7 +40,7 @@ from webserver.services.converter import ConverterService
 from webserver.services.extract import ExtractService
 from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, ListHandler, auth, js
-from webserver.models import Item, Reading, ReadingState, Reader
+from webserver.models import BookReadingStats as BookFormatReadingStatsModel, Item, Reading, ReadingState, Reader
 from webserver.services.reading_stats_service import ReadingStatsService
 from webserver.services.download_quota_service import DownloadQuotaService
 from webserver.services.book_review_service import BookReviewService
@@ -182,10 +182,14 @@ class BookDetail(BaseHandler):
                 "download": 0
             }
 
+        # 分格式的阅读时长/进度统计
+        formated_book = BookFormatter(self, book).format(with_files=True, with_perms=True)
+        formated_book["reading_stats"] = ReadingStatsService.get_book_format_stats(self.current_user.id, book_id) if self.current_user else []
+
         return {
             "err": "ok",
             "kindle_sender": CONF["smtp_username"],
-            "book": BookFormatter(self, book).format(with_files=True, with_perms=True),
+            "book": formated_book,
             "audios": AudioUtils.get_audios(bid, self.current_user.id if self.current_user else None),
         }
 
@@ -1563,6 +1567,76 @@ class BookReadingState(BaseHandler):
         return ReadingStateFormatter.format_reading_state_with_api_format(reading_state)
 
 
+class BookFormatReadingStats(BaseHandler):
+    """当前用户对某本书、分格式的阅读时长/进度统计。
+
+    GET 返回所有格式的统计（与 BookDetail 内嵌的 book["reading_stats"] 同源），
+    POST 用于手动补记/纠正某个格式的时长、进度、开始/完成时间——例如导入历史阅读记录，
+    或者网页阅读器等没有自动心跳/进度上报的场景。
+    """
+
+    @staticmethod
+    def _parse_time(value):
+        """接受 ISO8601 字符串或毫秒/秒级时间戳，统一转成 UTC 的 naive datetime。"""
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            ts = value / 1000.0 if value > 1e12 else value
+            return datetime.datetime.utcfromtimestamp(ts)
+        if isinstance(value, str):
+            try:
+                return datetime.datetime.fromisoformat(value)
+            except ValueError:
+                raise web.HTTPError(400, reason=_("时间格式无效：%s") % value)
+        raise web.HTTPError(400, reason=_("时间格式无效：%s") % value)
+
+    @js
+    @auth
+    def get(self, id):
+        book_id = int(id)
+        return {"err": "ok", "stats": ReadingStatsService.get_book_format_stats(self.user_id(), book_id)}
+
+    @js
+    @auth
+    def post(self, id):
+        book_id = int(id)
+        book = self.get_book(book_id, raise_exception=False)
+        if not book:
+            return {"err": "params.book.invalid", "msg": _("书籍已不存在")}
+
+        data = tornado.escape.json_decode(self.request.body)
+        fmt = (data.get("format") or "").strip().lower()
+        if not fmt:
+            return {"err": "params.invalid", "msg": _("缺少必填参数：format")}
+
+        progress = None
+        raw_progress = data.get("progress")
+        if isinstance(raw_progress, (list, tuple)) and len(raw_progress) == 2:
+            try:
+                current, total = int(raw_progress[0]), int(raw_progress[1])
+            except (TypeError, ValueError):
+                return {"err": "params.invalid", "msg": _("progress 参数格式错误，应为 [当前, 总数]")}
+            if total <= 0:
+                return {"err": "params.invalid", "msg": _("progress 参数格式错误，应为 [当前, 总数]")}
+            progress = (current, total)
+
+        state = data.get("state")
+        if state is not None and state not in (BookFormatReadingStatsModel.STATE_READING, BookFormatReadingStatsModel.STATE_FINISHED):
+            return {"err": "params.invalid", "msg": _("阅读状态参数错误")}
+
+        result = ReadingStatsService.update_book_format_stats(
+            self.user_id(),
+            book_id,
+            fmt,
+            duration_seconds=int(data.get("duration_seconds") or 0),
+            progress=progress,
+            start_time=self._parse_time(data.get("start_time")),
+            finish_time=self._parse_time(data.get("finish_time")),
+            state=state,
+        )
+        return {"err": "ok", "stats": result}
+
+
 class BookStateBatch(BaseHandler):
     ACTIONS = ("favorite", "wants", "reading", "read-done")
 
@@ -2693,12 +2767,16 @@ class BookRead(BaseHandler):
         if not book:
             return {"err": "params.book.invalid", "msg": _("书籍已不存在")}
         book_id = book["id"]
-        if self.current_user:
-            ReadingStatsService.heartbeat(self.current_user.id, book_id, Reading.PROTOCOL_WEB)
 
         # 若指定了格式且书籍存在该格式，优先按指定格式处理
         fmt_arg = self.get_argument("format", "").lower()
         fpath_arg = book.get("fmt_%s" % fmt_arg, None) if fmt_arg else None
+
+        if self.current_user:
+            # 网页阅读器心跳不带阅读进度（epub.js 阅读器目前不回传阅读位置），格式取显式指定的
+            # format 参数，缺省时按优先级挑书籍里第一个存在的格式，分格式时长统计使用。
+            stat_fmt = fmt_arg or next((f for f in ("epub", "pdf", "mobi", "azw3", "azw", "txt") if book.get("fmt_%s" % f)), None)
+            ReadingStatsService.heartbeat(self.current_user.id, book_id, Reading.PROTOCOL_WEB, fmt=stat_fmt)
 
         book_reader = CONF.get("EPUB_VIEWER", "MyReader")
 
@@ -3739,6 +3817,7 @@ def routes():
         (r"/api/book/([0-9]+)/favorite", BookFavorite),
         (r"/api/book/([0-9]+)/wants", BookWantToRead),
         (r"/api/book/([0-9]+)/readstate", BookReadingState),
+        (r"/api/book/([0-9]+)/reading_stats", BookFormatReadingStats),
         (r"/api/favorites", BookFavorite),
         (r"/api/wants", BookWantToRead),
         (r"/api/reading", BookReading),

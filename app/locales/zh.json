@@ -447,6 +447,10 @@
     "progressAudioImporting": "有声书导入中"
   },
   "book": {
+    "readingStats": {
+      "durationMinutes": "{minutes}分钟",
+      "durationHoursMinutes": "{hours}小时{minutes}分"
+    },
     "edit": {
       "title": "编辑书籍信息",
       "cancel": "取消",
