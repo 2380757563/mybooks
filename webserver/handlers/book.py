@@ -56,6 +56,7 @@ from webserver.constants import BOOK_TYPE_EBOOK, BOOK_TYPE_PHYSICAL, AUTO_FILL_M
 from webserver.constants import COLUMN_EXT_LINK, CALIBRE_COLUMN_EXT_LINK
 from webserver.constants import CALIBRE_COLUMN_LOCATION, COLUMN_LOCATION
 from webserver.constants import CALIBRE_COLUMN_DYNAMIC_COVER, COLUMN_DYNAMIC_COVER
+from webserver.constants import CALIBRE_COLUMN_TRANSLATORS, COLUMN_TRANSLATORS
 
 
 CONF = loader.get_settings()
@@ -1616,6 +1617,7 @@ class BookEdit(BaseHandler):
         "series_index",
         "rating",
         "languages",
+        "translators"
     ]
 
     def _is_html_content(self, content: str) -> bool:
@@ -1699,6 +1701,9 @@ class BookEdit(BaseHandler):
                 self.calibre_db_cache.set_field(CALIBRE_COLUMN_LOCATION, {bid: location})
             else:
                 logging.error("Too many characters in the location, ignore it!")
+        if COLUMN_TRANSLATORS in data:
+            translators = data.get(COLUMN_TRANSLATORS, []).join(",")
+            self.calibre_db_cache.set_field(CALIBRE_COLUMN_TRANSLATORS, {bid: translators})
 
         if mi.authors:
             # authors中如果有.,则替换为·
