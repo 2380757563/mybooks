@@ -791,16 +791,19 @@ class BaseHandler(web.RequestHandler):
             if ids
             else []
         )
+        maps = {}
         for b in items:
             d = b.to_dict()
             c = b.collector.to_dict() if b.collector else empty_item["collector"]
             d["collector"] = c
+            maps[b.book_id] = d
 
         for book in books:
             for colnum, key in self._custom_column_map.items():
                 if colnum not in book:
                     continue
                 book[key] = book.pop(colnum)
+            book.update(maps.get(book["id"], empty_item))
 
         logging.debug(
             "[%5d ms] select books from database (count = %d)"
