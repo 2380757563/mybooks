@@ -456,6 +456,7 @@
         "title": "书名",
         "rating": "评分",
         "authors": {
+          "label": "作者",
           "noData": "请输入新的名称",
           "add": "添加"
         },
@@ -474,7 +475,8 @@
         },
         "comments": "内容简介",
         "book_count": "在库数量",
-        "location": "存放位置"
+        "location": "存放位置",
+        "translators": "译者"
       }
     },
     "pushToKindle": "推送到Kindle",
@@ -638,7 +640,8 @@
     "uploadSuccess": "格式上传成功",
     "uploadFailed": "上传失败",
     "uploadFailedNetwork": "网络错误",
-    "ext_link": "图书链接"
+    "ext_link": "图书链接",
+    "translators": "译者"
   },
   "reader": {
     "tip": {

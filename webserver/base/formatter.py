@@ -52,7 +52,7 @@ class SimpleBookFormatter:
         location = self.val(CALIBRE_COLUMN_LOCATION, '').strip() if book_type == BOOK_TYPE_PHYSICAL else ""
         dynamic_cover = self.val(CALIBRE_COLUMN_DYNAMIC_COVER, 0)
         comments = self.val("comments", _("暂无简介")) if include_comments else ""
-        translators = self.val(CALIBRE_COLUMN_TRANSLATORS, "").split(",")
+        translators = self.val(CALIBRE_COLUMN_TRANSLATORS, "")
         if strip_comments and comments:
             comments = comments[:120] + "..." if len(comments) > 120 else comments
         return {
@@ -63,7 +63,7 @@ class SimpleBookFormatter:
             "pubdate": self.val("pubdate"),
             "author": ", ".join(b["authors"]),
             "authors": b["authors"],
-            "translators": translators,
+            "translators": translators.split(",") if translators else [],
             "author_sort": self.val("author_sort"),
             "tag": " / ".join(b["tags"]),
             "tags": b["tags"],

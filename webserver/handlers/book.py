@@ -1702,7 +1702,8 @@ class BookEdit(BaseHandler):
             else:
                 logging.error("Too many characters in the location, ignore it!")
         if COLUMN_TRANSLATORS in data:
-            translators = data.get(COLUMN_TRANSLATORS, []).join(",")
+            translators = ",".join(data.get(COLUMN_TRANSLATORS, []))
+            mi.set(CALIBRE_COLUMN_TRANSLATORS, translators)
             self.calibre_db_cache.set_field(CALIBRE_COLUMN_TRANSLATORS, {bid: translators})
 
         if mi.authors:

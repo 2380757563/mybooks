@@ -21,7 +21,7 @@
                                 </v-col>
                                 <v-col class='py-0' cols=12 sm=6>
                                     <!-- AUTHORS -->
-                                    <v-combobox v-model="book.authors" :items="authorNames" :label="$t('book.edit.fields.authors')"
+                                    <v-combobox v-model="book.authors" :items="authorNames" :label="$t('book.edit.fields.authors.label')"
                                                 :search-input.sync="author_input" :loading="authors_loading"
                                                 hide-selected multiple small-chips>
                                         <template v-slot:no-data>
@@ -40,6 +40,27 @@
                                         <template v-slot:selection="{ attrs, item, parent, selected }">
                                             <v-chip v-bind="attrs" color="green lighten-3" :input-value="selected" label
                                                     small>
+                                                <span class="pr-2"> {{ item }} </span>
+                                                <v-icon small @click="parent.selectItem(item)">close</v-icon>
+                                            </v-chip>
+                                        </template>
+                                    </v-combobox>
+                                </v-col>
+                                <v-col class='py-0' cols=12 sm=6>
+                                    <!-- TRANSLATORS -->
+                                    <v-combobox v-model="book.translators" :items="book.translators" :label="$t('book.edit.fields.translators')"
+                                                :search-input.sync="translator_input" hide-selected multiple small-chips>
+                                        <template v-slot:no-data>
+                                            <v-list-item>
+                                                <span v-if="! translator_input">{{ $t('book.edit.fields.authors.noData') }}</span>
+                                                <div v-else>
+                                                    <span class="subheading">{{ $t('book.edit.fields.authors.add') }}</span>
+                                                    <v-chip color="green lighten-3" label small rounded> {{translator_input}}</v-chip>
+                                                </div>
+                                            </v-list-item>
+                                        </template>
+                                        <template v-slot:selection="{ attrs, item, parent, selected }">
+                                            <v-chip v-bind="attrs" color="green lighten-3" :input-value="selected" label small>
                                                 <span class="pr-2"> {{ item }} </span>
                                                 <v-icon small @click="parent.selectItem(item)">close</v-icon>
                                             </v-chip>
@@ -107,7 +128,7 @@
                                         @blur="onSeriesIndexBlur"
                                     ></v-text-field>
                                 </v-col>
-                                <v-col class='py-0' cols=6>
+                                <v-col class='py-0' cols=12 sm=6>
                                     <!-- TAGS -->
                                     <v-combobox v-model="book.tags" :items="tagNames" :label="$t('book.edit.fields.tags.label')"
                                                 :search-input.sync="tag_input" :loading="tags_loading" :filter="tagFilter"
@@ -133,7 +154,7 @@
                                         </template>
                                     </v-combobox>
                                 </v-col>
-                                <v-col>
+                                <v-col class='py-0' cols=12 sm=6>
                                     <v-text-field
                                         :label="$t('book.edit.fields.ext_link')"
                                         v-model="book.ext_link"

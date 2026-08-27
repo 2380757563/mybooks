@@ -672,6 +672,7 @@
         "title": "Title",
         "rating": "Rating",
         "authors": {
+          "label": "Authors",
           "noData": "Please enter a new name",
           "add": "Add"
         },
@@ -854,7 +855,8 @@
     "uploadSuccess": "Format uploaded successfully",
     "uploadFailed": "Upload failed",
     "uploadFailedNetwork": "Network error",
-    "ext_link": "External Link"
+    "ext_link": "External Link",
+    "translators": "Translator"
   },
   "reader": {
     "tip": {

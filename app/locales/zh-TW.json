@@ -455,6 +455,7 @@
         "title": "書名",
         "rating": "評分",
         "authors": {
+          "label": "作者",
           "noData": "請輸入新的名稱",
           "add": "新增"
         },
@@ -637,7 +638,8 @@
     "uploadSuccess": "格式上傳成功",
     "uploadFailed": "上傳失敗",
     "uploadFailedNetwork": "網路錯誤",
-    "ext_link": "圖書連結"
+    "ext_link": "圖書連結",
+    "translators": "譯者"
   },
   "reader": {
     "tip": {

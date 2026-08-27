@@ -541,10 +541,26 @@
                                                 <v-img :src="authorAvatarUrl(author)" alt="author-avatar"
                                                         class="author-avatar"></v-img>
                                             </nuxt-link>
-                                            <v-chip rounded small dark color="indigo" :to="{ path: '/author', query: { name: author } }">
-                                                <v-icon v-if="!showUserInfo">mdi-face-man-outline</v-icon>
+                                            <v-chip rounded small dark color="green" :to="{ path: '/author', query: { name: author } }">
+                                                <v-icon>mdi-account-edit-outline</v-icon>
                                                 {{ author }}
                                             </v-chip>
+                                        </div>
+                                    </template>
+                                    <template v-for="(translator, index) in book.translators.slice(0, 2)" :key="'translator-' + index">
+                                        <div class="translator-item">
+                                            <nuxt-link v-if="showUserInfo" :to="{ path: '/author', query: { name: author } }" style="text-decoration: none;">
+                                                <v-img :src="authorAvatarUrl(author)" alt="author-avatar"
+                                                        class="author-avatar"></v-img>
+                                            </nuxt-link>
+                                            <v-tooltip bottom>
+                                                <template v-slot:activator="{ on, attrs }">
+                                                    <v-chip v-bind="attrs" v-on="on" rounded small dark color="indigo" :to="{ path: '/author', query: { name: author } }">
+                                                        {{ translator }}
+                                                    </v-chip>
+                                                </template>
+                                                <span>{{ $t('book.translators') }}</span>
+                                            </v-tooltip>
                                         </div>
                                     </template>
                                 </div>
