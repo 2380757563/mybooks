@@ -479,6 +479,7 @@
         "translators": "译者"
       }
     },
+    "authors": "作者",
     "pushToKindle": "推送到Kindle",
     "enterKindleEmail": "填写Kindle收件人邮箱地址：",
     "emailLabel": "Email*",
@@ -641,7 +642,8 @@
     "uploadFailed": "上传失败",
     "uploadFailedNetwork": "网络错误",
     "ext_link": "图书链接",
-    "translators": "译者"
+    "translators": "译者",
+    "soledBooks": "私藏书籍,其他人不可见"
   },
   "reader": {
     "tip": {

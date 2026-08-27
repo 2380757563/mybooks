@@ -523,14 +523,15 @@
                                         </template>
                                         <span>{{ $t('readingState.wantsHint') }}</span>
                                     </v-tooltip>
-                                    <v-tooltip bottom>
+                                    <v-tooltip bottom v-if="book.sole">
                                         <template v-slot:activator="{ on, attrs }">
-                                            <v-btn icon small class="ml-1">
+                                            <v-btn icon small class="ml-1" v-bind="attrs" v-on="on">
                                                 <v-icon :color="book.sole ? 'red' : 'green'" class="mr-2">
                                                     {{ book.sole ? 'public_off' : 'public' }}
                                                 </v-icon>
                                             </v-btn>
                                         </template>
+                                        <span>{{ $t('book.soledBooks') }}</span>
                                     </v-tooltip>
                                 </p>
                                 <br />
@@ -541,10 +542,15 @@
                                                 <v-img :src="authorAvatarUrl(author)" alt="author-avatar"
                                                         class="author-avatar"></v-img>
                                             </nuxt-link>
-                                            <v-chip rounded small dark color="green" :to="{ path: '/author', query: { name: author } }">
-                                                <v-icon>mdi-account-edit-outline</v-icon>
-                                                {{ author }}
-                                            </v-chip>
+                                            <v-tooltip bottom>
+                                                <template v-slot:activator="{ on, attrs }">
+                                                    <v-chip v-bind="attrs" v-on="on" rounded small dark color="green" :to="{ path: '/author', query: { name: author } }">
+                                                        <v-icon v-if="!showUserInfo">mdi-account-badge-outline</v-icon>
+                                                        {{ author }}
+                                                    </v-chip>
+                                                </template>
+                                                <span>{{ $t('book.authors') }}</span>
+                                            </v-tooltip>
                                         </div>
                                     </template>
                                     <template v-for="(translator, index) in book.translators.slice(0, 2)" :key="'translator-' + index">

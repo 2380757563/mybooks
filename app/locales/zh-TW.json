@@ -477,6 +477,7 @@
         "location": "館藏位置"
       }
     },
+    "authors": "作者",
     "pushToKindle": "推送到 Kindle",
     "enterKindleEmail": "填寫 Kindle 收件人信箱位址：",
     "emailLabel": "Email*",
@@ -639,7 +640,8 @@
     "uploadFailed": "上傳失敗",
     "uploadFailedNetwork": "網路錯誤",
     "ext_link": "圖書連結",
-    "translators": "譯者"
+    "translators": "譯者",
+    "soledBooks": "私藏書籍,其他人不可見"
   },
   "reader": {
     "tip": {

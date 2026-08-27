@@ -694,6 +694,7 @@
         "location": "Location"
       }
     },
+    "authors": "Author",
     "pushToKindle": "Push to Kindle",
     "enterKindleEmail": "Enter Kindle recipient email address:",
     "emailLabel": "Email*",
@@ -856,7 +857,8 @@
     "uploadFailed": "Upload failed",
     "uploadFailedNetwork": "Network error",
     "ext_link": "External Link",
-    "translators": "Translator"
+    "translators": "Translator",
+    "soledBooks": "Private book, only available for you"
   },
   "reader": {
     "tip": {
