@@ -1,6 +1,6 @@
 <template>
     <v-dialog v-model="show" persistent transition="dialog-bottom-transition" max-width="600">
-        <v-card>
+        <v-card class="upload-dialog-card">
             <v-toolbar flat dense dark color="#003153" class="upload-dialog-toolbar">
                 {{ $t('upload.batchTitle') }}
                 <v-spacer></v-spacer>
@@ -182,6 +182,9 @@ export default {
 </script>
 
 <style scoped>
+.upload-dialog-card {
+    border-radius: 16px 16px 4px 4px !important;
+}
 .upload-dialog-toolbar {
     border-radius: 16px 16px 0 0 !important;
     overflow: hidden;

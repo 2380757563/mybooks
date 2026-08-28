@@ -30,7 +30,7 @@
         </v-btn>
 
         <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="360">
-            <v-card>
+            <v-card class="upload-dialog-card">
                 <v-toolbar flat dense dark color="#003153" class="upload-dialog-toolbar">
                     {{ $t('upload.title') }}
                     <v-spacer></v-spacer>
@@ -66,7 +66,7 @@
         <!-- 添加实体书对话框 -->
         <v-dialog v-if="($store.state.sys.allow.upload || $store.state.user.is_login) && $store.state.sys.allow.physical_books"
                             v-model="isbn_dialog" persistent transition="dialog-bottom-transition" width="410">
-            <v-card>
+            <v-card class="upload-dialog-card">
                 <v-toolbar flat dense dark color="green" class="upload-dialog-toolbar">
                     <v-icon>mdi-book-plus</v-icon>
                     <v-toolbar-title class="ml-2">{{ $t('upload.addPhysicalBook') }}</v-toolbar-title>
@@ -617,6 +617,9 @@ export default {
 </script>
 
 <style scoped>
+.upload-dialog-card {
+    border-radius: 16px 16px 4px 4px !important;
+}
 .upload-dialog-toolbar {
     border-radius: 16px 16px 0 0 !important;
     overflow: hidden;

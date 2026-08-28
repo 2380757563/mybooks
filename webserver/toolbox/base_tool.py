@@ -71,7 +71,7 @@ class BaseTool(AsyncService):
 
     # 工作目录
 
-    def get_work_dir(self, unique_key: str) -> str:
+    def get_work_dir(self, unique_key: str = "") -> str:
         """返回并创建该任务专属的工作目录。
 
         路径规则：``TOOL_DATA_ROOT/<tool_id>/<md5(unique_key)[:16]>``
