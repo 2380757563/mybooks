@@ -22,8 +22,8 @@ from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.toolbox.base_tool import BaseTool
 
-from . import book_utils
-from . import encoding_detect
+from webserver.toolbox.utils import book_utils
+from webserver.toolbox.utils import encoding_detect
 
 PREVIEW_CHARS = 500  # analyze 报告中的修复预览长度
 ANALYZE_LIMIT = 2 * 1024 * 1024  # analyze 检测读取上限（编码检测取前缀即可，防大文件阻塞请求线程）

@@ -112,11 +112,17 @@ class ToolSet:
         from .author_clean_tool import AuthorCleanTool
         from .mimo_tts import MimoTTSTool
         from .bookbarn_acceptor_tool import BookBarnAcceptorTool
-        from .curie_tool import CurieTool
+        from .text_replace import TextReplaceTool
+        from .txt_encoding_fixer import TxtEncodingFixerTool
+        from .chinese_converter_tool import ChineseConverterTool
         from .epub_beautify import EpubBeautifyTool
 
         ToolSet.register(MergeFormatsTool.info())
         ToolSet.register(ReviewBookLanguageTool.info())
+        ToolSet.register(EpubBeautifyTool.info())
+        ToolSet.register(TextReplaceTool.info())
+        ToolSet.register(TxtEncodingFixerTool.info())
+        ToolSet.register(ChineseConverterTool.info())
         ToolSet.register(MinifyPdfTool.info())
         ToolSet.register(TextProcessor.info())
         ToolSet.register(FormatsPruningTool.info())
@@ -126,8 +132,6 @@ class ToolSet:
         ToolSet.register(MimoTTSTool.info())
         ToolSet.register(RareBookDownloader.info())
         ToolSet.register(BookBarnAcceptorTool.info())
-        ToolSet.register(CurieTool.info())
-        ToolSet.register(EpubBeautifyTool.info())
 
         MinifyPdfTool.cleanup_old_files()
 

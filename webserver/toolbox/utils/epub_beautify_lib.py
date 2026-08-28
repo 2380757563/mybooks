@@ -20,7 +20,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from urllib.parse import quote, unquote
 
-from . import chapter_patterns
+from webserver.toolbox.utils import chapter_patterns
 
 _NS_CONTAINER = 'urn:oasis:names:tc:opendocument:xmlns:container'
 _NS_OPF = 'http://www.idpf.org/2007/opf'

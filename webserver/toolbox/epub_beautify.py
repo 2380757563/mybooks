@@ -30,9 +30,9 @@ from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.toolbox.base_tool import BaseTool
 
-from . import book_utils
-from . import epub_beautify_lib
-from .styles import get_preset_css, list_presets, list_toc_styles
+from webserver.toolbox.utils import book_utils
+from webserver.toolbox.utils import epub_beautify_lib
+from webserver.toolbox.utils.styles import get_preset_css, list_presets, list_toc_styles
 
 
 class EpubBeautifyTool(BaseTool):
@@ -71,7 +71,7 @@ class EpubBeautifyTool(BaseTool):
         :raises ValueError: 格式/大小不合法或纹理 id 非法。
         """
         if builtin_id:
-            from .styles import get_texture_bytes
+            from .epub_beautify.styles import get_texture_bytes
             data, _mt = get_texture_bytes(builtin_id)
         else:
             ext = os.path.splitext(filename or '')[1].lower()

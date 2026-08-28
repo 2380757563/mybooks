@@ -7,6 +7,8 @@ import tempfile
 import time
 import mimetypes
 import tornado
+from pathlib import Path
+from urllib.parse import urlparse
 
 from webserver.i18n import _
 from webserver.loader import get_settings
@@ -14,7 +16,6 @@ from webserver.toolbox.toolset import ToolSet
 from webserver.toolbox import toolbox_manager
 from webserver.services.toolbox_store import ToolboxStoreClient, ToolboxStoreError, get_cached_index, find_in_index
 from webserver.handlers.base import BaseHandler, js, is_admin
-from urllib.parse import urlparse
 from webserver.toolbox.rare_book_downloader import RareBookDownloader
 from webserver.toolbox.merge_formats_tool import MergeFormatsTool
 from webserver.toolbox.review_book_language_tool import ReviewBookLanguageTool
@@ -24,12 +25,13 @@ from webserver.toolbox.epub_fixer import EpubFixerTool
 from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
+from webserver.toolbox.text_replace import TextReplaceTool
+from webserver.toolbox.txt_encoding_fixer import TxtEncodingFixerTool
+from webserver.toolbox.chinese_converter_tool import ChineseConverterTool, DIRECTIONS
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
-from webserver.toolbox.curie_tool import CurieTool
 from webserver.toolbox.epub_beautify import EpubBeautifyTool
-from webserver.toolbox.styles import TOC_STYLES as EB_TOC_STYLES, list_presets as eb_list_presets
-from webserver.services.background_service import BackgroundService, BackgroundTask
-from pathlib import Path
+from webserver.toolbox.utils.styles import TOC_STYLES as EB_TOC_STYLES, list_presets as eb_list_presets
+from webserver.services.background_service import BackgroundTask
 
 CONF = get_settings()
 
@@ -873,48 +875,40 @@ class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
         return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
 
 
-class AdminCurieConvert(BaseHandler):
+class AdminChineseConverterConvert(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         book_id = data.get("book_id")
-        provider = (data.get("provider") or "anthropic").strip()
-        api_key = (data.get("api_key") or "").strip()
-        model = (data.get("model") or "").strip()
-        api_url = (data.get("api_url") or "").strip()
-        language = (data.get("language") or "auto").strip()
-        hint_density = (data.get("hint_density") or "every_10_paragraphs").strip()
+        direction = (data.get("direction") or "t2s").strip()
+        mode = (data.get("mode") or "book").strip()
+        convert_title = bool(data.get("convert_title", True))
+        use_a5 = bool(data.get("use_a5", False))
+        backup = bool(data.get("backup", False))
 
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-        if not api_key:
-            return {"err": "params.missing", "msg": _("请提供 API Key")}
-        if not model:
-            return {"err": "params.missing", "msg": _("请提供模型名称")}
-        if not data.get("include_characters", True) and not data.get("include_places", False):
-            return {"err": "params.invalid", "msg": _("请至少勾选“生成角色简介”或“生成地点简介”一项")}
+        if direction not in DIRECTIONS:
+            return {"err": "params.direction.invalid", "msg": _("不支持的转换方向")}
+        if mode not in ("book", "replace"):
+            return {"err": "params.mode.invalid", "msg": _("无效的输出方式")}
 
-        tool = CurieTool()
+        tool = ChineseConverterTool()
         if tool.is_running():
-            return {"err": "task.running", "msg": _("已有 Curie 任务正在运行，请稍后再试")}
+            return {"err": "task.running", "msg": _("已有繁简转换任务正在运行，请稍后再试")}
 
-        tool.convert(
-            int(book_id), self.user_id(), provider, api_key, model, api_url,
-            include_characters=bool(data.get("include_characters", True)),
-            include_places=bool(data.get("include_places", False)),
-            language=language, hint_density=hint_density,
-        )
-        return {"err": "ok", "msg": _("Curie 导读生成任务已启动，右上角可以查看进度")}
+        tool.convert(int(book_id), direction, mode, use_a5, convert_title, backup, self.user_id())
+        return {"err": "ok", "msg": _("繁简转换任务已启动，右上角可以查看进度")}
 
 
-class AdminCurieProgress(BaseHandler):
+class AdminChineseConverterProgress(BaseHandler):
     @js
     @is_admin
     def get(self):
-        task = CurieTool.get_last_task()
+        task = ChineseConverterTool.get_last_task()
         if not task:
-            return {"err": "task.not_found", "msg": _("尚未启动 Curie 任务")}
+            return {"err": "task.not_found", "msg": _("尚未启动繁简转换任务")}
 
         progress_data = task.get("progress_data") or {}
         result = {
@@ -922,103 +916,148 @@ class AdminCurieProgress(BaseHandler):
             "progress": task.get("progress", 0),
             "book_id": progress_data.get("book_id", 0),
             "new_book_id": progress_data.get("new_book_id", 0),
-            "new_title": progress_data.get("new_title", ""),
+            "direction": progress_data.get("direction", ""),
             "stage": progress_data.get("stage", ""),
-            "language": progress_data.get("language", ""),
-            "characters": progress_data.get("characters", 0),
-            "locations": progress_data.get("locations", 0),
         }
 
         if task.get("status") == BackgroundTask.STATUS_FAILED:
             return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
+
         if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-            return {"err": "ok", "msg": _("Curie 导读生成已完成"), "data": result}
+            return {"err": "ok", "msg": _("繁简转换任务已完成"), "data": result}
+
         return {"err": "ok", "data": result}
 
 
-class AdminCurieConfig(BaseHandler):
+class AdminTxtEncodingFixerAnalyze(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+
+        try:
+            report = TxtEncodingFixerTool().analyze(int(book_id))
+        except RuntimeError as err:
+            return {"err": "txt_encoding_fixer.analyze_failed", "msg": str(err)}
+
+        return {"err": "ok", "data": report}
+
+
+class AdminTxtEncodingFixerFix(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+
+        tool = TxtEncodingFixerTool()
+        if tool.is_running():
+            return {"err": "task.running", "msg": _("已有 TXT 编码修复任务正在执行，请稍后再试")}
+
+        tool.fix(int(book_id), self.user_id())
+        return {"err": "ok", "msg": _("TXT 编码修复任务已启动，注意查看消息通知中的处理结果")}
+
+
+class AdminTxtEncodingFixerProgress(BaseHandler):
     @js
     @is_admin
     def get(self):
-        config = CurieTool().load_api_config()
-        if config:
-            return {"err": "ok", "config": config}
-        return {"err": "ok", "config": None}
+        task = TxtEncodingFixerTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动 TXT 编码修复任务")}
 
-    @js
-    @is_admin
-    def delete(self):
-        CurieTool().clear_api_config()
-        return {"err": "ok", "msg": _("已清除已保存的配置")}
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "stage": progress_data.get("stage", ""),
+        }
 
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
 
-class AdminCurieTest(BaseHandler):
-    @js
-    @is_admin
-    def post(self):
-        data = tornado.escape.json_decode(self.request.body)
-        provider = (data.get("provider") or "anthropic").strip()
-        api_key = (data.get("api_key") or "").strip()
-        model = (data.get("model") or "").strip()
-        api_url = (data.get("api_url") or "").strip()
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("TXT 编码修复任务已完成"), "data": result}
 
-        if not api_key:
-            return {"err": "params.missing", "msg": _("请提供 API Key")}
-        if not model:
-            return {"err": "params.missing", "msg": _("请填写模型名称")}
-
-        ok, err_msg = CurieTool().test_connection(provider, api_key, model, api_url)
-        if ok:
-            return {"err": "ok", "msg": _("连接成功，配置已保存")}
-        return {"err": "test.failed", "msg": _("连接失败：%s") % err_msg}
+        return {"err": "ok", "data": result}
 
 
-class AdminCuriePreview(BaseHandler):
+class AdminTextReplacePreview(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         book_id = data.get("book_id")
+        pattern = (data.get("pattern") or "").strip()
+        replacement = data.get("replacement") or ""
+        use_regex = bool(data.get("use_regex", False))
+        fmt = (data.get("format") or "").strip().upper()
+
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-        result = CurieTool().preview(int(book_id))
-        return {"err": "ok", "data": result.get("data")}
+
+        try:
+            result = TextReplaceTool().preview(int(book_id), pattern, replacement, use_regex, fmt)
+        except RuntimeError as err:
+            return {"err": "text_replace.preview_failed", "msg": str(err)}
+
+        return {"err": "ok", "data": result}
 
 
-class AdminCurieRegenerate(BaseHandler):
+class AdminTextReplaceRun(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         book_id = data.get("book_id")
-        hint_density = (data.get("hint_density") or "every_10_paragraphs").strip()
+        pattern = (data.get("pattern") or "").strip()
+        replacement = data.get("replacement") or ""
+        use_regex = bool(data.get("use_regex", False))
+        suffix = (data.get("suffix") or "").strip()
+        fmt = (data.get("format") or "").strip().upper()
+
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        if not pattern:
+            return {"err": "params.missing", "msg": _("查找内容不能为空")}
 
-        tool = CurieTool()
+        tool = TextReplaceTool()
         if tool.is_running():
-            return {"err": "task.running", "msg": _("已有 Curie 任务正在运行，请稍后再试")}
+            return {"err": "task.running", "msg": _("已有正文替换任务正在执行，请稍后再试")}
 
-        tool.regenerate(int(book_id), self.user_id(), hint_density)
-        return {"err": "ok", "msg": _("Curie 重新生成任务已启动，右上角可以查看进度")}
+        tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id(), fmt)
+        return {"err": "ok", "msg": _("正文替换任务已启动，注意查看消息通知中的处理结果")}
 
 
-class AdminCurieCancel(BaseHandler):
+class AdminTextReplaceProgress(BaseHandler):
     @js
     @is_admin
-    def post(self):
-        """请求取消当前 Curie 任务：BackgroundService.cancel_task 仅标记状态，
-        运行线程会在下一个检查点停止（分析分块/限速等待期间可立即中断）。"""
-        tool = CurieTool()
-        if not tool.is_running():
-            # 仅允许取消运行中的任务，避免把已完成/失败记录覆盖为 cancelled
-            return {"err": "task.not_running", "msg": _("当前没有正在运行的 Curie 任务")}
-        task_id = CurieTool._last_task_id
-        if task_id is None:
-            return {"err": "task.not_found", "msg": _("尚未启动 Curie 任务")}
-        if not BackgroundService().cancel_task(task_id):
-            return {"err": "task.not_found", "msg": _("任务不存在或已结束")}
-        return {"err": "ok", "msg": _("已请求取消任务，正在停止…")}
+    def get(self):
+        task = TextReplaceTool.get_last_task()
+        if not task:
+            return {"err": "task.not_found", "msg": _("尚未启动正文替换任务")}
+
+        progress_data = task.get("progress_data") or {}
+        result = {
+            "status": task.get("status"),
+            "progress": task.get("progress", 0),
+            "book_id": progress_data.get("book_id", 0),
+            "stage": progress_data.get("stage", ""),
+        }
+
+        if task.get("status") == BackgroundTask.STATUS_FAILED:
+            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
+
+        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
+            return {"err": "ok", "msg": _("正文替换任务已完成"), "data": result}
+
+        return {"err": "ok", "data": result}
 
 
 class AdminEpubBeautifyPreview(BaseHandler):
@@ -1296,20 +1335,6 @@ def routes():
                 (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
                 (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
                 (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
-                (r"/api/toolbox/curie/convert", AdminCurieConvert),
-                (r"/api/toolbox/curie/progress", AdminCurieProgress),
-                (r"/api/toolbox/curie/config", AdminCurieConfig),
-                (r"/api/toolbox/curie/test", AdminCurieTest),
-                (r"/api/toolbox/curie/preview", AdminCuriePreview),
-                (r"/api/toolbox/curie/regenerate", AdminCurieRegenerate),
-                (r"/api/toolbox/curie/cancel", AdminCurieCancel),
-                (r"/api/toolbox/epub_beautify/preview", AdminEpubBeautifyPreview),
-                (r"/api/toolbox/epub_beautify/run", AdminEpubBeautifyRun),
-                (r"/api/toolbox/epub_beautify/progress", AdminEpubBeautifyProgress),
-                (r"/api/toolbox/epub_beautify/bg_upload", AdminEpubBeautifyBgUpload),
-                (r"/api/toolbox/epub_beautify/bg_meta", AdminEpubBeautifyBgMeta),
-                (r"/api/toolbox/epub_beautify/bg_raw", AdminEpubBeautifyBgRaw),
-                (r"/api/toolbox/epub_beautify/bg_delete", AdminEpubBeautifyBgDelete),
                 (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
                 (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
                 (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
@@ -1318,6 +1343,13 @@ def routes():
                 (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
                 (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
                 (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
+                (r"/api/toolbox/epub_beautify/preview", AdminEpubBeautifyPreview),
+                (r"/api/toolbox/epub_beautify/run", AdminEpubBeautifyRun),
+                (r"/api/toolbox/epub_beautify/progress", AdminEpubBeautifyProgress),
+                (r"/api/toolbox/epub_beautify/bg_upload", AdminEpubBeautifyBgUpload),
+                (r"/api/toolbox/epub_beautify/bg_meta", AdminEpubBeautifyBgMeta),
+                (r"/api/toolbox/epub_beautify/bg_raw", AdminEpubBeautifyBgRaw),
+                (r"/api/toolbox/epub_beautify/bg_delete", AdminEpubBeautifyBgDelete),
     ] + toolbox_manager.collect_tool_routes() + [
                 # 必须放在整个列表最后：这是个不加区分的单段路径通配（DELETE 卸载），
                 # 排在前面会抢先匹配到上面所有单段路径的工具路由（如

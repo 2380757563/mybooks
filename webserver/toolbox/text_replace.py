@@ -28,8 +28,8 @@ from webserver.services import AsyncService
 from webserver.services.background_service import BackgroundService, BackgroundTask
 from webserver.toolbox.base_tool import BaseTool
 
-from . import book_utils
-from . import encoding_detect
+from webserver.toolbox.utils import book_utils
+from webserver.toolbox.utils import encoding_detect
 
 # EPUB 文本条目（正文）的 media-type
 _TEXT_MEDIA_TYPES = ("application/xhtml+xml", "text/html")
