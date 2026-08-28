@@ -89,9 +89,9 @@ def _stub_webserver():
 
 _stub_webserver()
 
-from webserver.toolbox import chapter_patterns  # noqa: E402
-from webserver.toolbox import epub_beautify_lib as lib  # noqa: E402
-from webserver.toolbox.styles import (  # noqa: E402
+from webserver.toolbox.utils import chapter_patterns  # noqa: E402
+from webserver.toolbox.utils import epub_beautify_lib as lib  # noqa: E402
+from webserver.toolbox.utils.styles import (  # noqa: E402
     _apply_palette_overrides,
     get_preset_css, list_presets, list_toc_styles,
 )
@@ -1158,7 +1158,7 @@ class TestBackgroundImage(unittest.TestCase):
         self.assertIn('rgba(18,18,18,0.50)', css)
 
     def test_builtin_textures_valid(self):
-        from webserver.toolbox.styles import (
+        from webserver.toolbox.utils.styles import (
             BUILTIN_TEXTURES, get_texture_bytes, list_builtin_textures,
         )
         ids = [t['id'] for t in list_builtin_textures()]

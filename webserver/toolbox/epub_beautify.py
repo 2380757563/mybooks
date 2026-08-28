@@ -71,7 +71,7 @@ class EpubBeautifyTool(BaseTool):
         :raises ValueError: 格式/大小不合法或纹理 id 非法。
         """
         if builtin_id:
-            from .epub_beautify.styles import get_texture_bytes
+            from webserver.toolbox.utils.styles import get_texture_bytes
             data, _mt = get_texture_bytes(builtin_id)
         else:
             ext = os.path.splitext(filename or '')[1].lower()
@@ -322,7 +322,7 @@ class EpubBeautifyTool(BaseTool):
 
                 book_title = "Unknown"
                 try:
-                    books = self.db.get_data_as_dict(ids=[bid])
+                    books = self.api.calibre.get_data_as_dict([bid])
                     if not books:
                         raise RuntimeError(_("书籍不存在：ID=%d") % bid)
                     book_title = books[0].get("title", "Unknown")
