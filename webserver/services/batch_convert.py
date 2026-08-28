@@ -39,7 +39,7 @@ class BatchConvertService(AsyncService):
             "task_id": self.task_id,
         }
 
-    def _has_kindle_format(self, book_id: int) -> tuple:
+    def _can_convert_to_epub(self, book_id: int) -> tuple:
         try:
             mi = self.db.get_metadata(book_id, index_is_id=True)
             if not mi:
@@ -53,20 +53,19 @@ class BatchConvertService(AsyncService):
             if 'epub' in formats_lower:
                 return (False, None, None)
 
-            kindle_format = None
-            if 'azw3' in formats_lower:
-                kindle_format = 'azw3'
-            elif 'mobi' in formats_lower:
-                kindle_format = 'mobi'
-
-            if not kindle_format:
+            source_format = None
+            supported_formats = ['azw3', 'mobi', 'txt', 'docx', 'azw', 'pdf']
+            for f in supported_formats:
+                if f in formats_lower:
+                    source_format = f
+            if not source_format:
                 return (False, None, None)
 
-            kindle_path = self.db.format_abspath(book_id, kindle_format.upper(), index_is_id=True)
-            if not kindle_path:
+            source_path = self.db.format_abspath(book_id, source_format.upper(), index_is_id=True)
+            if not source_path:
                 return (False, None, None)
 
-            return (True, kindle_format, kindle_path)
+            return (True, source_format, source_path)
         except Exception as e:
             logging.error("[BatchConvert] Failed to check formats for id=%d: %s", book_id, e)
             return (False, None, None)
@@ -82,9 +81,9 @@ class BatchConvertService(AsyncService):
             logging.info("[BatchConvert] Scanning %d specified books for Kindle formats", len(all_book_ids))
 
         for book_id in all_book_ids:
-            has_kindle, kindle_format, kindle_path = self._has_kindle_format(book_id)
-            if has_kindle:
-                books_to_convert.append((book_id, kindle_format, kindle_path))
+            no_epub, src_format, src_path = self._can_convert_to_epub(book_id)
+            if no_epub:
+                books_to_convert.append((book_id, src_format, src_path))
 
         logging.info("[BatchConvert] Found %d books to convert", len(books_to_convert))
         return books_to_convert
@@ -123,14 +122,14 @@ class BatchConvertService(AsyncService):
         self.count_fail = 0
 
         logging.info("[BatchConvert] Starting batch conversion task")
-        self.add_msg(user_id, "success", _(u"Kindle转EPUB任务已启动"))
+        self.add_msg(user_id, "success", _(u"书籍转EPUB任务已启动"))
         books_to_convert = self._collect_books_to_convert(idlist)
         self.count_total = len(books_to_convert)
 
         if self.count_total == 0:
             logging.info("[BatchConvert] No books to convert")
             self.is_running = False
-            self.add_msg(user_id, "success", _(u"Kindle转EPUB任务已结束，未找到需要转换的书籍"))
+            self.add_msg(user_id, "success", _(u"转EPUB任务已结束，未找到需要转换的书籍"))
             return
 
         try:
@@ -160,7 +159,7 @@ class BatchConvertService(AsyncService):
             self._update_task_progress()
 
         self._finish_task()
-        msg = _(u"Kindle转EPUB任务已完成，成功转换%d本书，%d本书转换失败，%d本书跳过" % (self.count_done, self.count_fail, self.count_skip))
+        msg = _(u"转EPUB任务已完成，成功转换%d本书，%d本书转换失败，%d本书跳过" % (self.count_done, self.count_fail, self.count_skip))
         if self.count_fail + self.count_skip > 0:
             self.add_msg(user_id, "warning", msg)
         else:

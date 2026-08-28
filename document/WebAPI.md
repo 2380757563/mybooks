@@ -1896,9 +1896,9 @@ sys中为基础系统信息，title为网站标题, books为在库书籍数量�
 }
 ```
 
-### 6.9 Kindle格式转换
+### 6.9 转换出epub格式
 
-- **路径**：`/api/admin/book/kindleconvert`
+- **路径**：`/api/admin/book/epubconvert`
 - **方法**：GET/POST
 - **认证**：需要管理员权限
 - **参数**：

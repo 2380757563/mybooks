@@ -40,11 +40,11 @@
                                 </v-list-item-icon>
                                 <v-list-item-title>{{ $t('admin.books.clearRareTags') }}</v-list-item-title>
                             </v-list-item>
-                            <v-list-item @click="showKindleConvertDialog">
+                            <v-list-item @click="showEpubConvertDialog">
                                 <v-list-item-icon>
                                     <v-icon>mdi-transfer</v-icon>
                                 </v-list-item-icon>
-                                <v-list-item-title>{{ $t('admin.books.kindleConvert') }}</v-list-item-title>
+                                <v-list-item-title>{{ $t('admin.books.epubConvert') }}</v-list-item-title>
                             </v-list-item>
                             <v-list-item @click="saveMetaToFiles" :disabled="books_selected.length === 0">
                                 <v-list-item-icon>
@@ -513,16 +513,16 @@
                 <v-card-title></v-card-title>
                 <v-card-text>
                     <p v-if="books_selected.length > 0">
-                        {{ $t('admin.books.kindleConvertSelectedConfirm', { count: books_selected.length }) }}
+                        {{ $t('admin.books.epubConvertSelectedConfirm', { count: books_selected.length }) }}
                     </p>
                     <p v-else>
-                        {{ $t('admin.books.kindleConvertAllConfirm') }}
+                        {{ $t('admin.books.epubConvertAllConfirm') }}
                     </p>
                 </v-card-text>
                 <v-card-actions>
                     <v-btn @click="kindle_convert_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
                     <v-spacer></v-spacer>
-                    <v-btn color="info" @click="kindleConvert">{{ $t('admin.books.execute') }}</v-btn>
+                    <v-btn color="info" @click="epubConvert">{{ $t('admin.books.execute') }}</v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
@@ -868,7 +868,7 @@ export default {
             this.clear_rare_tags_dialog = true;
         },
 
-        showKindleConvertDialog() {
+        showEpubConvertDialog() {
             this.kindle_convert_dialog = true;
         },
 
@@ -900,7 +900,7 @@ export default {
                 });
         },
 
-        kindleConvert() {
+        epubConvert() {
             this.loading = true;
             this.kindle_convert_dialog = false;
 
@@ -909,7 +909,7 @@ export default {
                 body.idlist = this.books_selected.map((book) => book.id);
             }
 
-            this.$backend("/admin/book/kindleconvert", {
+            this.$backend("/admin/book/epubconvert", {
                 method: "POST",
                 body: JSON.stringify(body),
             })

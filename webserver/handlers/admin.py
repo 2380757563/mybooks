@@ -996,8 +996,8 @@ class AdminResetCover(BaseHandler):
         return {"err": "ok", "msg": _("批量更新书籍动态封面任务已启动，右上角可以查看进度")}
 
 
-class AdminBookConvert(BaseHandler):
-    """Admin API: 批量转换Kindle格式为EPUB"""
+class AdminBookConvertEpub(BaseHandler):
+    """Admin API: 批量转换为EPUB"""
 
     @js
     @is_admin
@@ -1738,7 +1738,7 @@ def routes():
         (r"/api/admin/book/list", AdminBookList),
         (r"/api/admin/book/fill", AdminBookFill),
         (r"/api/admin/book/aifill", AdminBookAIFill),
-        (r"/api/admin/book/kindleconvert", AdminBookConvert),
+        (r"/api/admin/book/epubconvert", AdminBookConvertEpub),
         (r"/api/admin/book/update_title_sort", AdminBookUpdateTitleSort),
         (r"/api/admin/bookbarn/token/apply", AdminBookbarnTokenApply),
         (r"/api/admin/books/delete", AdminDeleteBooks),
