@@ -661,7 +661,6 @@ export default {
                 { icon: "category", href: "/categories", text: "appHeader.categoryBrowse", color: "green" },
                 { icon: "mdi-headphones", href: "/audiobooks", text: "appHeader.audioBooks", count: this.sys.audiobooks, color: "purple"},
                 { icon: "mdi-account-group", href: "/author", text: "appHeader.authors", count: this.sys.authors, color: "primary"},
-                { icon: "widgets", href: "/nav", text: "appHeader.tagCategory", count: this.sys.books, color: "primary" },
                 { icon: "mdi-tag-heart", href: "/tag", text: "appHeader.tags", count: this.sys.tags, color: "green"},
                 { icon: "mdi-home-group", href: "/publisher", text: "appHeader.publishers", count: this.sys.publishers, color: "primary"},
                 ...(this.sys.allow.physical_books ? [{ icon: "mdi-bookshelf", href: "/printbooks", text: "appHeader.physicalBooks", count: this.sys.physicals, color: "orange"}] : []),
@@ -669,7 +668,6 @@ export default {
                 { icon: "mdi-translate", href: "/language", text: "appHeader.languages", color: "purple"},
                 { icon: "mdi-check-all", href: "/all", text: "appHeader.allBooks", color: "primary"},
                 { icon: "mdi-star-shooting", href: "/rating", text: "appHeader.rating", color: "orange"},
-                { icon: "mdi-trending-up", href: "/hot", text: "appHeader.hotRanking", color: "orange"},
             ];
 
             const friend_links = [

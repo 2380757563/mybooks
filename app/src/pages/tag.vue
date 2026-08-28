@@ -75,7 +75,7 @@
       </v-row>
     </div>
 
-    <!-- List Mode: All Tags -->
+    <!-- List Mode: All Tags, grouped by category -->
     <div v-else>
        <v-row>
         <v-col>
@@ -101,32 +101,36 @@
               </v-icon>
             </v-chip>
           </div>
-
-          <!-- Regular Tags -->
-          <v-chip
-            class="ma-1"
-            v-for="item in visibleMetaItems"
-            :key="item.name"
-            color="primary"
-            @click="selectTag(item.name)"
-            style="cursor: pointer;"
-          >
-            {{ item.name }}
-            <span v-if="item.count">&nbsp;({{ item.count }})</span>
-            <v-icon
-              v-if="isLoggedIn"
-              small
-              right
-              @click.stop="pinTag(item.name)"
-              class="ml-1"
-            >
-              mdi-pin-outline
-            </v-icon>
-          </v-chip>
-           <v-btn v-if="items.length > 50 && !show_all" @click="expandList()" color="primary" rounded>
-             {{ $t('listMeta.showAll') || 'Show All' }}
-           </v-btn>
         </v-col>
+      </v-row>
+
+      <!-- Tag Groups -->
+      <v-row>
+        <template v-for="nav in visibleNavs" :key="nav.legend">
+          <v-col cols="12">
+            <h2>{{ nav.legend }}</h2>
+            <v-chip
+              class="ma-1"
+              v-for="item in nav.tags"
+              :key="item.name"
+              color="primary"
+              @click="selectTag(item.name)"
+              style="cursor: pointer;"
+            >
+              {{ item.name }}
+              <span v-if="item.count">&nbsp;({{ item.count }})</span>
+              <v-icon
+                v-if="isLoggedIn"
+                small
+                right
+                @click.stop="pinTag(item.name)"
+                class="ml-1"
+              >
+                mdi-pin-outline
+              </v-icon>
+            </v-chip>
+          </v-col>
+        </template>
       </v-row>
     </div>
 
@@ -180,7 +184,7 @@ export default {
     // Shared / List State
     items: [],
     pins: [],
-    show_all: false,
+    navs: [],
 
     // Detail State
     currentTag: null,
@@ -201,12 +205,15 @@ export default {
     updateDialog: false,
   }),
   computed: {
-    visibleMetaItems() {
-      if (this.show_all) return this.items;
-      return this.items.slice(0, 100); // Limit initial view
-    },
     isLoggedIn() {
       return this.$store.state.user?.is_login === true;
+    },
+    // Category groups with pinned tags filtered out (pinned tags are shown separately above)
+    visibleNavs() {
+      const pinnedNames = new Set((this.pins || []).map(p => p.name));
+      return (this.navs || [])
+        .map(nav => ({ legend: nav.legend, tags: (nav.tags || []).filter(t => !pinnedNames.has(t.name)) }))
+        .filter(nav => nav.tags.length > 0);
     }
   },
   head() {
@@ -225,8 +232,11 @@ export default {
         name = decodeURIComponent(name);
     }
     if (!name) {
-        let rsp = await app.$backend("/tag");
-        return { items: rsp.items || [], pins: rsp.pins || [], total: rsp.total };
+        let [rsp, navRsp] = await Promise.all([
+            app.$backend("/tag"),
+            app.$backend("/book/nav"),
+        ]);
+        return { items: rsp.items || [], pins: rsp.pins || [], total: rsp.total, navs: navRsp.navs || [] };
     }
     return {};
   },
@@ -273,12 +283,19 @@ export default {
   methods: {
     async init() {
         this.$store.commit('navbar', true);
-        if (this.items.length === 0 && !this.currentTag) {
-            let rsp = await this.$backend("/tag" + (this.show_all ? "?show=all" : ""));
-            this.items = rsp.items;
-            this.pins = rsp.pins || [];
+        if (this.items.length === 0 && this.navs.length === 0 && !this.currentTag) {
+            await this.fetchTagList();
         }
         this.loadCategories();
+    },
+    async fetchTagList() {
+        let [rsp, navRsp] = await Promise.all([
+            this.$backend("/tag"),
+            this.$backend("/book/nav"),
+        ]);
+        this.items = rsp.items || [];
+        this.pins = rsp.pins || [];
+        this.navs = navRsp.navs || [];
     },
     async loadCategories() {
         if (this.$store.state.user?.is_login !== true) {
@@ -298,12 +315,6 @@ export default {
         } catch (error) {
             console.error('Failed to get settings:', error);
         }
-    },
-    async expandList() {
-        this.show_all = true;
-        let rsp = await this.$backend("/tag?show=all");
-        this.items = rsp.items;
-        this.pins = rsp.pins || [];
     },
     selectTag(name) {
         // Avoid duplicate calls if already showing this tag and fetching or has data
@@ -426,10 +437,8 @@ export default {
                 }
             });
             if (rsp.err === 'ok') {
-                // Refresh the list
-                let listRsp = await this.$backend("/tag" + (this.show_all ? "?show=all" : ""));
-                this.items = listRsp.items;
-                this.pins = listRsp.pins || [];
+                // Refresh pins/groups so the tag moves between sections
+                await this.fetchTagList();
             } else {
                 this.$alert("error", rsp.msg);
             }
@@ -455,10 +464,8 @@ export default {
                 }
             });
             if (rsp.err === 'ok') {
-                // Refresh the list
-                let listRsp = await this.$backend("/tag" + (this.show_all ? "?show=all" : ""));
-                this.items = listRsp.items;
-                this.pins = listRsp.pins || [];
+                // Refresh pins/groups so the tag moves between sections
+                await this.fetchTagList();
             } else {
                 this.$alert("error", rsp.msg);
             }
