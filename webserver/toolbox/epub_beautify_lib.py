@@ -154,14 +154,35 @@ def _write_zip(entries: dict, out_path: str) -> None:
 
 
 def _decode(data: bytes) -> str:
-    """UTF-8 优先，失败用检测器兜底（复用 text_replace 思路的简化版）。"""
+    """UTF-8 优先，失败用编码检测（支持 GBK/Big5/Shift_JIS 等），并重写 XML 声明为 utf-8。"""
     try:
         return data.decode('utf-8')
     except UnicodeDecodeError:
+        # 复用 txt 编码修复的检测器，对 GBK/Big5 做可读性打分择优，避免 Big5 被 gb18030 静默错译
         try:
-            return data.decode('gb18030')
-        except UnicodeDecodeError:
-            return data.decode('utf-8', errors='replace')
+            from .encoding_detect import decode_with_report
+            text, report = decode_with_report(data)
+            if not report.get('garbage') and not report.get('unrecoverable'):
+                if text.lstrip().startswith('<?xml'):
+                    text = re.sub(r"""(<\?xml[^>]*encoding\s*=\s*)["'][^"']*["']""", r'\1"utf-8"', text, count=1, flags=re.IGNORECASE)
+                return text
+        except Exception:
+            pass
+        # 回退：依次尝试 GB18030 / Big5，择优或兜底
+        for enc in ('gb18030', 'big5'):
+            try:
+                text = data.decode(enc)
+                if text.lstrip().startswith('<?xml'):
+                    text = re.sub(r"""(<\?xml[^>]*encoding\s*=\s*)["'][^"']*["']""", r'\1"utf-8"', text, count=1, flags=re.IGNORECASE)
+                return text
+            except UnicodeDecodeError:
+                continue
+        text = data.decode('utf-8', errors='replace')
+        if text.lstrip().startswith('<?xml'):
+            text = re.sub(r"""(<\?xml[^>]*encoding\s*=\s*)["'][^"']*["']""", r'\1"utf-8"', text, count=1, flags=re.IGNORECASE)
+        return text
+
+
 
 
 # ── OPF 解析 ──────────────────────────────────────────────────────────────────
@@ -431,7 +452,8 @@ def _prune_nav_bytes(data: bytes) -> tuple:
     pruned = 0
 
     def _li_text(li):
-        a = li.find(_q('a', _NS_XHTML))
+        # 兼容包裹型：<li><span><a> 等深层嵌套
+        a = li.find('.//' + _q('a', _NS_XHTML))
         return ''.join(a.itertext()).strip() if a is not None else ''
 
     def _clean_ol(ol):
@@ -510,7 +532,7 @@ def _build_toc_page(toc_items: list, ref_dir: str, truncated: bool = False,
             td_cls = ' class="mb-toc-l2"' if lv == 'lv2' else ''
             entries.append(
                 '<tr><td%s><a href="%s">%s %s</a></td>'
-                '<td class="mb-toc-mark">\\　✦</td></tr>'
+                '<td class="mb-toc-mark">　✦</td></tr>'
                 % (td_cls, rel, num_span, _esc(title))
             )
         else:
@@ -572,13 +594,17 @@ def _looks_like_title(text: str) -> bool:
 
 
 def _add_class(attrs: str, cls: str) -> str:
-    """给开标签属性串追加 class（已含 class 则合并）。"""
-    m = re.search(r'\bclass\s*=\s*"([^"]*)"', attrs)
+    """给开标签属性串追加 class（已含 class 则合并，兼容单/双引号）。"""
+    m = re.search(r'''\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')''', attrs)
     if m:
-        existing = m.group(1)
+        # 兼容双引号与单引号两种写法
+        existing = m.group(1) if m.group(1) is not None else m.group(2)
         if cls in existing.split():
             return attrs
-        return attrs[:m.start(1)] + (existing + ' ' + cls) + attrs[m.end(1):]
+        # 统一回写为双引号，避免重复 class 属性
+        new_val = (existing + ' ' + cls).strip()
+        # 替换整个 class=... 为双引号形式
+        return attrs[:m.start()] + ' class="%s"' % new_val + attrs[m.end():]
     return attrs + ' class="%s"' % cls
 
 
@@ -699,7 +725,7 @@ def mark_chapters_in_html(html_str: str, split_title: bool = False) -> tuple:
     :return: (new_html, stats)，stats = {'chapters','volumes','splits'}
     """
     empty = {'chapters': 0, 'volumes': 0, 'splits': 0}
-    if 'mb-ch' in html_str or '<html' not in html_str.lower():
+    if ('mb-ch' in html_str or 'mb-vol' in html_str) or '<html' not in html_str.lower():
         return html_str, dict(empty)
     if _FRONT_TYPE_RE.search(html_str[:4000]):
         return html_str, dict(empty)
@@ -707,6 +733,16 @@ def mark_chapters_in_html(html_str: str, split_title: bool = False) -> tuple:
     stats = dict(empty)
     first_done = False
     heading_seen = False
+    # 性能护栏：开闭不齐的大文件跳过块级正则（避免 _BLOCK_RE O(n²) 退化）
+    if len(html_str) > 80000:
+        # 粗略统计 p 标签开闭数，不匹配且文件较大则跳过标记（与 analyze 的 p_close_mismatch 思路一致）
+        try:
+            _open = len(re.findall(r'<p\b', html_str, re.IGNORECASE))
+            _close = len(re.findall(r'</p>', html_str, re.IGNORECASE))
+            if _open != _close and max(_open, _close) > 50:
+                return html_str, dict(empty)
+        except Exception:
+            pass
 
     def _handle_block(tag, attrs, inner, is_div=False):
         nonlocal stats, heading_seen, first_done
@@ -748,6 +784,8 @@ def mark_chapters_in_html(html_str: str, split_title: bool = False) -> tuple:
             return '<%s%s>%s</%s>%s' % (tag, new_attrs, inner, tag,
                                         '' if is_volume else _MB_SEP)
         if heading_seen and not first_done and not is_div:
+            if 'data-mb-first' in (cls_attr or ''):
+                return None
             new_attrs = cls_attr + ' data-mb-first="true"'
             first_done = True
             return '<%s%s>%s</%s>' % (tag, new_attrs, inner, tag)
@@ -1064,6 +1102,8 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
         != len(re.findall(rb'</p>', entries[t], re.IGNORECASE))
     )
     for t in text_entries:
+        if t not in entries:
+            continue
         if _is_front_file(t):
             continue
         if sampled >= sample_limit:
@@ -1166,8 +1206,11 @@ def _set_page_progression(opf_str: str, direction: str) -> str:
             tag, count=1,
         )
     else:
-        # 插到闭合符前（兼容 <spine> 与 <spine toc="ncx">）
-        new_tag = tag[:-1].rstrip() + ' page-progression-direction="%s">' % direction
+        # 插到闭合符前（兼容 <spine> 与 <spine toc="ncx"> 及自闭合 <spine/>）
+        if tag.rstrip().endswith('/>'):
+            new_tag = tag.rstrip()[:-2].rstrip() + ' page-progression-direction="%s"/>' % direction
+        else:
+            new_tag = tag[:-1].rstrip() + ' page-progression-direction="%s">' % direction
     if new_tag == tag:
         return opf_str
     return opf_str[:m.start()] + new_tag + opf_str[m.end():]
@@ -1318,7 +1361,7 @@ def beautify(
 
     if (not inbook_toc_paths or nav_semantic_in_spine) and toc_items:
         # 截断仅在显式传入 max_toc_entries 时发生（默认 None = 全量收录）
-        truncated = bool(max_toc_entries) and len(toc_items) > max_toc_entries
+        truncated = (max_toc_entries is not None) and len(toc_items) > max_toc_entries
         if truncated:
             toc_items = toc_items[:max_toc_entries]
         toc_path = ctx.opf_dir + MB_TOC_NAME
@@ -1414,6 +1457,9 @@ def beautify(
         if t not in entries:
             continue
         html = _decode(entries[t])
+        # 统一 XML 声明为 utf-8（GBK/Big5 原文件头修正，避免 utf-8 实体与声明不一致）
+        if html.lstrip().startswith('<?xml'):
+            html = re.sub(r"""(<\?xml[^>]*encoding\s*=\s*)["'][^"']*["']""", r'\1"utf-8"', html, count=1, flags=re.IGNORECASE)
         changed = False
         # 弹注/标注美化（先于章节标记执行，豁免类才能生效；目录/前置页不做）
         if notes and not _is_toc_doc(t, html) and not _is_front_file(t):
