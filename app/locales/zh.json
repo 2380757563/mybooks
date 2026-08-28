@@ -23,6 +23,7 @@
     "checkingServer": "正在检测服务器..."
   },
   "index": {
+    "myReading": "在读书籍",
     "randomRecommendation": "随便推荐",
     "newRecommendation": "新书推荐",
     "socialRecommendation": "新评书籍",

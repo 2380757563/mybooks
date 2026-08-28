@@ -35,74 +35,108 @@
         </v-col>
     </v-row>
 
-    <div class="reading-stats-banner-wrapper">
-        <reading-stats-banner :show-title="false"></reading-stats-banner>
+    <div class="reading-stats-banner-wrapper" v-show="readingStatsHasData">
+        <reading-stats-banner :show-title="false" @has-stats="onReadingStatsHasData"></reading-stats-banner>
     </div>
 
-    <v-row v-if="random_books.length > 0">
-        <v-col cols=12>
-            <div class="d-flex align-center">
-                <p class="ma-0 title">{{ $t('index.randomRecommendation') }}</p>
-                <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
-            </div>
-        </v-col>
-        <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
-            <v-card :to="book.href" class="ma-1" outlined>
-                <div class="book-img-container" :title="book.title">
-                    <v-img
-                        :src="book.thumb"
-                        :aspect-ratio="11/15"
-                        style="border-radius: 12px;"
-                        class="book-img-hover"
-                        contain
-                    ></v-img>
-                    <!-- 实体书角标 -->
-                    <div v-if="book.book_type === 1" class="physical-book-badge">
-                        <v-icon small color="white">mdi-bookshelf</v-icon>
+    <div class="home-section-card" v-if="reading_books.length > 0">
+        <v-row>
+            <v-col cols=12>
+                <p class="ma-0 title">{{ $t('index.myReading') }}</p>
+            </v-col>
+            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_reading_books" :key="'reading'+idx+book.id" class="book-card">
+                <v-card :href="book.readHref" target="_blank" class="ma-1" outlined>
+                    <div class="book-img-container reading-book-cover" :title="book.title">
+                        <v-img
+                            :src="book.thumb"
+                            :aspect-ratio="11/15"
+                            style="border-radius: 12px;"
+                            class="book-img-hover"
+                            contain
+                        ></v-img>
+                        <!-- hover时显示"进入阅读"的圆形遮罩 -->
+                        <div class="reading-hover-overlay">
+                            <v-icon class="reading-hover-icon">mdi-book-open-page-variant-outline</v-icon>
+                        </div>
+                        <!-- 实体书角标 -->
+                        <div v-if="book.book_type === 1" class="physical-book-badge">
+                            <v-icon small color="white">mdi-bookshelf</v-icon>
+                        </div>
                     </div>
+                </v-card>
+            </v-col>
+        </v-row>
+    </div>
+
+    <div class="home-section-card" v-if="random_books.length > 0">
+        <v-row>
+            <v-col cols=12>
+                <div class="d-flex align-center">
+                    <p class="ma-0 title">{{ $t('index.randomRecommendation') }}</p>
+                    <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
                 </div>
-            </v-card>
-        </v-col>
-    </v-row>
-    <v-row v-if="social_recommend_books.length > 0">
-        <v-col cols=12>
-            <p class="ma-0 title">{{ $t('index.socialRecommendation') }}</p>
-        </v-col>
-        <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
-            <v-card :to="book.href" class="ma-1" outlined>
-                <div class="book-img-container" :title="book.title">
-                    <v-img
-                        :src="book.thumb"
-                        :aspect-ratio="11/15"
-                        style="border-radius: 12px;"
-                        class="book-img-hover"
-                        contain
-                    ></v-img>
-                    <div v-if="book.book_type === 1" class="physical-book-badge">
-                        <v-icon small color="white">mdi-bookshelf</v-icon>
+            </v-col>
+            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
+                <v-card :to="book.href" class="ma-1" outlined>
+                    <div class="book-img-container" :title="book.title">
+                        <v-img
+                            :src="book.thumb"
+                            :aspect-ratio="11/15"
+                            style="border-radius: 12px;"
+                            class="book-img-hover"
+                            contain
+                        ></v-img>
+                        <!-- 实体书角标 -->
+                        <div v-if="book.book_type === 1" class="physical-book-badge">
+                            <v-icon small color="white">mdi-bookshelf</v-icon>
+                        </div>
                     </div>
-                    <div
-                        v-if="book.recommender && book.recommender.avatar"
-                        class="recommender-badge"
-                        :title="book.recommender.nickname"
-                    >
-                        <v-avatar size="22">
-                            <v-img :src="book.recommender.avatar"></v-img>
-                        </v-avatar>
+                </v-card>
+            </v-col>
+        </v-row>
+    </div>
+    <div class="home-section-card" v-if="social_recommend_books.length > 0">
+        <v-row>
+            <v-col cols=12>
+                <p class="ma-0 title">{{ $t('index.socialRecommendation') }}</p>
+            </v-col>
+            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
+                <v-card :to="book.href" class="ma-1" outlined>
+                    <div class="book-img-container" :title="book.title">
+                        <v-img
+                            :src="book.thumb"
+                            :aspect-ratio="11/15"
+                            style="border-radius: 12px;"
+                            class="book-img-hover"
+                            contain
+                        ></v-img>
+                        <div v-if="book.book_type === 1" class="physical-book-badge">
+                            <v-icon small color="white">mdi-bookshelf</v-icon>
+                        </div>
+                        <div
+                            v-if="book.recommender && book.recommender.avatar"
+                            class="recommender-badge"
+                            :title="book.recommender.nickname"
+                        >
+                            <v-avatar size="22">
+                                <v-img :src="book.recommender.avatar"></v-img>
+                            </v-avatar>
+                        </div>
                     </div>
-                </div>
-            </v-card>
-        </v-col>
-    </v-row>
-    <v-row>
-        <v-col cols=12 v-if="random_books.length > 0">
-            <v-divider class="new-legend"></v-divider>
-            <p class="ma-0 title">{{ $t('index.newRecommendation') }}</p>
-        </v-col>
-        <v-col cols=12>
-            <book-cards :books="get_recent_books"></book-cards>
-        </v-col>
-    </v-row>
+                </v-card>
+            </v-col>
+        </v-row>
+    </div>
+    <div class="home-section-card">
+        <v-row>
+            <v-col cols=12>
+                <p class="ma-0 title">{{ $t('index.newRecommendation') }}</p>
+            </v-col>
+            <v-col cols=12>
+                <book-cards :books="get_recent_books"></book-cards>
+            </v-col>
+        </v-row>
+    </div>
 
     <!-- Release Notes Dialog -->
     <v-dialog v-model="releaseNotesDialog" max-width="480" persistent transition="dialog-bottom-transition">
@@ -139,6 +173,13 @@ export default {
         get_random_books: function() {
             return this.random_books.map( b => {
                 b['href'] = "/book/" + b.id;
+                return b;
+            });
+        },
+        get_reading_books: function() {
+            return this.reading_books.slice(0, 12).map( b => {
+                b['href'] = "/book/" + b.id;
+                b['readHref'] = "/read/" + b.id;
                 return b;
             });
         },
@@ -221,11 +262,15 @@ export default {
                     this.random_books = rsp.random_books || [];
                     this.new_books = rsp.new_books || [];
                     this.social_recommend_books = rsp.social_recommend_books || [];
+                    this.reading_books = rsp.reading_books || [];
                 }
             }).catch( error => {
                 console.error('Failed to refresh books:', error);
             });
-        }
+        },
+        onReadingStatsHasData(hasData) {
+            this.readingStatsHasData = hasData;
+        },
     },
     mounted() {
         this.loadLibraryStats();
@@ -260,6 +305,8 @@ export default {
         random_books: [],
         new_books: [],
         social_recommend_books: [],
+        reading_books: [],
+        readingStatsHasData: false,
         libraryStats: null,
         releaseNotesDialog: false,
         releaseNotesContent: '',
@@ -370,6 +417,19 @@ export default {
     margin-bottom: 20px;
 }
 
+/* 首页各版块（阅读统计/在读书籍/随便推荐/新评书籍/新书推荐）的卡片容器。
+   使用普通 div 而非 v-card，避免被 Appearance 设置的 --app-radius 覆盖，圆角始终固定；
+   半透明背景 + 卡片间距，让 Appearance 指定的背景图案能在卡片之间的空白区域透出来。 */
+.home-section-card {
+    background: rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 16px !important;
+    padding: 12px 16px 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
 .refresh-icon {
     cursor: pointer;
     transition: transform 0.28s ease, color 0.28s ease;
@@ -428,6 +488,40 @@ export default {
 .book-img-hover {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
+}
+
+/* 在读书籍封面 hover 时，居中显示半透明灰色圆形遮罩 + 阅读图标，点击直接进入阅读 */
+.reading-book-cover {
+    container-type: size;
+    cursor: pointer;
+}
+
+.reading-hover-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(34cqw, 34cqh);
+    height: min(34cqw, 34cqh);
+    transform: translate(-50%, -50%) scale(0.85);
+    border-radius: 50%;
+    background: rgba(60, 60, 60, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.reading-book-cover:hover .reading-hover-overlay {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.reading-hover-icon.v-icon {
+    color: #ffffff !important;
+    font-size: min(20cqw, 20cqh) !important;
 }
 
 .book-img-hover:hover {

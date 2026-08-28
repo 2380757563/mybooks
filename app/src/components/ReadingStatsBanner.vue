@@ -192,6 +192,8 @@ export default {
     methods: {
         async loadStats() {
             if (!this.isLoggedIn) {
+                this.stats = null;
+                this.$emit('has-stats', false);
                 return;
             }
             try {
@@ -199,9 +201,15 @@ export default {
                 const rsp = await this.$backend(url);
                 if (rsp.err === 'ok' && rsp.enabled) {
                     this.stats = rsp;
+                    this.$emit('has-stats', true);
+                } else {
+                    this.stats = null;
+                    this.$emit('has-stats', false);
                 }
             } catch (error) {
                 console.warn('Failed to load reading stats:', error);
+                this.stats = null;
+                this.$emit('has-stats', false);
             }
         },
     },

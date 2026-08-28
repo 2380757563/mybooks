@@ -23,6 +23,7 @@
     "checkingServer": "Checking server..."
   },
   "index": {
+    "myReading": "Currently Reading",
     "randomRecommendation": "Recommendation",
     "newRecommendation": "Recent updated",
     "socialRecommendation": "Recommended by readers",

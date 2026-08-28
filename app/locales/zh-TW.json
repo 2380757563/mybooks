@@ -23,6 +23,7 @@
     "checkingServer": "正在偵測伺服器..."
   },
   "index": {
+    "myReading": "在讀書籍",
     "randomRecommendation": "隨機推薦",
     "newRecommendation": "新書推薦",
     "socialRecommendation": "新評書籍",

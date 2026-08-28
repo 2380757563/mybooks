@@ -103,6 +103,26 @@ class Index(BaseHandler):
             result.append(book_data)
         return result
 
+    def _reading_books(self):
+        """首页"在读书籍"：当前登录用户正在阅读的书籍，最多 12 本，按最近阅读时间排序。"""
+        if not self.current_user:
+            return []
+        reading_states = self.sqlite_session.query(ReadingState).filter(
+            ReadingState.reader_id == self.current_user.id,
+            ReadingState.read_state == 1  # 在读状态
+        ).order_by(ReadingState.read_date.desc()).limit(12).all()
+        if not reading_states:
+            return []
+        book_ids = [state.book_id for state in reading_states]
+        books_dict = {b["id"]: b for b in self.get_books(ids=book_ids)}
+        result = []
+        for book_id in book_ids:
+            book = books_dict.get(book_id)
+            if not book:
+                continue
+            result.append(self.fmt(book))
+        return result
+
     @js
     def get(self):
         """首页显示随机书籍和最近添加的书籍"""
@@ -118,7 +138,8 @@ class Index(BaseHandler):
                 "random_books_count": 0,
                 "new_books_count": 0,
                 "random_books": [],
-                "new_books": []
+                "new_books": [],
+                "reading_books": []
             }
 
         cnt_recent = min(cnt_recent, len(ids))
@@ -139,6 +160,7 @@ class Index(BaseHandler):
             "random_books": [self.fmt(b) for b in random_books],
             "new_books": [self.fmt(b) for b in new_books],
             "social_recommend_books": self._social_recommend_books(),
+            "reading_books": self._reading_books(),
         }
 
 
