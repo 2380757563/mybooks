@@ -26,6 +26,7 @@ except ImportError:
 
 import tornado.escape
 from tornado import web
+from sqlalchemy import func
 
 from webserver import loader, utils
 from webserver.base.formatter import BookFormatter, ReadingStateFormatter
@@ -1297,7 +1298,26 @@ class BookReading(BaseHandler):
         start = self.get_argument_start()
         page_size = CONF.get("DEFAULT_PAGE_SIZE", 60)
         delta = max(min(int(self.get_argument("size", page_size)), 100), 0)
-        reading_states = query.order_by(ReadingState.read_date.desc()).limit(delta).offset(start).all()
+
+        # 按最近一次阅读时间倒序：web 阅读器和客户端同步都会更新 BookReadingStats.update_time
+        # （见 reading_stats_service.py），一本书可能有多个格式的行，取其中最大的 update_time；
+        # 没有任何 BookReadingStats 行（比如迁移前的旧数据）时退回 ReadingState.read_date。
+        last_read_subq = (
+            self.sqlite_session.query(
+                BookFormatReadingStatsModel.book_id.label("book_id"),
+                func.max(BookFormatReadingStatsModel.update_time).label("last_read_time"),
+            )
+            .filter(BookFormatReadingStatsModel.reader_id == user_id)
+            .group_by(BookFormatReadingStatsModel.book_id)
+            .subquery()
+        )
+        reading_states = (
+            query.outerjoin(last_read_subq, last_read_subq.c.book_id == ReadingState.book_id)
+            .order_by(func.coalesce(last_read_subq.c.last_read_time, ReadingState.read_date).desc())
+            .limit(delta)
+            .offset(start)
+            .all()
+        )
 
         # 批量获取所有书籍
         book_ids = [state.book_id for state in reading_states]

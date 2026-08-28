@@ -419,11 +419,8 @@ export default {
     margin-bottom: 20px;
 }
 
-/* 首页各版块（阅读统计/在读书籍/随便推荐/新评书籍/新书推荐）的卡片容器。
-   使用普通 div 而非 v-card，避免被 Appearance 设置的 --app-radius 覆盖，圆角始终固定；
-   半透明背景 + 卡片间距，让 Appearance 指定的背景图案能在卡片之间的空白区域透出来。 */
 .home-section-card {
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(0, 0, 0, 0.18);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border-radius: 16px !important;
