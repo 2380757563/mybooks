@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
+import logging
 import os
+import re
 import time
 import mimetypes
 import tornado
@@ -19,10 +21,10 @@ from webserver.toolbox.epub_split import EpubSplitTool
 from webserver.toolbox.author_clean_tool import AuthorCleanTool
 from webserver.toolbox.mimo_tts import MimoTTSTool
 from webserver.toolbox.bookbarn_acceptor_tool import BookBarnAcceptorTool
-from webserver.toolbox.text_replace import TextReplaceTool
-from webserver.toolbox.txt_encoding_fixer import TxtEncodingFixerTool
-from webserver.toolbox.chinese_converter_tool import ChineseConverterTool, DIRECTIONS
-from webserver.services.background_service import BackgroundTask
+from webserver.toolbox.curie_tool import CurieTool
+from webserver.toolbox.epub_beautify import EpubBeautifyTool
+from webserver.toolbox.styles import TOC_STYLES as EB_TOC_STYLES, list_presets as eb_list_presets
+from webserver.services.background_service import BackgroundService, BackgroundTask
 from pathlib import Path
 
 
@@ -613,60 +615,6 @@ class AdminBookBarnAcceptorStatus(BaseHandler):
         return {"err": "ok", "data": BookBarnAcceptorTool().get_status()}
 
 
-class AdminChineseConverterConvert(BaseHandler):
-    @js
-    @is_admin
-    def post(self):
-        data = tornado.escape.json_decode(self.request.body)
-        book_id = data.get("book_id")
-        direction = (data.get("direction") or "t2s").strip()
-        mode = (data.get("mode") or "book").strip()
-        convert_title = bool(data.get("convert_title", True))
-        use_a5 = bool(data.get("use_a5", False))
-        backup = bool(data.get("backup", False))
-
-        if not book_id:
-            return {"err": "params.missing", "msg": _("请提供书籍ID")}
-        if direction not in DIRECTIONS:
-            return {"err": "params.direction.invalid", "msg": _("不支持的转换方向")}
-        if mode not in ("book", "replace"):
-            return {"err": "params.mode.invalid", "msg": _("无效的输出方式")}
-
-        tool = ChineseConverterTool()
-        if tool.is_running():
-            return {"err": "task.running", "msg": _("已有繁简转换任务正在运行，请稍后再试")}
-
-        tool.convert(int(book_id), direction, mode, use_a5, convert_title, backup, self.user_id())
-        return {"err": "ok", "msg": _("繁简转换任务已启动，右上角可以查看进度")}
-
-
-class AdminChineseConverterProgress(BaseHandler):
-    @js
-    @is_admin
-    def get(self):
-        task = ChineseConverterTool.get_last_task()
-        if not task:
-            return {"err": "task.not_found", "msg": _("尚未启动繁简转换任务")}
-
-        progress_data = task.get("progress_data") or {}
-        result = {
-            "status": task.get("status"),
-            "progress": task.get("progress", 0),
-            "book_id": progress_data.get("book_id", 0),
-            "new_book_id": progress_data.get("new_book_id", 0),
-            "direction": progress_data.get("direction", ""),
-            "stage": progress_data.get("stage", ""),
-        }
-
-        if task.get("status") == BackgroundTask.STATUS_FAILED:
-            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
-
-        if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-            return {"err": "ok", "msg": _("繁简转换任务已完成"), "data": result}
-
-        return {"err": "ok", "data": result}
-
-
 class AdminBookBarnAcceptorToggle(BaseHandler):
     @js
     @is_admin
@@ -715,132 +663,385 @@ class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
         return {"err": "ok", "msg": result.get("msg"), "data": BookBarnAcceptorTool().get_status()}
 
 
-class AdminTxtEncodingFixerAnalyze(BaseHandler):
+class AdminCurieConvert(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         book_id = data.get("book_id")
+        provider = (data.get("provider") or "anthropic").strip()
+        api_key = (data.get("api_key") or "").strip()
+        model = (data.get("model") or "").strip()
+        api_url = (data.get("api_url") or "").strip()
+        language = (data.get("language") or "auto").strip()
+        hint_density = (data.get("hint_density") or "every_10_paragraphs").strip()
+
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        if not api_key:
+            return {"err": "params.missing", "msg": _("请提供 API Key")}
+        if not model:
+            return {"err": "params.missing", "msg": _("请提供模型名称")}
+        if not data.get("include_characters", True) and not data.get("include_places", False):
+            return {"err": "params.invalid", "msg": _("请至少勾选“生成角色简介”或“生成地点简介”一项")}
 
-        try:
-            report = TxtEncodingFixerTool().analyze(int(book_id))
-        except RuntimeError as err:
-            return {"err": "txt_encoding_fixer.analyze_failed", "msg": str(err)}
-
-        return {"err": "ok", "data": report}
-
-class AdminTxtEncodingFixerFix(BaseHandler):
-    @js
-    @is_admin
-    def post(self):
-        data = tornado.escape.json_decode(self.request.body)
-        book_id = data.get("book_id")
-        if not book_id:
-            return {"err": "params.missing", "msg": _("请提供书籍ID")}
-
-        tool = TxtEncodingFixerTool()
+        tool = CurieTool()
         if tool.is_running():
-            return {"err": "task.running", "msg": _("已有 TXT 编码修复任务正在执行，请稍后再试")}
+            return {"err": "task.running", "msg": _("已有 Curie 任务正在运行，请稍后再试")}
 
-        tool.fix(int(book_id), self.user_id())
-        return {"err": "ok", "msg": _("TXT 编码修复任务已启动，注意查看消息通知中的处理结果")}
+        tool.convert(
+            int(book_id), self.user_id(), provider, api_key, model, api_url,
+            include_characters=bool(data.get("include_characters", True)),
+            include_places=bool(data.get("include_places", False)),
+            language=language, hint_density=hint_density,
+        )
+        return {"err": "ok", "msg": _("Curie 导读生成任务已启动，右上角可以查看进度")}
 
-class AdminTxtEncodingFixerProgress(BaseHandler):
+
+class AdminCurieProgress(BaseHandler):
     @js
     @is_admin
     def get(self):
-        task = TxtEncodingFixerTool.get_last_task()
+        task = CurieTool.get_last_task()
         if not task:
-            return {"err": "task.not_found", "msg": _("尚未启动 TXT 编码修复任务")}
+            return {"err": "task.not_found", "msg": _("尚未启动 Curie 任务")}
 
         progress_data = task.get("progress_data") or {}
         result = {
             "status": task.get("status"),
             "progress": task.get("progress", 0),
             "book_id": progress_data.get("book_id", 0),
+            "new_book_id": progress_data.get("new_book_id", 0),
+            "new_title": progress_data.get("new_title", ""),
             "stage": progress_data.get("stage", ""),
+            "language": progress_data.get("language", ""),
+            "characters": progress_data.get("characters", 0),
+            "locations": progress_data.get("locations", 0),
         }
 
         if task.get("status") == BackgroundTask.STATUS_FAILED:
             return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
-
         if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-            return {"err": "ok", "msg": _("TXT 编码修复任务已完成"), "data": result}
-
+            return {"err": "ok", "msg": _("Curie 导读生成已完成"), "data": result}
         return {"err": "ok", "data": result}
 
 
-class AdminTextReplacePreview(BaseHandler):
+class AdminCurieConfig(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        config = CurieTool().load_api_config()
+        if config:
+            return {"err": "ok", "config": config}
+        return {"err": "ok", "config": None}
+
+    @js
+    @is_admin
+    def delete(self):
+        CurieTool().clear_api_config()
+        return {"err": "ok", "msg": _("已清除已保存的配置")}
+
+
+class AdminCurieTest(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        provider = (data.get("provider") or "anthropic").strip()
+        api_key = (data.get("api_key") or "").strip()
+        model = (data.get("model") or "").strip()
+        api_url = (data.get("api_url") or "").strip()
+
+        if not api_key:
+            return {"err": "params.missing", "msg": _("请提供 API Key")}
+        if not model:
+            return {"err": "params.missing", "msg": _("请填写模型名称")}
+
+        ok, err_msg = CurieTool().test_connection(provider, api_key, model, api_url)
+        if ok:
+            return {"err": "ok", "msg": _("连接成功，配置已保存")}
+        return {"err": "test.failed", "msg": _("连接失败：%s") % err_msg}
+
+
+class AdminCuriePreview(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         book_id = data.get("book_id")
-        pattern = (data.get("pattern") or "").strip()
-        replacement = data.get("replacement") or ""
-        use_regex = bool(data.get("use_regex", False))
-        fmt = (data.get("format") or "").strip().upper()
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        result = CurieTool().preview(int(book_id))
+        return {"err": "ok", "data": result.get("data")}
 
+
+class AdminCurieRegenerate(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        book_id = data.get("book_id")
+        hint_density = (data.get("hint_density") or "every_10_paragraphs").strip()
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
 
-        try:
-            result = TextReplaceTool().preview(int(book_id), pattern, replacement, use_regex, fmt)
-        except RuntimeError as err:
-            return {"err": "text_replace.preview_failed", "msg": str(err)}
+        tool = CurieTool()
+        if tool.is_running():
+            return {"err": "task.running", "msg": _("已有 Curie 任务正在运行，请稍后再试")}
 
-        return {"err": "ok", "data": result}
+        tool.regenerate(int(book_id), self.user_id(), hint_density)
+        return {"err": "ok", "msg": _("Curie 重新生成任务已启动，右上角可以查看进度")}
 
 
-class AdminTextReplaceRun(BaseHandler):
+class AdminCurieCancel(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        """请求取消当前 Curie 任务：BackgroundService.cancel_task 仅标记状态，
+        运行线程会在下一个检查点停止（分析分块/限速等待期间可立即中断）。"""
+        tool = CurieTool()
+        if not tool.is_running():
+            # 仅允许取消运行中的任务，避免把已完成/失败记录覆盖为 cancelled
+            return {"err": "task.not_running", "msg": _("当前没有正在运行的 Curie 任务")}
+        task_id = CurieTool._last_task_id
+        if task_id is None:
+            return {"err": "task.not_found", "msg": _("尚未启动 Curie 任务")}
+        if not BackgroundService().cancel_task(task_id):
+            return {"err": "task.not_found", "msg": _("任务不存在或已结束")}
+        return {"err": "ok", "msg": _("已请求取消任务，正在停止…")}
+
+
+class AdminEpubBeautifyPreview(BaseHandler):
     @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
         book_id = data.get("book_id")
-        pattern = (data.get("pattern") or "").strip()
-        replacement = data.get("replacement") or ""
-        use_regex = bool(data.get("use_regex", False))
+        if not book_id:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        try:
+            result = EpubBeautifyTool().preview(int(book_id))
+        except RuntimeError as err:
+            return {"err": "preview.failed", "msg": str(err)}
+        except Exception as err:
+            # 畸形 OPF/NCX（ET.ParseError 等）不应 500，转为友好业务错误
+            logging.warning("[EpubBeautifyPreview] book_id=%s analyze failed: %s", book_id, err)
+            return {"err": "preview.failed", "msg": _("EPUB 解析失败，文件可能已损坏：%s") % err}
+        return {"err": "ok", "data": result}
+
+
+class AdminEpubBeautifyRun(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        # 批量优先：book_ids 列表；回落单本 book_id（兼容旧前端）
+        raw_ids = data.get("book_ids") or ([data.get("book_id")] if data.get("book_id") else [])
+        try:
+            book_ids = [int(x) for x in raw_ids if str(x).strip()]
+        except (TypeError, ValueError):
+            return {"err": "params.invalid", "msg": _("书籍 ID 不合法")}
+        book_ids = list(dict.fromkeys(book_ids))
+        if not book_ids:
+            return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        preset = (data.get("preset") or "classic").strip()
+        toc_style = (data.get("toc_style") or "elegant").strip()
+        # 前置校验：非法 preset/toc_style 即时拒绝，不等后台任务失败
+        if preset not in eb_list_presets():
+            return {"err": "params.invalid", "msg": _("未知风格预设：%s") % preset}
+        if toc_style not in EB_TOC_STYLES:
+            return {"err": "params.invalid", "msg": _("未知目录形式：%s") % toc_style}
+        use_system_fonts = data.get("use_system_fonts", True)
+        # 兼容：前端可能传 string/bool
+        if isinstance(use_system_fonts, str):
+            use_system_fonts = use_system_fonts.lower() not in ("false", "0", "no", "")
+        else:
+            use_system_fonts = bool(use_system_fonts)
         suffix = (data.get("suffix") or "").strip()
-        fmt = (data.get("format") or "").strip().upper()
+        font_overrides = data.get("font_overrides")
+        # 兼容细粒度单独键
+        if font_overrides is None:
+            _ov = {}
+            for _k in ("body", "head", "kai", "code"):
+                _key = "font_%s" % _k
+                if _key in data:
+                    _ov[_k] = bool(data.get(_key))
+            if _ov:
+                font_overrides = _ov
+        # 目录层级深度（None=全部）
+        toc_depth = data.get("toc_depth")
+        try:
+            toc_depth = int(toc_depth) if toc_depth else None
+        except (TypeError, ValueError):
+            toc_depth = None
+        if toc_depth is not None and not 1 <= toc_depth <= 6:
+            toc_depth = None
+        # 内容清理开关（后端有默认值，仅透传合法键）
+        cleanup_raw = data.get("cleanup")
+        cleanup = None
+        if isinstance(cleanup_raw, dict):
+            cleanup = {k: bool(cleanup_raw[k]) for k in ("leading", "empty", "meta", "toc_blank") if k in cleanup_raw}
+        # 自定义配色（校验键与 hex 格式，非法直接报参数错误）
+        palette_raw = data.get("palette_overrides")
+        palette_overrides = None
+        if isinstance(palette_raw, dict) and palette_raw:
+            _hex_re = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+            palette_overrides = {}
+            for k, v in palette_raw.items():
+                if k not in ("accent", "accent_light", "muted", "border", "quote_bg", "code_bg"):
+                    continue
+                if not isinstance(v, str) or not _hex_re.match(v.strip()):
+                    return {"err": "params.invalid", "msg": _("配色值不合法：%s=%s") % (k, v)}
+                palette_overrides[k] = v.strip()
+        # 全书主题底色三态：True/False/'auto'
+        page_tint = data.get("page_tint", None)
+        if isinstance(page_tint, str):
+            page_tint = {"on": True, "true": True, "off": False, "false": False}.get(page_tint.lower(), None)
+        # 对话行点缀开关（默认关）
+        dialogue = bool(data.get("dialogue", False))
+        # 双行排版开关（默认关）
+        title_split = bool(data.get("title_split", False))
+        # 段落排版：首行缩进独立开关 + 段间距数值（em）；兼容旧 para_mode
+        para_mode = data.get("para_mode")
+        if para_mode not in (None, "", "indent", "spacing"):
+            return {"err": "params.invalid", "msg": _("未知段距模式：%s") % para_mode}
+        if "para_indent" in data:
+            para_indent = bool(data.get("para_indent"))
+        elif para_mode == "spacing":
+            para_indent = False
+        else:
+            para_indent = None  # 默认跟随预设（缩进制）
+        para_gap = data.get("para_gap")
+        try:
+            para_gap = round(float(para_gap), 3) if para_gap not in (None, "", 0) else 0.0
+        except (TypeError, ValueError):
+            return {"err": "params.invalid", "msg": _("段间距数值不合法：%s") % data.get("para_gap")}
+        if not 0 <= para_gap <= 3:
+            para_gap = max(0.0, min(3.0, para_gap))
+        # 目录双栏开关（默认关，仅作用于生成的目录页）
+        toc_columns = bool(data.get("toc_columns", False))
+        # 弹注/标注美化（默认关）+ 标注样式（orig/sym/num/svg:<模板>）
+        notes_on = bool(data.get("notes", False))
+        note_mark = data.get("note_mark") or "orig"
+        _svg_ok = note_mark.startswith("svg:") and len(note_mark) > 4
+        if note_mark != "orig" and note_mark not in ("sym", "num") and not _svg_ok:
+            return {"err": "params.invalid", "msg": _("未知标注样式：%s") % note_mark}
 
-        if not book_id:
-            return {"err": "params.missing", "msg": _("请提供书籍ID")}
-        if not pattern:
-            return {"err": "params.missing", "msg": _("查找内容不能为空")}
-
-        tool = TextReplaceTool()
+        tool = EpubBeautifyTool()
         if tool.is_running():
-            return {"err": "task.running", "msg": _("已有正文替换任务正在执行，请稍后再试")}
+            return {"err": "task.running", "msg": _("已有美化任务正在运行，请稍后再试")}
 
-        tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id(), fmt)
-        return {"err": "ok", "msg": _("正文替换任务已启动，注意查看消息通知中的处理结果")}
+        kwargs = {}
+        if font_overrides is not None:
+            kwargs["font_overrides"] = font_overrides
+        if toc_depth is not None:
+            kwargs["toc_depth"] = toc_depth
+        if cleanup is not None:
+            kwargs["cleanup"] = cleanup
+        if palette_overrides:
+            kwargs["palette_overrides"] = palette_overrides
+        if page_tint is not None:
+            kwargs["page_tint"] = bool(page_tint)
+        kwargs["dialogue"] = dialogue
+        kwargs["title_split"] = title_split
+        if para_indent is not None:
+            kwargs["para_indent"] = para_indent
+        if para_gap:
+            kwargs["para_gap"] = para_gap
+        if toc_columns:
+            kwargs["toc_columns"] = True
+        if notes_on:
+            kwargs["notes"] = True
+            if note_mark != "orig":
+                kwargs["note_mark"] = note_mark
+        tool.run(book_ids=book_ids, preset=preset, use_system_fonts=use_system_fonts,
+                 toc_style=toc_style, suffix=suffix, user_id=self.user_id(), **kwargs)
+        return {"err": "ok", "msg": _("美化任务已启动，右上角可以查看进度")}
 
 
-class AdminTextReplaceProgress(BaseHandler):
+class AdminEpubBeautifyBgUpload(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        builtin_id = (self.get_body_argument("builtin_id", "") or "").strip()
+        tool = EpubBeautifyTool()
+        try:
+            if builtin_id:
+                info = tool.save_bg_image(b"", "", builtin_id=builtin_id)
+            else:
+                if not self.request.files or "file" not in self.request.files:
+                    return {"err": "params.missing", "msg": _("未上传文件")}
+                fm = self.request.files["file"][0]
+                info = tool.save_bg_image(fm["body"], fm["filename"])
+        except ValueError as err:
+            return {"err": "params.invalid", "msg": str(err)}
+        except RuntimeError as err:
+            return {"err": "bg.failed", "msg": str(err)}
+        return {"err": "ok", "msg": _("背景图已保存"), "data": info}
+
+
+class AdminEpubBeautifyBgMeta(BaseHandler):
     @js
     @is_admin
     def get(self):
-        task = TextReplaceTool.get_last_task()
+        p = EpubBeautifyTool().bg_image_path()
+        if not os.path.exists(p):
+            return {"err": "ok", "data": {"has": False}}
+        st = os.stat(p)
+        return {"err": "ok", "data": {
+            "has": True, "bytes": st.st_size, "mtime": int(st.st_mtime),
+        }}
+
+
+class AdminEpubBeautifyBgRaw(BaseHandler):
+    @is_admin
+    def get(self):
+        p = EpubBeautifyTool().bg_image_path()
+        if not os.path.exists(p):
+            self.set_status(404)
+            self.write("Background image not found")
+            return
+        self.set_header("Content-Type", "image/jpeg")
+        self.set_header("Cache-Control", "no-store")
+        with open(p, "rb") as f:
+            self.write(f.read())
+
+
+class AdminEpubBeautifyBgDelete(BaseHandler):
+    @js
+    @is_admin
+    def post(self):
+        ok = EpubBeautifyTool().delete_bg_image()
+        if not ok:
+            return {"err": "bg.not_found", "msg": _("尚未上传背景图")}
+        return {"err": "ok", "msg": _("背景图已删除")}
+
+
+class AdminEpubBeautifyProgress(BaseHandler):
+    @js
+    @is_admin
+    def get(self):
+        task = EpubBeautifyTool.get_last_task()
         if not task:
-            return {"err": "task.not_found", "msg": _("尚未启动正文替换任务")}
+            return {"err": "task.not_found", "msg": _("尚未启动美化任务")}
 
         progress_data = task.get("progress_data") or {}
         result = {
             "status": task.get("status"),
             "progress": task.get("progress", 0),
             "book_id": progress_data.get("book_id", 0),
+            "new_book_id": progress_data.get("new_book_id", 0),
             "stage": progress_data.get("stage", ""),
+            "book_index": progress_data.get("book_index", 0),
+            "book_total": progress_data.get("book_total", 0),
+            "current_title": progress_data.get("current_title", ""),
+            "results": progress_data.get("results", []),
         }
 
         if task.get("status") == BackgroundTask.STATUS_FAILED:
-            return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
-
+            return {"err": "task.failed", "msg": task.get("error_message") or _("美化失败"), "data": result}
         if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-            return {"err": "ok", "msg": _("正文替换任务已完成"), "data": result}
-
+            return {"err": "ok", "msg": _("美化已完成"), "data": result}
         return {"err": "ok", "data": result}
 
 
@@ -875,12 +1076,18 @@ def routes():
                 (r"/api/toolbox/mimo_tts/prompt/list", AdminMimoTTSPromptList),
                 (r"/api/toolbox/mimo_tts/prompt/save", AdminMimoTTSPromptSave),
                 (r"/api/toolbox/mimo_tts/prompt/delete", AdminMimoTTSPromptDelete),
-                (r"/api/toolbox/text_replace/preview", AdminTextReplacePreview),
-                (r"/api/toolbox/text_replace/run", AdminTextReplaceRun),
-                (r"/api/toolbox/text_replace/progress", AdminTextReplaceProgress),
-                (r"/api/toolbox/txt_encoding_fixer/analyze", AdminTxtEncodingFixerAnalyze),
-                (r"/api/toolbox/txt_encoding_fixer/fix", AdminTxtEncodingFixerFix),
-                (r"/api/toolbox/txt_encoding_fixer/progress", AdminTxtEncodingFixerProgress),
-                (r"/api/toolbox/chinese_converter/convert", AdminChineseConverterConvert),
-                (r"/api/toolbox/chinese_converter/progress", AdminChineseConverterProgress),
+                (r"/api/toolbox/curie/convert", AdminCurieConvert),
+                (r"/api/toolbox/curie/progress", AdminCurieProgress),
+                (r"/api/toolbox/curie/config", AdminCurieConfig),
+                (r"/api/toolbox/curie/test", AdminCurieTest),
+                (r"/api/toolbox/curie/preview", AdminCuriePreview),
+                (r"/api/toolbox/curie/regenerate", AdminCurieRegenerate),
+                (r"/api/toolbox/curie/cancel", AdminCurieCancel),
+                (r"/api/toolbox/epub_beautify/preview", AdminEpubBeautifyPreview),
+                (r"/api/toolbox/epub_beautify/run", AdminEpubBeautifyRun),
+                (r"/api/toolbox/epub_beautify/progress", AdminEpubBeautifyProgress),
+                (r"/api/toolbox/epub_beautify/bg_upload", AdminEpubBeautifyBgUpload),
+                (r"/api/toolbox/epub_beautify/bg_meta", AdminEpubBeautifyBgMeta),
+                (r"/api/toolbox/epub_beautify/bg_raw", AdminEpubBeautifyBgRaw),
+                (r"/api/toolbox/epub_beautify/bg_delete", AdminEpubBeautifyBgDelete),
     ]
