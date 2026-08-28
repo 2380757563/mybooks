@@ -129,13 +129,13 @@ class BatchConvertService(AsyncService):
         if self.count_total == 0:
             logging.info("[BatchConvert] No books to convert")
             self.is_running = False
-            self.add_msg(user_id, "success", _(u"转EPUB任务已结束，未找到需要转换的书籍"))
+            self.add_msg(user_id, "success", _("转EPUB任务已结束，未找到需要转换的书籍"))
             return
 
         try:
             task = BackgroundService().update_task(
                 service_type=BackgroundTask.SERVICE_TYPE_CONVERT,
-                service_item=_("Kindle格式转EPUB"),
+                service_item=_("格式转EPUB"),
                 progress=0,
                 progress_data={
                     "total": self.count_total,

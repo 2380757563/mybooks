@@ -506,7 +506,7 @@
             </v-card>
         </v-dialog>
 
-        <!-- Kindle格式转EPUB确认对话框 -->
+        <!-- 转EPUB确认对话框 -->
         <v-dialog v-model="kindle_convert_dialog" persistent transition="dialog-bottom-transition" width="500">
             <v-card>
                 <v-toolbar flat dense dark color="info"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
