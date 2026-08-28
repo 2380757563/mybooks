@@ -1350,6 +1350,35 @@ class TestParaStyleAndTocColumns(unittest.TestCase):
         self.assertIn("div.mb-toc ol", two)
         self.assertIn("@media (min-width: 32em)", two)
 
+    def test_para_indent_off_beats_calibre_rules(self):
+        """类汤书顶格：responsive 的 .calibre* 2em 强制在前，末尾同选择器覆写归零。"""
+        css = get_preset_css("classic", para_indent=False)
+        resp = css.index("text-indent: 2em !important")
+        over = css.index("div.calibre1, .calibre1, .calibre {\n    text-indent: 0 !important")
+        self.assertGreater(over, resp)
+        # duokan 私有属性同样需要 !important 才能压过 responsive 的强制值
+        self.assertIn("duokan-text-indent: 0 !important", css)
+
+    def test_para_gap_beats_calibre_margin(self):
+        """类汤书段距：p.calibre* 段落级选择器覆写 responsive 的 margin: 0。"""
+        css = get_preset_css("classic", para_gap=1.5)
+        self.assertIn(
+            "p.calibre, p.calibre1, p.calibre2, div.calibre1 {\n"
+            "    margin: 0 0 1.5em 0 !important;\n"
+            "}",
+            css,
+        )
+
+    def test_para_indent_off_and_gap_calibre_combined(self):
+        css = get_preset_css("classic", para_indent=False, para_gap=0.5)
+        self.assertIn("div.calibre1, .calibre1, .calibre {\n    text-indent: 0 !important", css)
+        self.assertIn(
+            "p.calibre, p.calibre1, p.calibre2, div.calibre1 {\n    margin: 0 0 0.5em 0 !important",
+            css,
+        )
+        # 裸 .calibre / .calibre1（可能是 body/容器）不参与段距
+        self.assertNotIn(".calibre1, .calibre {\n    margin", css)
+
 
 # ── 弹注 fixture：ch1=A 型（EPUB3 标准），ch2=B 型（掌书系简化）──
 NOTES_CH_A = (

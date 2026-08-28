@@ -666,349 +666,164 @@ class AdminBookBarnAcceptorSetCollectionHour(BaseHandler):
 
 
 class AdminChineseConverterConvert(BaseHandler):
-
     @js
-
     @is_admin
-
     def post(self):
-
         data = tornado.escape.json_decode(self.request.body)
-
         book_id = data.get("book_id")
-
         direction = (data.get("direction") or "t2s").strip()
-
         mode = (data.get("mode") or "book").strip()
-
         convert_title = bool(data.get("convert_title", True))
-
         use_a5 = bool(data.get("use_a5", False))
-
         backup = bool(data.get("backup", False))
-
-
-
         if not book_id:
-
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-
         if direction not in DIRECTIONS:
-
             return {"err": "params.direction.invalid", "msg": _("不支持的转换方向")}
-
         if mode not in ("book", "replace"):
-
             return {"err": "params.mode.invalid", "msg": _("无效的输出方式")}
-
-
-
         tool = ChineseConverterTool()
-
         if tool.is_running():
-
             return {"err": "task.running", "msg": _("已有繁简转换任务正在运行，请稍后再试")}
-
-
-
         tool.convert(int(book_id), direction, mode, use_a5, convert_title, backup, self.user_id())
-
         return {"err": "ok", "msg": _("繁简转换任务已启动，右上角可以查看进度")}
 
 
 class AdminChineseConverterProgress(BaseHandler):
-
     @js
-
     @is_admin
-
     def get(self):
-
         task = ChineseConverterTool.get_last_task()
-
         if not task:
-
             return {"err": "task.not_found", "msg": _("尚未启动繁简转换任务")}
-
-
-
         progress_data = task.get("progress_data") or {}
-
         result = {
-
             "status": task.get("status"),
-
             "progress": task.get("progress", 0),
-
             "book_id": progress_data.get("book_id", 0),
-
             "new_book_id": progress_data.get("new_book_id", 0),
-
             "direction": progress_data.get("direction", ""),
-
             "stage": progress_data.get("stage", ""),
-
         }
-
-
-
         if task.get("status") == BackgroundTask.STATUS_FAILED:
-
             return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
-
-
-
         if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-
             return {"err": "ok", "msg": _("繁简转换任务已完成"), "data": result}
-
-
-
         return {"err": "ok", "data": result}
 
 
 class AdminTxtEncodingFixerAnalyze(BaseHandler):
-
     @js
-
     @is_admin
-
     def post(self):
-
         data = tornado.escape.json_decode(self.request.body)
-
         book_id = data.get("book_id")
-
         if not book_id:
-
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-
-
-
         try:
-
             report = TxtEncodingFixerTool().analyze(int(book_id))
-
         except RuntimeError as err:
-
             return {"err": "txt_encoding_fixer.analyze_failed", "msg": str(err)}
-
-
-
         return {"err": "ok", "data": report}
 
 
 class AdminTxtEncodingFixerFix(BaseHandler):
-
     @js
-
     @is_admin
-
     def post(self):
-
         data = tornado.escape.json_decode(self.request.body)
-
         book_id = data.get("book_id")
-
         if not book_id:
-
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-
-
-
         tool = TxtEncodingFixerTool()
-
         if tool.is_running():
-
             return {"err": "task.running", "msg": _("已有 TXT 编码修复任务正在执行，请稍后再试")}
-
-
-
         tool.fix(int(book_id), self.user_id())
-
         return {"err": "ok", "msg": _("TXT 编码修复任务已启动，注意查看消息通知中的处理结果")}
 
 
 class AdminTxtEncodingFixerProgress(BaseHandler):
-
     @js
-
     @is_admin
-
     def get(self):
-
         task = TxtEncodingFixerTool.get_last_task()
-
         if not task:
-
             return {"err": "task.not_found", "msg": _("尚未启动 TXT 编码修复任务")}
-
-
-
         progress_data = task.get("progress_data") or {}
-
         result = {
-
             "status": task.get("status"),
-
             "progress": task.get("progress", 0),
-
             "book_id": progress_data.get("book_id", 0),
-
             "stage": progress_data.get("stage", ""),
-
         }
-
-
-
         if task.get("status") == BackgroundTask.STATUS_FAILED:
-
             return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
-
-
-
         if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-
             return {"err": "ok", "msg": _("TXT 编码修复任务已完成"), "data": result}
-
-
-
         return {"err": "ok", "data": result}
 
 
 class AdminTextReplacePreview(BaseHandler):
-
     @js
-
     @is_admin
-
     def post(self):
-
         data = tornado.escape.json_decode(self.request.body)
-
         book_id = data.get("book_id")
-
         pattern = (data.get("pattern") or "").strip()
-
         replacement = data.get("replacement") or ""
-
         use_regex = bool(data.get("use_regex", False))
-
         fmt = (data.get("format") or "").strip().upper()
-
-
-
         if not book_id:
-
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-
-
-
         try:
-
             result = TextReplaceTool().preview(int(book_id), pattern, replacement, use_regex, fmt)
-
         except RuntimeError as err:
-
             return {"err": "text_replace.preview_failed", "msg": str(err)}
-
-
-
         return {"err": "ok", "data": result}
 
 
 class AdminTextReplaceRun(BaseHandler):
-
     @js
-
     @is_admin
-
     def post(self):
-
         data = tornado.escape.json_decode(self.request.body)
-
         book_id = data.get("book_id")
-
         pattern = (data.get("pattern") or "").strip()
-
         replacement = data.get("replacement") or ""
-
         use_regex = bool(data.get("use_regex", False))
-
         suffix = (data.get("suffix") or "").strip()
-
         fmt = (data.get("format") or "").strip().upper()
-
-
-
         if not book_id:
-
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
-
         if not pattern:
-
             return {"err": "params.missing", "msg": _("查找内容不能为空")}
-
-
-
         tool = TextReplaceTool()
-
         if tool.is_running():
-
             return {"err": "task.running", "msg": _("已有正文替换任务正在执行，请稍后再试")}
-
-
-
         tool.run(int(book_id), pattern, replacement, use_regex, suffix, self.user_id(), fmt)
-
         return {"err": "ok", "msg": _("正文替换任务已启动，注意查看消息通知中的处理结果")}
 
 
 class AdminTextReplaceProgress(BaseHandler):
-
     @js
-
     @is_admin
-
     def get(self):
-
         task = TextReplaceTool.get_last_task()
-
         if not task:
-
             return {"err": "task.not_found", "msg": _("尚未启动正文替换任务")}
-
-
-
         progress_data = task.get("progress_data") or {}
-
         result = {
-
             "status": task.get("status"),
-
             "progress": task.get("progress", 0),
-
             "book_id": progress_data.get("book_id", 0),
-
             "stage": progress_data.get("stage", ""),
-
         }
-
-
-
         if task.get("status") == BackgroundTask.STATUS_FAILED:
-
             return {"err": "task.failed", "msg": task.get("error_message") or _("处理失败"), "data": result}
-
-
-
         if task.get("status") == BackgroundTask.STATUS_COMPLETED:
-
             return {"err": "ok", "msg": _("正文替换任务已完成"), "data": result}
-
-
-
         return {"err": "ok", "data": result}
+
 
 class AdminEpubBeautifyPreview(BaseHandler):
     @js
