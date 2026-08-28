@@ -16,7 +16,6 @@ import urllib
 import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from webserver.i18n import _
 
 try:
@@ -2384,9 +2383,12 @@ class BookUpload(BaseHandler):
             logging.error(f"Failed to add format to book {book_id}: {e}")
             return {"err": "internal", "msg": _("添加格式失败: %s") % str(e)}
         finally:
-            # 清理临时文件
-            if os.path.exists(fpath):
-                os.remove(fpath)
+            # 清理临时文件（除非配置要求保留上传源文件）
+            if not CONF.get("KEEP_UPLOAD_SOURCE_FILE", False) and os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception as e:
+                    logging.warning("Failed to remove uploaded source file %s: %s", fpath, e)
 
     @js
     def post(self):
@@ -2435,78 +2437,86 @@ class BookUpload(BaseHandler):
             logging.error("Failed to save uploaded file: %s", e)
             return {"err": "internal", "msg": _("保存上传文件失败, 请检查文件名是否过长或者书库所在路径空间不足!") % str(e)}
 
-        # read ebook meta
-        failed = False
-        with open(fpath, "rb") as stream:
-            mi = get_metadata(stream, stream_type=fmt, use_libprs_metadata=True)
-            if mi.title and mi.title == CALIBRE_ERROR_FLAG:
-                if fmt == "pdf":
-                    mi.title = utils.remove_zlibrary_suffix(name.replace("." + fmt, ""))
+        try:
+            # read ebook meta
+            failed = False
+            with open(fpath, "rb") as stream:
+                mi = get_metadata(stream, stream_type=fmt, use_libprs_metadata=True)
+                if mi.title and mi.title == CALIBRE_ERROR_FLAG:
+                    if fmt == "pdf":
+                        mi.title = utils.remove_zlibrary_suffix(name.replace("." + fmt, ""))
+                    else:
+                        logging.error("Failed to get metadata for %s, reason:%s", fpath, mi.comments)
+                        failed = True
+                mi.title = utils.super_strip(mi.title)
+                if mi.author_sort == "Unknown" and mi.authors and len(mi.authors) > 0:
+                    mi.authors = [utils.super_strip(a) for a in mi.authors]
                 else:
-                    logging.error("Failed to get metadata for %s, reason:%s", fpath, mi.comments)
-                    failed = True
-            mi.title = utils.super_strip(mi.title)
-            if mi.author_sort == "Unknown" and mi.authors and len(mi.authors) > 0:
-                mi.authors = [utils.super_strip(a) for a in mi.authors]
-            else:
-                mi.authors = [utils.super_strip(mi.author_sort)]
+                    mi.authors = [utils.super_strip(mi.author_sort)]
 
-        if failed:
-            Path(fpath).unlink(missing_ok=True)
-            return {"err": "book.invalid", "msg": _("此书籍文件无法识别, 或者受DRM保护无法导入")}
+            if failed:
+                return {"err": "book.invalid", "msg": _("此书籍文件无法识别, 或者受DRM保护无法导入")}
 
-        name = name[:-len(fmt) - 1]
-        if fmt == "txt":
-            mi.title = utils.remove_zlibrary_suffix(name)
-            title, author = utils.guess_title_author_from_filename(mi.title)
-            mi.title = title if title else mi.title
-            mi.authors = [author] if author else [_("佚名")]
-        elif fmt == "pdf":
-            if CONF["PDF_TILE_WITH_FILE_NAME"]:
+            name = name[:-len(fmt) - 1]
+            if fmt == "txt":
                 mi.title = utils.remove_zlibrary_suffix(name)
-            else:
-                title = mi.title.strip() if mi.title else ""
-                if not title or title.find(_("下载工具")) >= 0 or title == "SSReader Print.":
+                title, author = utils.guess_title_author_from_filename(mi.title)
+                mi.title = title if title else mi.title
+                mi.authors = [author] if author else [_("佚名")]
+            elif fmt == "pdf":
+                if CONF["PDF_TILE_WITH_FILE_NAME"]:
                     mi.title = utils.remove_zlibrary_suffix(name)
                 else:
-                    mi.title = utils.remove_zlibrary_suffix(title)
-            if mi.authors is None or len(mi.authors) == 0 or mi.authors[0].lower() == "unknown":
-                mi.authors = [_("佚名")]
+                    title = mi.title.strip() if mi.title else ""
+                    if not title or title.find(_("下载工具")) >= 0 or title == "SSReader Print.":
+                        mi.title = utils.remove_zlibrary_suffix(name)
+                    else:
+                        mi.title = utils.remove_zlibrary_suffix(title)
+                if mi.authors is None or len(mi.authors) == 0 or mi.authors[0].lower() == "unknown":
+                    mi.authors = [_("佚名")]
 
-        logging.info("upload mi.title = " + repr(mi.title))
-        if mi.cover_data and mi.cover_data[1] and mi.cover_data[1][:4] == b"RIFF":
-            mi.cover_data = ("jpeg", ImageHelper.convert_to_jpeg(mi.cover_data[1]))
-        books = self.calibre_db.books_with_same_title(mi)
-        if books:
-            book_id = None
-            for id in books:
-                b = self.calibre_db.get_metadata(id, index_is_id=True, get_user_categories=False)
-                logging.info(f"book id:{id}, book_type:{b.get(CALIBRE_COLUMN_BOOK_TYPE, BOOK_TYPE_EBOOK)}")
-                logging.info(f"  existed formats: {b.formats}")
-                # 如果是实体书，则跳过
-                if b.get(CALIBRE_COLUMN_BOOK_TYPE, BOOK_TYPE_EBOOK) == BOOK_TYPE_PHYSICAL:
-                    continue
+            logging.info("upload mi.title = " + repr(mi.title))
+            if mi.cover_data and mi.cover_data[1] and mi.cover_data[1][:4] == b"RIFF":
+                mi.cover_data = ("jpeg", ImageHelper.convert_to_jpeg(mi.cover_data[1]))
+            books = self.calibre_db.books_with_same_title(mi)
+            if books:
+                book_id = None
+                for id in books:
+                    b = self.calibre_db.get_metadata(id, index_is_id=True, get_user_categories=False)
+                    logging.info(f"book id:{id}, book_type:{b.get(CALIBRE_COLUMN_BOOK_TYPE, BOOK_TYPE_EBOOK)}")
+                    logging.info(f"  existed formats: {b.formats}")
+                    # 如果是实体书，则跳过
+                    if b.get(CALIBRE_COLUMN_BOOK_TYPE, BOOK_TYPE_EBOOK) == BOOK_TYPE_PHYSICAL:
+                        continue
+                    if book_id is None:
+                        book_id = b.get("id")
+                    if b.get("authors", "") != mi.authors:
+                        book_id = None
+                        continue
+                    if fmt.upper() in b.formats:
+                        return {
+                            "err": "samebook",
+                            "msg": _("同名书籍《%s》已存在这一图书格式 %s") % (mi.title, fmt),
+                            "book_id": b.get("id")
+                        }
+                logging.info("import [%s] from %s with format %s", repr(mi.title), fpath, fmt)
                 if book_id is None:
-                    book_id = b.get("id")
-                if b.get("authors", "") != mi.authors:
-                    book_id = None
-                    continue
-                if fmt.upper() in b.formats:
-                    return {
-                        "err": "samebook",
-                        "msg": _("同名书籍《%s》已存在这一图书格式 %s") % (mi.title, fmt),
-                        "book_id": b.get("id")
-                    }
-            logging.info("import [%s] from %s with format %s", repr(mi.title), fpath, fmt)
-            if book_id is None:
-                book_id = self._add_new_book(mi, [fpath], fmt)
+                    book_id = self._add_new_book(mi, [fpath], fmt)
+                else:
+                    self.calibre_db.add_format(book_id, fmt.upper(), fpath, True)
             else:
-                self.calibre_db.add_format(book_id, fmt.upper(), fpath, True)
-        else:
-            fpaths = [fpath]
-            book_id = self._add_new_book(mi, fpaths, fmt)
-        self.add_msg("success", _("导入书籍成功！"))
-        return {"err": "ok", "book_id": book_id}
+                fpaths = [fpath]
+                book_id = self._add_new_book(mi, fpaths, fmt)
+            self.add_msg("success", _("导入书籍成功！"))
+            return {"err": "ok", "book_id": book_id}
+        finally:
+            # 上传的源文件已被 calibre 复制进书库，除非配置要求保留，否则清理暂存文件
+            # (无论导入成功、失败还是发现同名书籍，都要清理，避免残留)
+            if not CONF.get("KEEP_UPLOAD_SOURCE_FILE", False) and os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception as e:
+                    logging.warning("Failed to remove uploaded source file %s: %s", fpath, e)
 
 
 class BookUploadChunk(BaseHandler):
@@ -2657,6 +2667,7 @@ class BookUploadChunk(BaseHandler):
         """Merge all chunks and import the book"""
         from calibre.ebooks.metadata.meta import get_metadata
 
+        final_path = None
         try:
             # Clean filename
             filename = re.sub(r"[\x80-\xFF]+", BookUpload.convert, filename)
@@ -2702,7 +2713,6 @@ class BookUploadChunk(BaseHandler):
                 else:
                     mi.authors = [utils.super_strip(mi.author_sort)]
             if failed:
-                Path(final_path).unlink(missing_ok=True)
                 return {"err": "book.invalid", "msg": _("此书籍文件无法识别, 或者受DRM保护无法导入")}
 
             # Handle special formats like txt and pdf
@@ -2750,6 +2760,14 @@ class BookUploadChunk(BaseHandler):
                 import shutil
                 shutil.rmtree(temp_dir)
             return {"err": "upload_error", "msg": _("文件上传处理失败：%s") % str(e)}
+        finally:
+            # 上传的源文件已被 calibre 复制进书库，除非配置要求保留，否则清理暂存文件
+            # (无论导入成功、失败还是发现同名书籍，都要清理，避免残留)
+            if final_path and not CONF.get("KEEP_UPLOAD_SOURCE_FILE", False) and os.path.exists(final_path):
+                try:
+                    os.remove(final_path)
+                except Exception as e:
+                    logging.warning("Failed to remove uploaded source file %s: %s", final_path, e)
 
 
 class BookUploadBatch(BaseHandler):

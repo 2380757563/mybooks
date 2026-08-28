@@ -955,6 +955,28 @@ class BaseHandler(web.RequestHandler):
                 )
             return cached
 
+    def get_custom_category_count(self):
+        """Return the number of distinct values in the custom #category column."""
+        from webserver.constants import CALIBRE_COLUMN_CATEGORY
+
+        if CALIBRE_COLUMN_CATEGORY not in self.calibre_db.field_metadata:
+            return 0
+
+        meta = self.calibre_db.field_metadata[CALIBRE_COLUMN_CATEGORY]
+        table = f"custom_column_{meta['colnum']}"
+        sql = f"SELECT count(*) FROM {table}"
+        cache_key = f"get_custom_category_count:{table}"
+        try:
+            with self.db_lock:
+                rows = self.calibre_db_cache.backend.conn.get(sql)
+            count = rows[0][0] if rows else 0
+            BaseHandler._query_fallback_cache[cache_key] = count
+            return count
+        except Exception as e:
+            cached = BaseHandler._query_fallback_cache.get(cache_key, 0)
+            logging.error("get_custom_category_count query failed: %s", str(e))
+            return cached
+
     def get_authors_book_ids_map(self):
         """返回 {author_name: set(book_id)}，基于calibre的authors表/link表。"""
         sql = """
@@ -1193,6 +1215,7 @@ class BaseHandler(web.RequestHandler):
             "audiobooks": audio_book_cnt,
             "publishers": len(db.all_publishers()),
             "series": len(db.all_series()),
+            "categories": self.get_custom_category_count(),
             "physicals": physical_book_cnt,
             "mtime": db.last_modified().strftime("%Y-%m-%d"),
             "users": count_all_users,

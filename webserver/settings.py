@@ -195,10 +195,7 @@ settings = {
     'FOOTER_WATERMARK': 'PoxenStudio/MyBooks',
     'HIDE_PROJECT_LINKS': False,
 
-    'FRIENDS': [
-        { "text": "书格", "href": "https://www.shuge.org/" },
-        { "text": "读书派", "href": "https://dushupai.com" }
-    ],
+    'FRIENDS': [],
     'SOCIALS': [],
     'DEVICES': [],
     'SIGNUP_MAIL_TITLE': '欢迎注册个人书屋',
