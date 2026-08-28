@@ -45,7 +45,7 @@
                 <p class="ma-0 title">{{ $t('index.myReading') }}</p>
             </v-col>
             <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_reading_books" :key="'reading'+idx+book.id" class="book-card">
-                <v-card :href="book.readHref" target="_blank" class="ma-1" outlined>
+                <v-card :to="book.href" class="ma-1">
                     <div class="book-img-container reading-book-cover" :title="book.title">
                         <v-img
                             :src="book.thumb"
@@ -54,14 +54,16 @@
                             class="book-img-hover"
                             contain
                         ></v-img>
-                        <!-- hover时显示"进入阅读"的圆形遮罩 -->
-                        <div class="reading-hover-overlay">
+                        <!-- hover时居中显示圆形遮罩，点击图标直接进入阅读；点击封面其他区域仍进入书籍详情 -->
+                        <a
+                            class="reading-hover-overlay"
+                            :href="book.readHref"
+                            target="_blank"
+                            :title="$t('index.continueReading')"
+                            @click.stop
+                        >
                             <v-icon class="reading-hover-icon">mdi-book-open-page-variant-outline</v-icon>
-                        </div>
-                        <!-- 实体书角标 -->
-                        <div v-if="book.book_type === 1" class="physical-book-badge">
-                            <v-icon small color="white">mdi-bookshelf</v-icon>
-                        </div>
+                        </a>
                     </div>
                 </v-card>
             </v-col>
@@ -77,7 +79,7 @@
                 </div>
             </v-col>
             <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
-                <v-card :to="book.href" class="ma-1" outlined>
+                <v-card :to="book.href" class="ma-1">
                     <div class="book-img-container" :title="book.title">
                         <v-img
                             :src="book.thumb"
@@ -101,7 +103,7 @@
                 <p class="ma-0 title">{{ $t('index.socialRecommendation') }}</p>
             </v-col>
             <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
-                <v-card :to="book.href" class="ma-1" outlined>
+                <v-card :to="book.href" class="ma-1">
                     <div class="book-img-container" :title="book.title">
                         <v-img
                             :src="book.thumb"
@@ -492,7 +494,10 @@ export default {
 
 /* 在读书籍封面 hover 时，居中显示半透明灰色圆形遮罩 + 阅读图标，点击直接进入阅读 */
 .reading-book-cover {
+    /* container-type:size 会对该元素做尺寸包含，脱离内容自身大小，
+       所以必须显式声明与内部 v-img 一致的宽高比，容器才不会塌陷为 0 高度 */
     container-type: size;
+    aspect-ratio: 11 / 15;
     cursor: pointer;
 }
 
@@ -500,16 +505,19 @@ export default {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: min(34cqw, 34cqh);
-    height: min(34cqw, 34cqh);
+    width: min(46cqw, 46cqh);
+    height: min(46cqw, 46cqh);
     transform: translate(-50%, -50%) scale(0.85);
     border-radius: 50%;
     background: rgba(60, 60, 60, 0.55);
+    box-sizing: border-box;
+    padding: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
+    cursor: pointer;
     pointer-events: none;
     z-index: 2;
 }
@@ -517,11 +525,35 @@ export default {
 .reading-book-cover:hover .reading-hover-overlay {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+}
+
+.reading-hover-overlay:hover {
+    background: rgba(30, 30, 30, 0.7);
 }
 
 .reading-hover-icon.v-icon {
     color: #ffffff !important;
-    font-size: min(20cqw, 20cqh) !important;
+    font-size: min(40cqw, 40cqh) !important;
+}
+
+/* hover 时图标做 2s 一轮的抖动动画，提示"点击进入阅读" */
+@keyframes reading-icon-shake {
+    0%, 100% { transform: rotate(0deg); }
+    10% { transform: rotate(-12deg); }
+    20% { transform: rotate(10deg); }
+    30% { transform: rotate(-9deg); }
+    40% { transform: rotate(8deg); }
+    50% { transform: rotate(-6deg); }
+    60% { transform: rotate(5deg); }
+    70% { transform: rotate(-3deg); }
+    80% { transform: rotate(2deg); }
+    90% { transform: rotate(-1deg); }
+}
+
+.reading-book-cover:hover .reading-hover-icon.v-icon {
+    animation: reading-icon-shake 2s ease-in-out infinite;
+    transform-origin: center;
 }
 
 .book-img-hover:hover {

@@ -24,6 +24,7 @@
   },
   "index": {
     "myReading": "Currently Reading",
+    "continueReading": "Continue Reading",
     "randomRecommendation": "Recommendation",
     "newRecommendation": "Recent updated",
     "socialRecommendation": "Recommended by readers",
