@@ -336,9 +336,9 @@ def make_app():
         added_location = add_meta_in_calibre(cache, COLUMN_LOCATION, "Location", "text")
         _ = add_meta_in_calibre(cache, COLUMN_EXT_LINK, "External Link", "text")
         _ = add_meta_in_calibre(cache, COLUMN_DYNAMIC_COVER, "Dynamic Cover", "int")
-        _ = add_meta_in_calibre(cache, COLUMN_TRANSLATORS, "Translator", "text")
-        if added_source or added_category or added_phy_count or added_location:
-            need_sync_item_to_calibre = True
+        added_translator = add_meta_in_calibre(cache, COLUMN_TRANSLATORS, "Translator", "text")
+        if added_source or added_category or added_phy_count or added_location or added_translator:
+            need_sync_item_to_calibre = added_source or added_category or added_phy_count
             book_db = LibraryDatabase(os.path.expanduser(options.with_library))
             cache = book_db.new_api
     except Exception as e:
