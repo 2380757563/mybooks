@@ -528,6 +528,7 @@ class AdminSettings(BaseHandler):
             "IMPORT_BY_INOTIFY",
             "IMPORT_CATEGORY_WITH_FOLDER",
             "REMOVE_IMPORTED_FILE",
+            "KEEP_UPLOAD_SOURCE_FILE",
             "UPDATE_CATEGORY_WITH_FOLDER_RENAME",
             "LOG_LEVEL_DEBUG",
             "ENABLE_STAMP_FEATURE",

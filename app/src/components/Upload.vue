@@ -29,7 +29,7 @@
             <v-icon>mdi-book-plus</v-icon>
         </v-btn>
 
-        <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="300">
+        <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="360">
             <v-card>
                 <v-toolbar flat dense dark color="#003153" class="upload-dialog-toolbar">
                     {{ $t('upload.title') }}
@@ -39,7 +39,13 @@
                 <v-card-title></v-card-title>
                 <v-card-text>
                     <v-form ref="form" @submit="do_upload">
-                        <v-file-input v-model="ebooks" :label="$t('upload.selectFile')"></v-file-input>
+                        <v-file-input
+                            v-model="ebooks"
+                            multiple
+                            show-size
+                            counter
+                            :label="$t('upload.selectFile')"
+                        ></v-file-input>
                     </v-form>
                 </v-card-text>
                 <v-card-actions>
@@ -50,11 +56,18 @@
             </v-card>
         </v-dialog>
 
+        <BatchImportDialog
+            v-model="batchDialog"
+            :import-id="batchImportId"
+            :file-count="ebooks.length"
+        />
+
+
         <!-- 添加实体书对话框 -->
         <v-dialog v-if="($store.state.sys.allow.upload || $store.state.user.is_login) && $store.state.sys.allow.physical_books"
                             v-model="isbn_dialog" persistent transition="dialog-bottom-transition" width="410">
             <v-card>
-                <v-toolbar flat dense dark color="green">
+                <v-toolbar flat dense dark color="green" class="upload-dialog-toolbar">
                     <v-icon>mdi-book-plus</v-icon>
                     <v-toolbar-title class="ml-2">{{ $t('upload.addPhysicalBook') }}</v-toolbar-title>
                     <v-spacer></v-spacer>
@@ -137,11 +150,17 @@
 </template>
 
 <script>
+import BatchImportDialog from '~/components/BatchImportDialog.vue';
+
 export default {
+    components: { BatchImportDialog },
     data: () => ({
         loading: false,
         dialog: false,
-        ebooks: null,
+        // 选择1个文件时按单文件流程处理，选择多个时自动走批量导入流程
+        ebooks: [],
+        batchDialog: false,
+        batchImportId: null,
         // 添加实体书相关数据
         isbn_dialog: false,
         adding_book: false,
@@ -268,33 +287,46 @@ export default {
             return this._debouncedRules;
         }
     },
+    watch: {
+        dialog(val) {
+            if (val) {
+                // 每次重新打开上传对话框时清空上一次的选择，避免残留旧文件
+                this.ebooks = [];
+            }
+        },
+    },
     methods: {
         async do_upload() {
-            this.loading = true;
-
-            // Check if file is selected
-            if (!this.ebooks) {
+            // 未选择文件
+            if (!this.ebooks || this.ebooks.length === 0) {
                 this.$alert("error", this.$t('upload.selectFile'));
-                this.loading = false;
                 return;
             }
+
+            // 选择了多个文件，走批量导入流程
+            if (this.ebooks.length > 1) {
+                return this.do_batch_upload();
+            }
+
+            this.loading = true;
+            const file = this.ebooks[0];
 
             // Get chunk upload threshold from localStorage or server config
             const chunkThresholdStr = localStorage.getItem('chunk_upload_size') || '0MB';
             const chunkThreshold = this.parseSizeString(chunkThresholdStr);
 
             // If file size exceeds threshold and chunking is enabled, use chunked upload
-            if (chunkThreshold > 0 && this.ebooks.size > chunkThreshold) {
-                await this.do_chunked_upload(chunkThreshold);
+            if (chunkThreshold > 0 && file.size > chunkThreshold) {
+                await this.do_chunked_upload(file, chunkThreshold);
             } else {
-                await this.do_regular_upload();
+                await this.do_regular_upload(file);
             }
         },
 
-        async do_regular_upload() {
+        async do_regular_upload(file) {
             try {
                 const data = new FormData();
-                data.append("ebook", this.ebooks);
+                data.append("ebook", file);
 
                 const rsp = await this.$backend("/book/upload", {
                     method: 'POST',
@@ -311,9 +343,8 @@ export default {
             }
         },
 
-        async do_chunked_upload(chunkSize) {
+        async do_chunked_upload(file, chunkSize) {
             try {
-                const file = this.ebooks;
                 const totalChunks = Math.ceil(file.size / chunkSize);
 
                 // Generate file hash for unique identification
@@ -365,6 +396,39 @@ export default {
                 this.$router.push("/book/" + rsp.book_id);
             } else {
                 this.$alert("error", rsp.msg);
+            }
+        },
+
+        // 多文件批量上传：暂存到服务器后触发扫描导入，弹出进度对话框轮询逐文件结果
+        async do_batch_upload() {
+            this.loading = true;
+            try {
+                const data = new FormData();
+                this.ebooks.forEach((file) => {
+                    data.append("ebooks", file, file.name);
+                    // 当前只支持多文件选择(无目录结构)，相对路径统一留空，后端会退化为使用文件名
+                    data.append("relative_paths", "");
+                });
+
+                const rsp = await this.$backend("/book/upload/batch", {
+                    method: 'POST',
+                    body: data,
+                });
+
+                if (rsp.err !== 'ok') {
+                    this.$alert("error", rsp.msg || this.$t('upload.batchStartFailed'));
+                    return;
+                }
+
+                this.dialog = false;
+                this.batchImportId = rsp.import_id;
+                this.batchDialog = true;
+            } catch (error) {
+                const msg = error.message ? this.$t('upload.batchStartFailed') + ": " + error.message : this.$t('upload.batchStartFailed');
+                this.$alert("error", msg);
+            } finally {
+                this.loading = false;
+                this.ebooks = [];
             }
         },
 

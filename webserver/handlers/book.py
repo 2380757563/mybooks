@@ -40,8 +40,9 @@ from webserver.services.converter import ConverterService
 from webserver.services.extract import ExtractService
 from webserver.services.mail import MailService
 from webserver.handlers.base import BaseHandler, ListHandler, auth, js
-from webserver.models import BookReadingStats as BookFormatReadingStatsModel, Item, Reading, ReadingState, Reader
+from webserver.models import BookReadingStats as BookFormatReadingStatsModel, Item, Reading, ReadingState, Reader, ScanFile
 from webserver.services.reading_stats_service import ReadingStatsService
+from webserver.services.scan_service import ScanService, SCAN_EXT
 from webserver.services.download_quota_service import DownloadQuotaService
 from webserver.services.book_review_service import BookReviewService
 from webserver.plugins.meta import douban, youshu, douban_v2
@@ -2751,6 +2752,168 @@ class BookUploadChunk(BaseHandler):
             return {"err": "upload_error", "msg": _("文件上传处理失败：%s") % str(e)}
 
 
+class BookUploadBatch(BaseHandler):
+    """多文件/整个目录批量上传：暂存到 scan_upload_path 下的独立批次目录，交给 ScanService 扫描导入。
+       逐文件结果通过 BookUploadBatchStatus 按 import_id 轮询 ScanFile 表获得。"""
+
+    # import_id -> user_id(guest 为 0)，仅用于校验状态查询/取消请求的发起者身份；
+    # 进程重启后清空是预期行为(内存态，不持久化)。
+    _batch_owners: dict = {}
+    _batch_owners_order: list = []
+    _MAX_TRACKED_BATCHES = 500
+
+    @classmethod
+    def _remember_owner(cls, import_id, user_id):
+        cls._batch_owners[import_id] = user_id or 0
+        cls._batch_owners_order.append(import_id)
+        while len(cls._batch_owners_order) > cls._MAX_TRACKED_BATCHES:
+            old_id = cls._batch_owners_order.pop(0)
+            cls._batch_owners.pop(old_id, None)
+
+    @classmethod
+    def is_owner(cls, import_id, user_id, is_admin_user):
+        if is_admin_user:
+            return True
+        return cls._batch_owners.get(import_id, object()) == (user_id or 0)
+
+    @staticmethod
+    def _sanitize_relative_path(rel_path):
+        """去掉 . / .. / 空段，防止目录穿越；返回用 / 分隔的安全相对路径"""
+        parts = [p for p in rel_path.split("/") if p not in ("", ".", "..")]
+        return "/".join(parts)
+
+    @js
+    def post(self):
+        if CONF["ALLOW_GUEST_UPLOAD"] is False:
+            if self.is_guest():
+                return {"err": "permission", "msg": _("无权操作，请先登录")}
+            if not self.current_user.can_upload():
+                return {"err": "permission", "msg": _("无权操作")}
+
+        if ScanService.is_importing():
+            return {"err": "importing", "msg": _("有其它扫描任务正在运行，请稍后再试")}
+
+        files = self.request.files.get("ebooks", [])
+        if not files:
+            return {"err": "params.filename", "msg": _("文件不存在或未选择文件")}
+
+        # 目录上传时，前端为每个文件带上一份相对路径(webkitRelativePath)，与 files 顺序一一对应
+        rel_paths = self.get_arguments("relative_paths")
+
+        scan_upload_path = os.path.realpath(CONF.get("scan_upload_path", ""))
+        if not scan_upload_path or not os.path.isdir(scan_upload_path):
+            return {"err": "server.error", "msg": _("服务器扫描导入目录未配置")}
+
+        import_id = int(time.time() * 1000)
+
+        # 判断是否为"目录上传"(relative_paths 带有目录层级)。目录上传时直接把用户选择的
+        # 顶层目录名落地为 scan_upload_path 下的一级目录(重名则加后缀)，以保留
+        # IMPORT_CATEGORY_WITH_FOLDER 按一级目录识别分类的语义；多文件(无目录结构)上传
+        # 则退化为一个独立的 "_upload_<uid>_<id>" 暂存目录，不参与分类识别。
+        norm_rel_paths = [(p or "").replace("\\", "/") for p in rel_paths]
+        top_folder = None
+        if norm_rel_paths and any("/" in p for p in norm_rel_paths):
+            first_seg = self._sanitize_relative_path(next(p for p in norm_rel_paths if "/" in p)).split("/", 1)[0]
+            top_folder = first_seg or None
+
+        if top_folder:
+            candidate, suffix = top_folder, 1
+            while os.path.exists(os.path.join(scan_upload_path, candidate)):
+                candidate = f"{top_folder}_{import_id}_{suffix}"
+                suffix += 1
+            batch_dir = os.path.realpath(os.path.join(scan_upload_path, candidate))
+        else:
+            batch_dir = os.path.realpath(os.path.join(scan_upload_path, f"_upload_{self.user_id() or 0}_{import_id}"))
+
+        if os.path.commonpath([scan_upload_path, batch_dir]) != scan_upload_path:
+            return {"err": "server.error", "msg": _("非法的暂存路径")}
+
+        saved = 0
+        try:
+            os.makedirs(batch_dir, exist_ok=True)
+            for idx, fileinfo in enumerate(files):
+                filename = fileinfo["filename"]
+                filename = re.sub(r"[\x80-\xFF]+", BookUpload.convert, filename)
+                rel_path = norm_rel_paths[idx] if idx < len(norm_rel_paths) else ""
+                rel_path = rel_path if rel_path else filename
+                rel_path = self._sanitize_relative_path(rel_path)
+                if not rel_path:
+                    continue
+                if top_folder:
+                    prefix = top_folder + "/"
+                    rel_path = rel_path[len(prefix):] if rel_path.startswith(prefix) else rel_path
+                    if not rel_path:
+                        continue
+                fmt = rel_path.rsplit(".", 1)[-1].lower() if "." in rel_path else ""
+                if fmt not in SCAN_EXT:
+                    continue
+                target_path = os.path.realpath(os.path.join(batch_dir, rel_path))
+                if os.path.commonpath([batch_dir, target_path]) != batch_dir:
+                    continue
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                with open(target_path, "wb") as f:
+                    f.write(fileinfo["body"])
+                saved += 1
+        except Exception as e:
+            logging.error("[BATCH UPLOAD] Failed to stage files: %s", e)
+            shutil.rmtree(batch_dir, ignore_errors=True)
+            return {"err": "internal", "msg": _("保存上传文件失败, 请检查文件名是否过长或者书库所在路径空间不足!")}
+
+        if saved == 0:
+            shutil.rmtree(batch_dir, ignore_errors=True)
+            return {"err": "params.format.unsupported", "msg": _("未找到支持的书籍格式文件")}
+
+        self._remember_owner(import_id, self.user_id())
+        ScanService().do_import(batch_dir, self.user_id(), import_id=import_id, cleanup_dir=batch_dir)
+        return {"err": "ok", "msg": _("已开始导入"), "import_id": import_id, "file_count": saved}
+
+
+class BookUploadBatchStatus(BaseHandler):
+    @js
+    def get(self):
+        import_id = int(self.get_argument("import_id", 0))
+        if not import_id:
+            return {"err": "params.error", "msg": _("参数错误")}
+        if not BookUploadBatch.is_owner(import_id, self.user_id(), self.is_admin()):
+            return {"err": "permission", "msg": _("无权限查看该导入任务")}
+
+        num = max(1, min(500, int(self.get_argument("num", 200))))
+        rows = (
+            self.sqlite_session.query(ScanFile)
+            .filter(ScanFile.import_id == import_id)
+            .order_by(ScanFile.id.asc())
+            .limit(num)
+            .all()
+        )
+        items = [{
+            "id": s.id,
+            "path": s.path,
+            "name": s.name,
+            "title": s.title,
+            "author": s.author,
+            "status": s.status,
+            "book_id": s.book_id,
+        } for s in rows]
+        running = ScanService.is_importing() and ScanService.importing_id() == import_id
+        return {"err": "ok", "items": items, "importing": running}
+
+
+class BookUploadBatchCancel(BaseHandler):
+    @js
+    @auth
+    def post(self):
+        req = tornado.escape.json_decode(self.request.body or b"{}")
+        import_id = int(req.get("import_id", 0))
+        if not ScanService.is_importing():
+            return {"err": "not_importing", "msg": _("当前没有正在运行的任务")}
+        if import_id and ScanService.importing_id() != import_id:
+            return {"err": "not_importing", "msg": _("当前没有正在运行的任务")}
+        if not ScanService.can_manage(self.user_id(), self.is_admin()):
+            return {"err": "permission", "msg": _("无权限操作该导入任务")}
+        ScanService.cancel()
+        return {"err": "ok", "msg": _("正在取消任务, 请稍后查看状态")}
+
+
 class BookRead(BaseHandler):
     def get(self, bid):
         if not CONF["ALLOW_GUEST_READ"] and not self.current_user:
@@ -3794,6 +3957,9 @@ def routes():
         (r"/api/book/add", BookAddByISBN),
         (r"/api/book/upload", BookUpload),
         (r"/api/book/upload/chunk", BookUploadChunk),
+        (r"/api/book/upload/batch", BookUploadBatch),
+        (r"/api/book/upload/batch/status", BookUploadBatchStatus),
+        (r"/api/book/upload/batch/cancel", BookUploadBatchCancel),
         (r"/api/book/([0-9]+)", BookDetail),
         (r"/api/book/([0-9]+)/delete", BookDelete),
         (r"/api/book/([0-9]+)/delete_format", BookDeleteFormat),

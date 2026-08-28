@@ -29,6 +29,7 @@ import hashlib
 import os
 import logging
 import queue as _queue
+import shutil
 import threading
 import time
 import traceback
@@ -57,6 +58,7 @@ class ScanService(AsyncService):
     static_is_importing = False
     static_import_id = 0
     static_import_files_cnt = 0
+    static_import_user_id = 0  # 当前正在运行的导入任务的发起用户id，用于权限校验(取消等)
     static_status_cnt: dict[str, int] = {
         ScanFile.READY: 0,
     }
@@ -65,6 +67,13 @@ class ScanService(AsyncService):
     @staticmethod
     def is_importing():
         return ScanService.static_is_importing
+
+    @staticmethod
+    def can_manage(user_id, is_admin_user):
+        """判断某用户是否有权限管理(取消)当前正在运行的导入任务：任务发起者本人或管理员"""
+        if is_admin_user:
+            return True
+        return bool(ScanService.static_import_user_id) and user_id == ScanService.static_import_user_id
 
     @staticmethod
     def total_files_in_task():
@@ -242,9 +251,13 @@ class ScanService(AsyncService):
         return filelist
 
     @AsyncService.register_service
-    def do_import(self, paths, user_id, skip_last_dirs=0, force=False):
+    def do_import(self, paths, user_id, skip_last_dirs=0, force=False, import_id=0, cleanup_dir=None):
         """
             force: 为TRUE时不检查重复的图书，直接导入
+            import_id: 由调用方预先生成的批次id(如批量上传)，用于调用方在发起后立即拿到id去轮询逐文件结果；
+                       为0时按原逻辑自动生成(或复用skip_last_dirs计算出的续跑id)
+            cleanup_dir: 本次导入完成/取消后需要清理的暂存目录(如批量上传的暂存文件)，
+                         仅当 KEEP_UPLOAD_SOURCE_FILE 配置为 False 时才会删除
         """
         if ScanService.static_is_importing:
             logging.error("Importing is running, please wait...")
@@ -253,6 +266,7 @@ class ScanService(AsyncService):
         ScanService.invalid_folder.clear()
         ScanService.static_abort_flag = False
         ScanService.static_is_importing = True
+        ScanService.static_import_user_id = user_id
         start_time = time.time()
 
         imported_dirs = []
@@ -261,12 +275,17 @@ class ScanService(AsyncService):
         if skip_last_dirs > 0:
             skip_last = (skip_last_dirs == 1)
             imported_dirs, imported_files, imported_id = self._collect_imported_path(skip_last)
+        if import_id:
+            imported_id = import_id
 
         filelist = self._collect_files(paths, imported_dirs=imported_dirs, imported_files=imported_files)
         logging.info("[IMPORT] Collected %d files in %.3f seconds (skip_last_dirs=%d)", len(filelist), time.time() - start_time, skip_last_dirs)
         if not filelist:
             logging.warning("[IMPORT] No valid files found in: %s", paths)
             ScanService.static_is_importing = False
+            ScanService.static_import_user_id = 0
+            if cleanup_dir and not CONF.get("KEEP_UPLOAD_SOURCE_FILE", False):
+                shutil.rmtree(cleanup_dir, ignore_errors=True)
             return
 
         task_id = None
@@ -315,8 +334,13 @@ class ScanService(AsyncService):
                 BackgroundService().complete_task(task_id=task_id, error_message=str(err))
             logging.error(f"[IMPORT] Failed: {err}")
             logging.error(traceback.format_exc())
+        finally:
+            if cleanup_dir and not CONF.get("KEEP_UPLOAD_SOURCE_FILE", False):
+                logging.info("[IMPORT] Cleaning up staging dir: %s", cleanup_dir)
+                shutil.rmtree(cleanup_dir, ignore_errors=True)
         ScanService.static_is_importing = False
         ScanService.static_abort_flag = False
+        ScanService.static_import_user_id = 0
 
     def _compute_hash(self, fpath):
         start = time.time()

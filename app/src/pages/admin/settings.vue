@@ -1391,6 +1391,12 @@ export default {
             type: "checkbox",
           },
           {
+            icon: "mdi-file-lock-outline",
+            key: "KEEP_UPLOAD_SOURCE_FILE",
+            label: "settings.keep_upload_source_file",
+            type: "checkbox",
+          },
+          {
             icon: "mdi-email-send",
             key: "SEND_MAIL_FOR_NEW_BOOKS",
             label: "settings.send_mail_for_new_books",

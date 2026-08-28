@@ -510,5 +510,12 @@
   "请提供新的作者名称": "Please provide the new author name",
   "新作者名称仅允许使用字母、数字、“.”和“·”，不能包含空格、引号等其他符号": "The new author name may only contain letters, digits, \".\" and \"·\" — spaces, quotes and other symbols are not allowed",
   "作者替换任务已启动，右上角可以查看进度": "Author replace task started. Check progress in the top right corner.",
-  "无效的操作类型": "Invalid action type"
+  "无效的操作类型": "Invalid action type",
+  "有其它扫描任务正在运行，请稍后再试": "Another scan task is currently running, please try again later",
+  "服务器扫描导入目录未配置": "The server's scan import directory is not configured",
+  "非法的暂存路径": "Invalid staging path",
+  "未找到支持的书籍格式文件": "No supported ebook format files found",
+  "已开始导入": "Import started",
+  "无权限查看该导入任务": "No permission to view this import task",
+  "无权限操作该导入任务": "No permission to manage this import task"
 }
