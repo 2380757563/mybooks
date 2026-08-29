@@ -475,11 +475,12 @@
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
-                <!-- 目录预览：按目录形式渲染 -->
-                <div class="eb-tocbig">
+                <!-- 目录预览：按目录形式渲染（tocIsMock 时标“示例”） -->
+                <div class="eb-tocbig" :class="{ 'eb-toc-cols': tocColumns && tocStyle !== 'seal' }">
+                  <div v-if="tocIsMock" class="caption grey--text text-center mb-2">（示例 — 未读取到真实目录）</div>
                   <div v-if="tocStyle === 'elegant'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-th-elegant" :style="{ background: currentPreset.accent_light, borderTopColor: currentPreset.accent, color: currentPreset.accent }">目 录<div class="eb-th-sub" :style="{ color: currentPreset.muted }">CONTENTS</div></div>
-                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
+                    <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
                       <span class="eb-num-badge" :style="{ background: currentPreset.accent_light, color: currentPreset.accent }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                     </div>
                     <div class="text-center py-2" :style="{ color: currentPreset.accent, fontSize: '11px' }">◆</div>
@@ -487,7 +488,7 @@
                   <div v-else-if="tocStyle === 'cool'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-cool-head" :style="{ background: currentPreset.toc_gradient || currentPreset.accent }">目 录<div class="eb-th-sub">CONTENTS</div></div>
                     <div class="eb-cool-items" :style="{ borderLeftColor: currentPreset.accent, background: currentPreset.quote_bg }">
-                      <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-cool-row" :style="{ borderBottomColor: currentPreset.border }">
+                      <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-cool-row" :style="{ borderBottomColor: currentPreset.border }">
                         <span :style="{ color: currentPreset.accent, fontWeight: 800, fontSize: '14px', minWidth: '24px' }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                       </div>
                     </div>
@@ -497,15 +498,16 @@
                       <span class="eb-seal-title" :style="{ color: currentPreset.accent }">目 录</span>
                       <span class="eb-seal-stamp">隐</span>
                     </div>
-                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-seal-row">
+                    <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-seal-row">
                       <span :style="{ color: currentPreset.accent, fontWeight: 700, fontSize: '12px' }">{{ r[0] }}</span>
                       <span class="flex-grow-1 eb-rt">{{ r[1] }}</span>
                       <span style="color:#A2906A;font-size:11px">\ ✦</span>
                     </div>
+                    <div v-if="tocColumns" class="caption grey--text text-center mt-2">（朱印表格不支持分栏）</div>
                   </div>
                   <div v-else class="eb-min-frame">
                     <div class="eb-min-head" :style="{ color: currentPreset.accent }">目 录</div>
-                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-min-row">
+                    <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-min-row">
                       <span :style="{ color: currentPreset.muted, minWidth: '18px', fontSize: '12px' }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                     </div>
                     <div class="eb-min-end" :style="{ borderTopColor: currentPreset.border }"></div>
@@ -693,12 +695,11 @@ export default {
       return titles.map((t, i) => (i + 1) + '. ' + t).join('\n');
     },
     chapterSample() {
-      // 优先用首章真实标题（正文识别命中），其次目录预览标题，最后书籍标题派生（无条件信任域B）
+      // 优先用首章真实标题（正文识别命中），其次目录预览标题，最后通用示例（不派生书名，避免误为真实目录）
       const pc = this.analysis && this.analysis.preview_chapter;
       if (pc && pc.title) return pc.title;
       const t = this.analysis && this.analysis.toc_preview_titles;
       if (t && t[0]) return t[0];
-      if (this.selected && this.selected.title) return `第一章 ${String(this.selected.title).trim().slice(0, 18)}`;
       return '第一章 示例标题';
     },
     // 首章真实段落（≤3）；不足或未命中时回落示例文案
@@ -754,14 +755,15 @@ export default {
     },
     tocSampleRows() {
       const t = (this.analysis && this.analysis.toc_preview_titles) || [];
-      if (!t.length) {
-        if (this.selected && this.selected.title) {
-          const base = String(this.selected.title).trim().slice(0, 20);
-          return [['01', base], ...this.tocMockRows.slice(1)];
-        }
-        return this.tocMockRows;
-      }
+      if (!t.length) return null;
       return t.slice(0, 5).map((title, i) => [('0' + (i + 1)).slice(-2), title]);
+    },
+    tocSampleRowsDisplay() {
+      // 真实数据优先，空时回落示例并由模板标“示例”避免误为真实目录
+      return this.tocSampleRows || this.tocMockRows;
+    },
+    tocIsMock() {
+      return !this.tocSampleRows;
     },
     splitSample() {
       const m = this.chapterSample.trim().match(
@@ -1719,6 +1721,19 @@ export default {
 .eb-tocbig {
   font-size: 14px;
   color: #33302b;
+}
+.eb-toc-cols .eb-toc-frame,
+.eb-toc-cols .eb-cool-items,
+.eb-toc-cols .eb-min-frame {
+  columns: 2;
+  column-gap: 1.6em;
+}
+.eb-toc-cols .eb-tr,
+.eb-toc-cols .eb-cool-row,
+.eb-toc-cols .eb-min-row,
+.eb-toc-cols .eb-seal-row {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
 }
 .eb-toc-frame {
   border: 1px solid;
