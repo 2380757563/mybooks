@@ -168,6 +168,13 @@ def _apply_page_tint(css: str, page_tint, params: dict) -> str:
 
 _PARA_BLOCK_HEAD = '\n\n/* ── 段落排版（用户自定义：缩进/段距）── */\n'
 
+# responsive.css 对 Calibre 类汤书用 .calibre* 选择器（特异性 0-1-1，带 !important）
+# 强制 text-indent/margin，通用 `p` 规则（0-0-1）会被压制——responsive 已前置注入，
+# 末尾以同选择器列表覆写即可（同特异性按源序取胜）。段距覆写仅限段落级选择器：
+# 裸 .calibre / .calibre1 常是 body/容器元素，参与段距会造成整页漂移。
+_CALIBRE_INDENT_SELECTORS = 'p.calibre, p.calibre1, p.calibre2, div.calibre1, .calibre1, .calibre'
+_CALIBRE_MARGIN_SELECTORS = 'p.calibre, p.calibre1, p.calibre2, div.calibre1'
+
 
 def _clamp_gap(value) -> float:
     """段间距归一为 [0, 3] 的浮点 em 值；None/非法输入回落 0。"""
@@ -187,9 +194,10 @@ def _clamp_gap(value) -> float:
 def _apply_para_style(css: str, para_indent: bool = True, para_gap=None) -> str:
     """段落排版后处理（层叠序在后必胜）：
 
-    - para_indent=False → 全部段落顶格（引文块由原书更高特异性的
-      ``blockquote p`` 规则自动保留缩进）；
-    - para_gap>0 → 段落下边距取该值（em），并恢复引文内紧凑无段距。
+    - para_indent=False → 全部段落顶格（含 Calibre 类汤书：responsive 的
+      ``.calibre*`` 高特异性强制缩进由同选择器末尾覆写归零）；
+    - para_gap>0 → 段落下边距取该值（em），并恢复引文内紧凑无段距
+      （类汤书的 ``p.calibre*`` 段落同步覆写 margin）。
     均为默认时原样返回，保证存量输出零变化。
     """
     gap = _clamp_gap(para_gap)
@@ -206,6 +214,22 @@ def _apply_para_style(css: str, para_indent: bool = True, para_gap=None) -> str:
     if gap > 0:
         p_rules.append('    margin: 0 0 %sem 0 !important;' % ('%g' % gap))
     block = _PARA_BLOCK_HEAD + 'p {\n' + '\n'.join(p_rules) + '\n}'
+
+    # Calibre 类汤书兜底：responsive.css 的 .calibre* 规则（0-1-1）会压制上文
+    # 通用 p 规则（0-0-1），导致顶格/段距开关在该类书上失效——同选择器覆写
+    if indent_off:
+        block += (
+            '\n%s {\n'
+            '    text-indent: 0 !important;\n'
+            '    duokan-text-indent: 0 !important;\n'
+            '}' % _CALIBRE_INDENT_SELECTORS
+        )
+    if gap > 0:
+        block += (
+            '\n%s {\n'
+            '    margin: 0 0 %sem 0 !important;\n'
+            '}' % (_CALIBRE_MARGIN_SELECTORS, '%g' % gap)
+        )
 
     # 缩进仍开启且调整了段距时，章首段顶格需重申（否则被上面的通用规则覆盖）
     if not indent_off:
