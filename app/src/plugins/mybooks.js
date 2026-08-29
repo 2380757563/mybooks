@@ -25,8 +25,8 @@ export default ({ app }, inject) => {
                     "cookie": headers.cookie,
                     "X-Forwarded-Host": headers.host,
                     "X-Forwarded-For": headers["x-forwarded-for"],
-                    "X-Forwarded-Proto": headers["x-forwarded-proto"],
-                    "X-Scheme": headers["x-scheme"],
+                    "X-Forwarded-Proto": headers["x-forwarded-proto"] || headers["x-scheme"] || "https",
+                    "X-Scheme": headers["x-scheme"] || headers["x-forwarded-proto"] || "https",
                 }
             } else {
                 // 在server端但没有req对象时，直接返回空对象，避免fetch失败
