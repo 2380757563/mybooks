@@ -5,9 +5,9 @@
             <v-card-text>
                 <div class="text-center mb-2">
                     <v-rating
-                        v-model="rating"
+                        v-model="ratingStars"
                         color="yellow accent-4"
-                        length="10"
+                        length="5"
                         dense
                     ></v-rating>
                 </div>
@@ -35,6 +35,8 @@
 </template>
 
 <script>
+import { toStars, fromStars } from "~/utils/rating";
+
 export default {
     props: {
         value: {
@@ -63,6 +65,14 @@ export default {
                 this.$emit("input", v);
             },
         },
+        ratingStars: {
+            get() {
+                return toStars(this.rating);
+            },
+            set(stars) {
+                this.rating = fromStars(stars);
+            },
+        },
     },
     watch: {
         value(opened) {
@@ -80,7 +90,7 @@ export default {
                     this.rating = rsp.review.rating || 0;
                     this.comment = rsp.review.comment || "";
                 } else {
-                    // 新评论默认 8 星，减少用户还要先点一下评分的操作
+                    // 新评论默认 4 星（对应后端 0-10 分制的 8 分），减少用户还要先点一下评分的操作
                     this.rating = 8;
                     this.comment = "";
                 }

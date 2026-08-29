@@ -299,11 +299,12 @@
 
             <template v-slot:item.rating="{ item }">
                 <v-edit-dialog large :return-value.sync="item.rating" @save="save(item, 'rating')" :save-text="$t('admin.books.save')" :cancel-text="$t('admin.books.cancel')">
-                    <span v-if="item.rating != null">{{ item.rating }} {{ $t('admin.books.ratingStarSuffix') }}</span>
+                    <span v-if="item.rating != null">{{ toStars(item.rating) }} {{ $t('admin.books.ratingStarSuffix') }}</span>
                     <span v-else> - </span>
                     <template v-slot:input>
                         <div class="mt-4 text-h6">{{ $t('admin.books.editRating') }}</div>
-                        <v-rating :label="$t('admin.books.header.rating')" v-model="item.rating" color="yellow accent-4" length="10" dense></v-rating>
+                        <v-rating :label="$t('admin.books.header.rating')" :value="toStars(item.rating)" @input="item.rating = fromStars($event)"
+                                  color="yellow accent-4" length="5" dense></v-rating>
                     </template>
                 </v-edit-dialog>
             </template>
@@ -601,6 +602,7 @@
 
 <script>
 import { languageOptions } from "~/utils/languageCodes";
+import { toStars, fromStars } from "~/utils/rating";
 import SearchBar from "~/components/SearchBar.vue";
 
 export default {
@@ -756,6 +758,8 @@ export default {
         }
     },
     methods: {
+        toStars,
+        fromStars,
         goToPage() {
             const page = parseInt(this.jumpPage);
             if (!isNaN(page) && page >= 1 && page <= this.totalPages) {

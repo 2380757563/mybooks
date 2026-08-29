@@ -53,9 +53,9 @@
                                         </v-icon>
                                     </div>
                                     <v-rating
-                                        :value="r.rating"
+                                        :value="toStars(r.rating)"
                                         color="yellow accent-4"
-                                        length="10"
+                                        length="5"
                                         readonly
                                         dense
                                         small
@@ -72,6 +72,8 @@
 </template>
 
 <script>
+import { toStars } from "~/utils/rating";
+
 export default {
     props: {
         bookId: {
@@ -107,6 +109,7 @@ export default {
         },
     },
     methods: {
+        toStars,
         async load() {
             if (!this.bookId) return;
             this.loading = true;

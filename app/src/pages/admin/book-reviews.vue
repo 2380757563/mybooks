@@ -29,7 +29,7 @@
       </template>
 
       <template v-slot:item.rating="{ item }">
-        <v-rating :value="item.rating" length="10" readonly dense small color="yellow accent-4"></v-rating>
+        <v-rating :value="toStars(item.rating)" length="5" readonly dense small color="yellow accent-4"></v-rating>
       </template>
 
       <template v-slot:item.comment="{ item }">
@@ -57,6 +57,8 @@
 </template>
 
 <script>
+import { toStars } from "~/utils/rating";
+
 export default {
   data() {
     return {
@@ -102,6 +104,7 @@ export default {
     this.fetchItems();
   },
   methods: {
+    toStars,
     statusText(status) {
       if (status === 'pending') return this.$t('adminBookReviews.statusPending');
       if (status === 'approved') return this.$t('adminBookReviews.statusApproved');

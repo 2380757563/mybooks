@@ -261,7 +261,9 @@ class TestMeta(TestApp):
         self.assert_meta("publisher", 10)
 
     def test_rating(self):
-        self.assert_meta("rating", 3)
+        # 测试库中原始评分为 7/8/9（0-10 分制），按 5 星合并后 7 分和 8 分都归入 4 星，
+        # 9 分归入 5 星，因此只剩 2 个星级桶。
+        self.assert_meta("rating", 2)
 
 
 class AutoResetPermission:

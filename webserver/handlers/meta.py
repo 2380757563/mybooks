@@ -176,7 +176,21 @@ class MetaList(ListHandler):
 
         if items:
             if meta == "rating":
+                # Calibre 内部按 0-10 分制存储评分（每 0.5 星 1 个单位），前台按 5 星整数展示，
+                # 因此需要把原始分值合并到对应的星级桶里，例如 1/2 分都归入 1 星。
+                buckets = {}
+                for item in items:
+                    raw = item["name"]
+                    if raw is None:
+                        continue
+                    star = (int(raw) + 1) // 2
+                    if star <= 0:
+                        continue
+                    bucket = buckets.setdefault(star, {"id": None, "name": star, "count": 0})
+                    bucket["count"] += item["count"]
+                items = list(buckets.values())
                 items.sort(key=lambda x: x["name"], reverse=True)
+                count = len(items)
             else:
                 hotline = int(math.log10(count)) if count > SHOW_NUMBER else 0
                 items = [v for v in items if v["count"] >= hotline]
@@ -200,12 +214,21 @@ class MetaBooks(ListHandler):
         }
         title = titles.get(meta, _(u"未知")) % vars()  # noqa: F841
         category = meta + "s" if meta in ["tag", "author", "language"] else meta
+        extra_ids = None
         if meta == "rating":
-            name = int(name)
+            # 前台按 5 星展示，一个星级对应 calibre 0-10 分制里的两个原始分值（如 1 星 = 1/2 分），
+            # 主查询用其中一个原始分值，另一个原始分值的书籍通过 extra_ids 合并进来。
+            star = int(name)
+            raw_values = (star * 2 - 1, star * 2)
+            name = raw_values[0]
+            other_item_id = self.calibre_db_cache.get_item_id("rating", raw_values[1])
+            if other_item_id:
+                extra_ids = set(self.calibre_db.get_books_for_category("rating", other_item_id))
         elif meta == "language":
             name = LanguageNameUtil.get_language_code(name)
+        elif meta == "author":
+            extra_ids = self.get_translator_book_ids(name)
         logging.info(f"Get meta {meta} books of {name}")
-        extra_ids = self.get_translator_book_ids(name) if meta == "author" else None
         books = self.get_item_books(category, name, extra_ids=extra_ids)
         if meta == "series":
             books.sort(key=cmp_to_key(utils.compare_books_by_series_index_or_name), reverse=False)

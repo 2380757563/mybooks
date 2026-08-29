@@ -623,7 +623,7 @@
                                     >{{ '&nbsp;&nbsp;' }}[{{ file.format }} - {{ file.size >= 1048576 ? parseInt(file.size / 1048576) + 'MB' : parseInt(file.size / 1024) + 'KB' }}]</span>
                                 </template>
                             </div>
-                            <v-rating v-model="book.rating" color="yellow accent-4" length="10" readonly dense small></v-rating>
+                            <v-rating :value="toStars(book.rating)" color="yellow accent-4" length="5" readonly dense small></v-rating>
                             <!-- 阅读信息：在读/收藏/推荐人数，三项都为 0 时组件本身不渲染 -->
                             <book-social-info :book-id="book.id" ref="socialInfo"></book-social-info>
                             <!-- Reading state display -->
@@ -1436,6 +1436,7 @@ import BookReviewList from "~/components/BookReviewList.vue";
 import BookReviewDialog from "~/components/BookReviewDialog.vue";
 import QRCode from "qrcode";
 import { languageOptions } from "~/utils/languageCodes";
+import { toStars } from "~/utils/rating";
 
 export default {
     components: {
@@ -2072,6 +2073,7 @@ export default {
         this.stopConvertingPolling();
     },
     methods: {
+        toStars,
         authorAvatarUrl(author) {
             const ts = Math.floor(Date.now() / 10000) * 10000;
             return `/get/author/avatar/${author}?t=${ts}`;

@@ -16,7 +16,7 @@
                                     <v-text-field :label="$t('book.edit.fields.title')" v-model="book.title">{{ book.title }}</v-text-field>
                                 </v-col>
                                 <v-col class='py-4' cols=12 sm=6>
-                                    <v-rating :label="$t('book.edit.fields.rating')" v-model="book.rating" color="yellow accent-4" length="10"
+                                    <v-rating :label="$t('book.edit.fields.rating')" v-model="ratingStars" color="yellow accent-4" length="5"
                                               dense></v-rating>
                                 </v-col>
                                 <v-col class='py-0' cols=12 sm=6>
@@ -181,6 +181,7 @@
 
 <script>
 import { languageOptions } from "~/utils/languageCodes";
+import { toStars, fromStars } from "~/utils/rating";
 
 export default {
     components: {},
@@ -221,6 +222,14 @@ export default {
         },
         authorNames() {
             return this.authors_list.map(a => a.name);
+        },
+        ratingStars: {
+            get() {
+                return toStars(this.book.rating);
+            },
+            set(stars) {
+                this.book.rating = fromStars(stars);
+            },
         },
     },
     watch: {
