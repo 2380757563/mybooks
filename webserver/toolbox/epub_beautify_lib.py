@@ -15,6 +15,7 @@ EPUB 容器读写（container → OPF → manifest/spine、mimetype 置首 ZIP_S
 """
 
 import logging
+import os
 import re
 import zipfile
 import xml.etree.ElementTree as ET
@@ -130,20 +131,35 @@ def _toc_entry_allowed(title: str) -> bool:
 # ── EPUB 容器基础（沿用 text_replace 模式）────────────────────────────────────
 
 def _read_zip_entries(path: str) -> dict:
-    """读取 zip 全部文件条目 {name: bytes}（跳过目录项）。"""
+    """读取 zip 全部文件条目 {name: bytes}（跳过目录项，校验路径与大小）。"""
     entries = {}
-    with zipfile.ZipFile(path, 'r') as zf:
-        for info in zf.infolist():
-            if info.is_dir():
-                continue
-            entries[info.filename] = zf.read(info.filename)
+    try:
+        with zipfile.ZipFile(path, 'r') as zf:
+            total = 0
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                # 路径穿越校验
+                if info.filename.startswith('/') or '..' in info.filename.split('/'):
+                    logging.warning("[epub_beautify] Skip traversal entry: %s", info.filename)
+                    continue
+                # ZipBomb 阈值（500MB 总量 / 5000 文件）
+                total += info.file_size
+                if total > 500 * 1024 * 1024 or len(entries) > 5000:
+                    raise RuntimeError(_("EPUB 文件过大或条目过多，疑似 Zip Bomb"))
+                entries[info.filename] = zf.read(info.filename)
+    except zipfile.BadZipFile as e:
+        raise RuntimeError(_("EPUB 解析失败，文件可能已损坏：%s") % e) from e
+    except zipfile.LargeZipFile as e:
+        raise RuntimeError(_("EPUB 文件过大：%s") % e) from e
     return entries
 
 
 def _write_zip(entries: dict, out_path: str) -> None:
-    """规范重写 zip：mimetype 置首且 ZIP_STORED，其余 DEFLATED。"""
+    """规范重写 zip：mimetype 置首且 ZIP_STORED，其余 DEFLATED（原子写）。"""
     order = [k for k in entries if k != 'mimetype']
-    with zipfile.ZipFile(out_path, 'w') as zout:
+    tmp = out_path + ".tmp"
+    with zipfile.ZipFile(tmp, 'w') as zout:
         zout.writestr(
             zipfile.ZipInfo('mimetype'),
             entries.get('mimetype', b'application/epub+zip'),
@@ -151,6 +167,7 @@ def _write_zip(entries: dict, out_path: str) -> None:
         )
         for name in order:
             zout.writestr(name, entries[name], compress_type=zipfile.ZIP_DEFLATED)
+    os.replace(tmp, out_path)
 
 
 def _decode(data: bytes) -> str:
@@ -337,7 +354,11 @@ def _is_front_file(zip_path: str) -> bool:
 def _parse_ncx(data: bytes) -> list:
     """解析 NCX 为 [(level, title, src)] 扁平列表（navPoint 嵌套 = 层级）。"""
     items = []
-    root = ET.fromstring(_decode(data))
+    try:
+        root = ET.fromstring(_decode(data))
+    except ET.ParseError as e:
+        logging.warning("[epub_beautify] NCX parse failed: %s", e)
+        return []
 
     def walk(elem, level):
         for nav_point in elem:
@@ -362,7 +383,11 @@ def _parse_ncx(data: bytes) -> list:
 def _parse_nav_doc(data: bytes) -> list:
     """解析 EPUB3 nav 文档（epub:type=toc 的 nav）为 [(level, title, href)]。"""
     items = []
-    root = ET.fromstring(_decode(data))
+    try:
+        root = ET.fromstring(_decode(data))
+    except ET.ParseError as e:
+        logging.warning("[epub_beautify] nav parse failed: %s", e)
+        return []
     nav = None
     for n in root.iter(_q('nav', _NS_XHTML)):
         ntype = n.get('{%s}type' % 'http://www.idpf.org/2007/ops') or ''
@@ -725,7 +750,7 @@ def mark_chapters_in_html(html_str: str, split_title: bool = False) -> tuple:
     :return: (new_html, stats)，stats = {'chapters','volumes','splits'}
     """
     empty = {'chapters': 0, 'volumes': 0, 'splits': 0}
-    if ('mb-ch' in html_str or 'mb-vol' in html_str) or '<html' not in html_str.lower():
+    if (re.search(r'class="[^"]*\bmb-ch\b', html_str) or re.search(r'class="[^"]*\bmb-vol\b', html_str)) or ('<html' not in html_str.lower() and '<body' not in html_str.lower()):
         return html_str, dict(empty)
     if _FRONT_TYPE_RE.search(html_str[:4000]):
         return html_str, dict(empty)
