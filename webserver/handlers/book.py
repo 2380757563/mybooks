@@ -104,26 +104,6 @@ class Index(BaseHandler):
             result.append(book_data)
         return result
 
-    def _reading_books(self):
-        """首页"在读书籍"：当前登录用户正在阅读的书籍，最多 12 本，按最近阅读时间排序。"""
-        if not self.current_user:
-            return []
-        reading_states = self.sqlite_session.query(ReadingState).filter(
-            ReadingState.reader_id == self.current_user.id,
-            ReadingState.read_state == 1  # 在读状态
-        ).order_by(ReadingState.read_date.desc()).limit(12).all()
-        if not reading_states:
-            return []
-        book_ids = [state.book_id for state in reading_states]
-        books_dict = {b["id"]: b for b in self.get_books(ids=book_ids)}
-        result = []
-        for book_id in book_ids:
-            book = books_dict.get(book_id)
-            if not book:
-                continue
-            result.append(self.fmt(book))
-        return result
-
     @js
     def get(self):
         """首页显示随机书籍和最近添加的书籍"""
@@ -139,8 +119,7 @@ class Index(BaseHandler):
                 "random_books_count": 0,
                 "new_books_count": 0,
                 "random_books": [],
-                "new_books": [],
-                "reading_books": []
+                "new_books": []
             }
 
         cnt_recent = min(cnt_recent, len(ids))
@@ -161,7 +140,6 @@ class Index(BaseHandler):
             "random_books": [self.fmt(b) for b in random_books],
             "new_books": [self.fmt(b) for b in new_books],
             "social_recommend_books": self._social_recommend_books(),
-            "reading_books": self._reading_books(),
         }
 
 
@@ -634,46 +612,6 @@ class BookToPDF(BaseHandler):
             return {"err": "params.book.converting", "msg": _("本书正在转换中，请稍后再试")}
         service.convert_and_save(self.user_id(), book, fpath, "pdf")
         return {"err": "ok", "content": "%s" % _("转换成功，请稍后刷新页面查看")}
-
-
-class BookToTxtZ(BaseHandler):
-    @js
-    @auth
-    def post(self, id):
-        book_id = int(id)
-        book = self.get_book(book_id, raise_exception=False)
-        if not book:
-            return {"err": "params.book.invalid", "msg": _("书籍不存在")}
-
-        if not self.is_admin() and not self.is_book_owner(book_id, self.user_id()):
-            return {"err": "user.no_permission", "msg": _("无权限")}
-
-        fmts = []
-        paths = []
-        has_txtz = False
-        for fmt in ["txt", "txtz"]:
-            book_path = book.get("fmt_%s" % fmt, None)
-            if not book_path:
-                continue
-            if fmt == "txtz":
-                has_txtz = True
-                continue
-            fmts.append(fmt)
-            paths.append(book_path)
-
-        if has_txtz:
-            return {"err": "params.book.invalid", "msg": _("本书已有TXTZ版本, 不需要转换")}
-        if len(fmts) == 0:
-            return {"err": "params.book.invalid", "msg": _("本书不支持转换，仅支持TXT格式转换为TXTZ")}
-
-        fpath = paths[0]
-        service = ConverterService()
-        if service.is_book_converting(book):
-            return {"err": "params.book.converting", "msg": _("本书正在转换中，请稍后再试")}
-        service.convert_and_save(self.user_id(), book, fpath, "txtz")
-        return {"err": "ok", "content": "%s" % _("转换成功，请稍后刷新页面查看")}
-
-
 class BookSetSole(BaseHandler):
     @js
     @auth
@@ -1289,6 +1227,13 @@ class BookReading(BaseHandler):
         """获取当前用户的在读书籍（分页）"""
         user_id = self.user_id()
         logging.info("User %d is fetching reading books." % user_id)
+
+        # 首页"在读书籍"卡片会带上 home=1 请求这个接口；ENABLE_HOMEPAGE_READING_BOOKS=False
+        # 时直接返回空列表，让首页不显示这个板块，但不影响 /reading 列表页本身。
+        is_home_request = self.get_argument("home", "") == "1"
+        if is_home_request and not CONF.get("ENABLE_HOMEPAGE_READING_BOOKS", True):
+            return {"err": "ok", "title": _("在读书籍"), "total": 0, "books": []}
+
         query = self.sqlite_session.query(ReadingState).filter(
             ReadingState.reader_id == user_id,
             ReadingState.read_state == 1  # 在读状态
@@ -4036,7 +3981,6 @@ def routes():
         (r"/api/book/txt/parser", BookTxtParser),
         (r"/api/book/([0-9]+)/convert", BookConverter),
         (r"/api/book/([0-9]+)/topdf", BookToPDF),
-        (r"/api/book/([0-9]+)/totxtz", BookToTxtZ),
         (r"/api/book/([0-9]+)/setsole", BookSetSole),
         (r"/api/book/([0-9]+)/cover", BookCover),
         (r"/api/book/crop_cover", BookCropCover),

@@ -336,10 +336,6 @@
                                     <v-icon>mdi-swap-horizontal</v-icon>
                                     {{ $t('book.convertToPdf') }}
                                 </v-list-item>
-                                <v-list-item @click="convertToTxtz" :disabled="!hasEBooks || !hasTxt || hasTxtZ">
-                                    <v-icon>mdi-swap-horizontal</v-icon>
-                                    {{ $t('book.convertToTxtZ') }}
-                                </v-list-item>
                                 <v-list-item @click="separateBook" :disabled="book.files.length <= 1">
                                     <v-icon>mdi-content-copy</v-icon>
                                     {{ $t('book.seperate') }}
@@ -1625,11 +1621,6 @@ export default {
             return this.book.files.some(file => file.format.toLowerCase() === 'txt');
         },
 
-        hasTxtZ(){
-            if (!this.book || !this.book.files) return false;
-            return this.book.files.some(file => file.format.toLowerCase() === 'txtz');
-        },
-
         hasPDF() {
             if (!this.book || !this.book.files) return false;
             return this.book.files.some(file => file.format.toLowerCase() === 'pdf');
@@ -2495,19 +2486,6 @@ export default {
         convertToPdf() {
             // 转换为PDF
             this.$backend("/book/" + this.book.id + "/topdf", {
-                method: "POST",
-                body: new URLSearchParams({reset: "yes"}),
-            }).then((rsp) => {
-                if (rsp.err === "ok") {
-                    this.$alert("success", this.$t('book.convertSuccessful'));
-                } else {
-                    this.$alert("error", rsp.msg);
-                }
-            });
-        },
-        convertToTxtz() {
-            // 转换为TXTZ
-            this.$backend("/book/" + this.book.id + "/totxtz", {
                 method: "POST",
                 body: new URLSearchParams({reset: "yes"}),
             }).then((rsp) => {

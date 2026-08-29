@@ -643,6 +643,7 @@
     "enable_toolbox_store": "Enable Toolbox store (fetch installable tools/updates from mybooks.top; not live yet, list stays empty once enabled)",
     "allow_user_disable_statistic": "Allow users to opt out of reading/download statistics (when off, all users are tracked by default)",
     "enable_homepage_reading_stats": "Show reading stats banner on the homepage (enabled by default)",
+    "enable_homepage_reading_books": "Show currently-reading books on the homepage (enabled by default)",
     "extended_features": "Extended Features",
     "enable_stamp_feature": "Enable cover stamp feature",
     "stamp_image_label": "Stamp Image",

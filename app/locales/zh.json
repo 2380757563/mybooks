@@ -876,6 +876,7 @@
     "enable_toolbox_store": "启用工具箱商店（从MyBooks网站获取可安装工具列表与更新，尚未上线，开启后暂无可安装工具）",
     "allow_user_disable_statistic": "允许用户自行关闭阅读及下载数据采集（关闭后默认采集所有用户的数据）",
     "enable_homepage_reading_stats": "在首页显示阅读统计 Banner（默认开启）",
+    "enable_homepage_reading_books": "在首页显示在读书籍（默认开启）",
     "extended_features": "扩展功能",
     "enable_stamp_feature": "启用封面加盖图章功能",
     "stamp_image_hint": "支持PNG格式，图片尺寸不超过480x480像素，文件大小不超过128KB。建议使用带透明背景的PNG图片以获得更好的效果。",

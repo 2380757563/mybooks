@@ -961,16 +961,6 @@ export default {
             ],
           },
           {
-            icon: "palette",
-            key: "site_theme",
-            label: "settings.theme_switch",
-            type: "select",
-            items: [
-              { text: this.$t("settings.light_color"), value: "light" },
-              { text: this.$t("settings.dark_color"), value: "dark" },
-            ],
-          },
-          {
             icon: "home",
             key: "INDEX_PAGE_TYPE",
             label: "settings.index_page_type",
@@ -1093,6 +1083,12 @@ export default {
             icon: "mdi-view-dashboard-outline",
             key: "ENABLE_HOMEPAGE_READING_STATS",
             label: "settings.enable_homepage_reading_stats",
+            type: "checkbox",
+          },
+          {
+            icon: "mdi-book-open-page-variant-outline",
+            key: "ENABLE_HOMEPAGE_READING_BOOKS",
+            label: "settings.enable_homepage_reading_books",
             type: "checkbox",
           },
           {
@@ -1567,12 +1563,6 @@ export default {
           this.settings["site_language"] = this.$i18n.locale;
         }
         if (
-          !("site_theme" in this.settings) ||
-          this.settings["site_theme"] === ""
-        ) {
-          this.settings["site_theme"] = "light";
-        }
-        if (
           !("site_icon" in this.settings) ||
           this.settings["site_icon"] === ""
         ) {
@@ -1842,15 +1832,6 @@ export default {
           "defaultPageSize",
           this.settings["DEFAULT_PAGE_SIZE"]
         );
-
-        if (this.settings["site_theme"] !== "") {
-          localStorage.setItem("site_theme", this.settings["site_theme"]);
-          if (this.settings["site_theme"] === "dark") {
-            this.$vuetify.theme.dark = true;
-          } else {
-            this.$vuetify.theme.dark = false;
-          }
-        }
       }
 
       this.$backend("/admin/settings", {

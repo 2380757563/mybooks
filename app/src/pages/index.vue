@@ -201,6 +201,9 @@ export default {
         indexPage() {
             return this.$store.state.sys && this.$store.state.sys.indexPage;
         },
+        isLoggedIn() {
+            return !!(this.$store.state.user && this.$store.state.user.is_login);
+        },
         allowPhysicalBooks() {
             return !!(this.$store.state.sys && this.$store.state.sys.allow && this.$store.state.sys.allow.physical_books);
         },
@@ -211,7 +214,14 @@ export default {
                 this.checkRedirect(val);
             },
             immediate: true
-        }
+        },
+        isLoggedIn(loggedIn) {
+            if (loggedIn) {
+                this.loadReadingBooks();
+            } else {
+                this.reading_books = [];
+            }
+        },
     },
     methods: {
         async loadLibraryStats() {
@@ -265,11 +275,26 @@ export default {
                     this.random_books = rsp.random_books || [];
                     this.new_books = rsp.new_books || [];
                     this.social_recommend_books = rsp.social_recommend_books || [];
-                    this.reading_books = rsp.reading_books || [];
                 }
             }).catch( error => {
                 console.error('Failed to refresh books:', error);
             });
+        },
+        async loadReadingBooks() {
+            if (!this.isLoggedIn) {
+                this.reading_books = [];
+                return;
+            }
+            try {
+                // home=1 标记这是首页发起的请求，后台在 ENABLE_HOMEPAGE_READING_BOOKS=False
+                // 时会直接返回空列表（不影响 /reading 在读书籍列表页本身）
+                const rsp = await this.$backend('/reading?home=1&size=12');
+                if (rsp.err === 'ok') {
+                    this.reading_books = rsp.books || [];
+                }
+            } catch (error) {
+                console.warn('Failed to load reading books:', error);
+            }
         },
         onReadingStatsHasData(hasData) {
             this.readingStatsHasData = hasData;
@@ -278,6 +303,7 @@ export default {
     mounted() {
         this.loadLibraryStats();
         this.checkReleaseNotes();
+        this.loadReadingBooks();
         // 强制重新渲染图片，修复从其他页面返回时的布局问题
         this.$nextTick(() => {
             window.dispatchEvent(new Event('resize'));
