@@ -49,10 +49,7 @@
                     <div class="book-img-container reading-book-cover" :title="book.title">
                         <v-img
                             :src="book.thumb"
-                            :aspect-ratio="11/15"
-                            style="border-radius: 12px;"
-                            class="book-img-hover"
-                            contain
+                            class="cover-fill-img"
                         ></v-img>
                         <!-- hover时居中显示圆形遮罩，点击图标直接进入阅读；点击封面其他区域仍进入书籍详情 -->
                         <a
@@ -83,10 +80,7 @@
                     <div class="book-img-container" :title="book.title">
                         <v-img
                             :src="book.thumb"
-                            :aspect-ratio="11/15"
-                            style="border-radius: 12px;"
-                            class="book-img-hover"
-                            contain
+                            class="cover-fill-img book-img-hover"
                         ></v-img>
                         <!-- 实体书角标 -->
                         <div v-if="book.book_type === 1" class="physical-book-badge">
@@ -107,10 +101,7 @@
                     <div class="book-img-container" :title="book.title">
                         <v-img
                             :src="book.thumb"
-                            :aspect-ratio="11/15"
-                            style="border-radius: 12px;"
-                            class="book-img-hover"
-                            contain
+                            class="cover-fill-img book-img-hover"
                         ></v-img>
                         <div v-if="book.book_type === 1" class="physical-book-badge">
                             <v-icon small color="white">mdi-bookshelf</v-icon>
@@ -420,7 +411,7 @@ export default {
 }
 
 .home-section-card {
-    background: rgba(0, 0, 0, 0.18);
+    background: rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border-radius: 16px !important;
@@ -443,6 +434,7 @@ export default {
     position: relative;
     display: block;
     width: 100%;
+    aspect-ratio: 11 / 15;
     overflow: hidden;
 }
 
@@ -489,13 +481,28 @@ export default {
     will-change: transform;
 }
 
-/* 在读书籍封面 hover 时，居中显示半透明灰色圆形遮罩 + 阅读图标，点击直接进入阅读 */
+/* 在读书籍封面 hover 时，居中显示半透明灰色圆形遮罩 + 阅读图标，点击直接进入阅读。
+   aspect-ratio 已经在 .book-img-container 上声明，这里只补充 container-type，
+   让 hover 遮罩/图标可以用 cqw/cqh 按封面尺寸缩放（见下面 .reading-hover-*） */
 .reading-book-cover {
-    /* container-type:size 会对该元素做尺寸包含，脱离内容自身大小，
-       所以必须显式声明与内部 v-img 一致的宽高比，容器才不会塌陷为 0 高度 */
     container-type: size;
-    aspect-ratio: 11 / 15;
     cursor: pointer;
+}
+
+/* 封面图不保持原始比例，直接拉伸铺满容器；随便推荐/新评书籍/在读书籍三处封面共用。
+   v-img 不再传 aspect-ratio，其自身盒子高度由 Vuetify 按加载后图片的原始比例计算，
+   可能与容器的固定比例不一致，所以用 top:50%+translateY 让它在容器内垂直居中，
+   多出/不足的部分交给 .book-img-container 的 overflow:hidden 裁剪。 */
+.cover-fill-img.v-image {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    transform: translateY(-50%);
+}
+
+.cover-fill-img .v-image__image {
+    background-size: 100% 100% !important;
 }
 
 .reading-hover-overlay {
@@ -554,7 +561,7 @@ export default {
 }
 
 .book-img-hover:hover {
-    transform: scale(1.06);
+    transform: translateY(-50%) scale(1.1);
     z-index: 2;
     box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 }

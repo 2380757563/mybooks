@@ -242,7 +242,7 @@ export default {
     flex: 1 1 155px;
     min-width: 0;
     height: 150px;
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(0, 0, 0, 0.82);
     border-radius: 16px;
     padding: 8px 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);

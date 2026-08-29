@@ -1204,22 +1204,6 @@ export default {
     line-height: 1.25rem !important;
 }
 
-.app-navigation-drawer .v-icon {
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform: translateZ(0);
-}
-
-.app-navigation-drawer .v-list-item:hover .v-icon {
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
-    transform: translateY(-2px) scale(1.05);
-}
-
-.app-navigation-drawer .v-list-item--active .v-icon {
-    filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.35)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
-    transform: translateY(-2px) scale(1.02);
-}
-
 .app-navigation-drawer .v-list-item-action {
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
     border-radius: 12px;
