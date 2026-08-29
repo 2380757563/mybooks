@@ -1115,6 +1115,7 @@ export default {
 
 .app-navigation-drawer {
     border-right: 2px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 5%;
     box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08) !important;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
     border-bottom-right-radius: 12px !important;

@@ -448,21 +448,23 @@ export default {
 
 .home-section-card {
     background: rgba(240, 255, 248, 0.8);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border-radius: 16px !important;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-radius: 10px !important;
     padding: 12px 16px 16px;
-    margin-bottom: 20px;
+    margin-top: 5px;
+    margin-bottom: 15px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .theme--dark .home-section-card {
     background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border-radius: 16px !important;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-radius: 10px !important;
     padding: 12px 16px 16px;
-    margin-bottom: 20px;
+    margin-top: 5px;
+    margin-bottom: 15px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
