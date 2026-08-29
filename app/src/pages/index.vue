@@ -513,7 +513,6 @@ export default {
     z-index: 3;
 }
 
-/* 首页"其他用户推荐"卡片上的推荐人头像角标，见 plan/Social_Reading_Plan.md §2.3 */
 .recommender-badge {
     position: absolute;
     bottom: 6px;
@@ -529,18 +528,11 @@ export default {
     will-change: transform;
 }
 
-/* 在读书籍封面 hover 时，居中显示半透明灰色圆形遮罩 + 阅读图标，点击直接进入阅读。
-   aspect-ratio 已经在 .book-img-container 上声明，这里只补充 container-type，
-   让 hover 遮罩/图标可以用 cqw/cqh 按封面尺寸缩放（见下面 .reading-hover-*） */
 .reading-book-cover {
     container-type: size;
     cursor: pointer;
 }
 
-/* 封面图不保持原始比例，直接拉伸铺满容器；随便推荐/新评书籍/在读书籍三处封面共用。
-   v-img 不再传 aspect-ratio，其自身盒子高度由 Vuetify 按加载后图片的原始比例计算，
-   可能与容器的固定比例不一致，所以用 top:50%+translateY 让它在容器内垂直居中，
-   多出/不足的部分交给 .book-img-container 的 overflow:hidden 裁剪。 */
 .cover-fill-img.v-image {
     position: absolute;
     top: 50%;
@@ -561,14 +553,13 @@ export default {
     height: min(46cqw, 46cqh);
     transform: translate(-50%, -50%) scale(0.85);
     border-radius: 50%;
-    background: rgba(60, 60, 60, 0.55);
+    background: rgba(0, 87, 179, 0.75);
     box-sizing: border-box;
-    padding: 2px;
+    padding: 1px;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
     cursor: pointer;
     pointer-events: none;
     z-index: 2;
@@ -581,7 +572,7 @@ export default {
 }
 
 .reading-hover-overlay:hover {
-    background: rgba(30, 30, 30, 0.7);
+    background: rgba(0, 87, 179, 0.95);
 }
 
 .reading-hover-icon.v-icon {
