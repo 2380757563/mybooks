@@ -438,23 +438,23 @@
                 </div>
               </template>
                 <template v-else-if="previewTab === 'ch'">
-                <!-- 竖排古籍：整体竖排渲染 -->
+                <!-- 竖排古籍：整体竖排渲染（titleSplit 亦生效） -->
                 <div v-if="currentPreset.id === 'vertclassical'" class="eb-vpad">
                   <div class="eb-vbody" :style="{ background: currentPreset.accent_light, borderLeftColor: currentPreset.border, borderRightColor: currentPreset.border, fontFamily: bodyFont }">
-                    <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }">{{ chapterSample }}</div>
+                    <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }"><template v-if="titleSplit && splitSample"><span style="display:block;font-size:0.6em;opacity:0.7;letter-spacing:0.2em">{{ splitSample[0] }}</span>{{ splitSample[1] }}</template><template v-else>{{ chapterSample }}</template></div>
                     <div>{{ chapterParas[0] }}</div>
                     <div>{{ chapterParas[1] }}</div>
                   </div>
                   <div class="eb-vnote">← {{ $t('epubBeautify.verticalNote') }}</div>
                 </div>
                 <div v-else>
-                  <!-- 章节标题：按预设特例渲染 -->
-                  <div v-if="currentPreset.id === 'inkstone'" class="eb-t-ink" :style="{ background: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                  <!-- 章节标题：按预设特例渲染（titleSplit 对三特例亦生效） -->
+                  <div v-if="currentPreset.id === 'inkstone'" class="eb-t-ink" :style="{ background: currentPreset.accent, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num" style="display:block;font-size:0.55em;opacity:0.85;letter-spacing:0.35em;margin-bottom:2px">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
                   <div v-else-if="currentPreset.id === 'xuanzhi'" class="eb-t-xz-wrap">
-                    <div class="eb-t-xz-title" :style="{ color: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                    <div class="eb-t-xz-title" :style="{ color: currentPreset.accent, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num" style="display:block;font-size:0.55em;opacity:0.7;letter-spacing:0.3em;margin-bottom:4px">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
                     <div class="eb-t-xz-bar mx-auto" :style="{ background: currentPreset.accent }"></div>
                   </div>
-                  <div v-else-if="currentPreset.id === 'modern'" class="eb-t-leftbar" :style="{ color: currentPreset.accent, borderLeftColor: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                  <div v-else-if="currentPreset.id === 'modern'" class="eb-t-leftbar" :style="{ color: currentPreset.accent, borderLeftColor: currentPreset.accent, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num" style="display:block;font-size:0.6em;opacity:0.7;letter-spacing:0.3em;margin-bottom:2px">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
                   <div v-else class="eb-t-card" :class="{ 'eb-round': currentPreset.id === 'children' }" :style="{ background: currentPreset.accent_light, color: currentPreset.accent, borderTopColor: currentPreset.accent, borderBottomColor: currentPreset.border, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
 
                   <!-- 标题下长线 -->
@@ -766,7 +766,10 @@ export default {
       return !this.tocSampleRows;
     },
     splitSample() {
-      const m = this.chapterSample.trim().match(
+      const s = this.chapterSample.trim();
+      // 卷级不拆（与后端 _is_volume_text 同口径）
+      if (/^\s*(?:【\[\s*)?(?:第\s*[\d零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]|0*\d{1,4}\s*卷|卷\s*[\d零〇一二三四五六七八九十百千万兩两]+|[上中下]\s*卷)/i.test(s)) return null;
+      const m = s.match(
         /^\s*(第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[章节回篇卷部集季]|(?:chapter|chap\.?)\s*\d+)[\s、．.:：\-—·]*(.+)$/i);
       return m ? [m[1].replace(/\s+/g, ''), m[2]] : null;
     },
@@ -796,7 +799,7 @@ export default {
       const a = this.analysis || {};
       return {
         leading: (a.leading_space_paras || 0) > 0,
-        empty: (a.empty_para_est || 0) > 100,
+        empty: (a.empty_para_est || 0) > 20,
         meta: !!a.calibre_soup || (a.p_close_mismatch_files || 0) > 0,
       };
     },
@@ -809,7 +812,7 @@ export default {
     },
     cleanEmptyDesc() {
       const n = this.analysis && this.analysis.empty_para_est;
-      return n > 100 ? this.$t('epubBeautify.cleanEmptyRec', { count: n }) : this.$t('epubBeautify.cleanEmptyDesc');
+      return n > 20 ? this.$t('epubBeautify.cleanEmptyRec', { count: n }) : this.$t('epubBeautify.cleanEmptyDesc');
     },
     cleanMetaDesc() {
       const risky = this.analysis && (this.analysis.calibre_soup || this.analysis.p_close_mismatch_files > 0);
@@ -1019,10 +1022,10 @@ export default {
       }
     },
     applyCleanupRecommendations() {
-      // 按体检结果自动勾选推荐项（只增不减）
-      if (this.recs.leading) this.cleanLeading = true;
-      if (this.recs.empty) this.cleanEmpty = true;
-      if (this.recs.meta) this.cleanMeta = true;
+      // 按体检结果自动对齐开关（与徽章一致，双向同步）
+      this.cleanLeading = !!this.recs.leading;
+      this.cleanEmpty = !!this.recs.empty;
+      this.cleanMeta = !!this.recs.meta;
     },
     paletteOverridesPayload() {
       // 仅发送与预设默认不同的颜色；未动过取色器则不传（与原始预设对比，避免与已合并的 currentPreset 恒相等）

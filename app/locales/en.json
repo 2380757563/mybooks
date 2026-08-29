@@ -1695,7 +1695,7 @@
     "viewBook": "View new book",
     "rtlBadge": "RTL",
     "cleanTitle": "Content cleanup",
-    "cleanLeading": "Normalize full-width space indentation (recommended)",
+    "cleanLeading": "Normalize full-width space indentation",
     "cleanEmpty": "Remove empty paragraphs & collapse <br> runs",
     "cleanMeta": "Remove redundant meta charset",
     "tocDepth": "TOC depth",

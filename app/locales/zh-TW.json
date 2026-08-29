@@ -1694,7 +1694,7 @@
     "viewBook": "前往查看新書",
     "rtlBadge": "右翻",
     "cleanTitle": "內容清理",
-    "cleanLeading": "段首全形空格歸一（建議開啟）",
+    "cleanLeading": "段首全形空格歸一",
     "cleanEmpty": "刪除空白段落並收斂連續換行",
     "cleanMeta": "移除冗餘 meta charset",
     "tocDepth": "目錄收錄層級",
