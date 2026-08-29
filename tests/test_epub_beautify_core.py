@@ -547,7 +547,7 @@ class TestBeautify(unittest.TestCase):
             with zipfile.ZipFile(out) as zf:
                 toc = zf.read("OEBPS/mb-toc.xhtml").decode("utf-8")
                 self.assertIn('<table class="mulu">', toc)
-                self.assertIn('class="mb-toc-mark">\\　✦', toc)  # 右列装饰标记
+                self.assertIn('class="mb-toc-mark">　✦', toc)  # 右列装饰标记（已修正：移除多余反斜杠）
                 self.assertIn('class="mb-toc-seal">隐', toc)     # 印章
                 self.assertIn("CONTENT", toc)
                 self.assertNotIn("<nav", toc)

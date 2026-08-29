@@ -240,6 +240,12 @@ class EpubBeautifyTool(BaseTool):
         ids = list(dict.fromkeys(ids))
         total = len(ids)
 
+        if not total:
+            # 校验放在抢锁之前：避免拿到锁后提前 return 却忘记 release，把锁永久卡死
+            skip_task_id = self.create_task(progress_data={"status": "failed"})
+            self.complete_task(skip_task_id, error_message=_("未提供有效的书籍 ID"))
+            EpubBeautifyTool._last_task_id = skip_task_id
+            return
         if not EpubBeautifyTool._run_lock.acquire(blocking=False):
             # 静默跳过会让前端永远轮询不到任务（卡"处理中"），落一条失败任务
             skip_task_id = self.create_task(progress_data={"status": "failed", "book_ids": ids})
@@ -252,11 +258,6 @@ class EpubBeautifyTool(BaseTool):
                 "[EpubBeautifyTool] Already running, skipping run for ids=%s [uid:%d]",
                 ids, user_id,
             )
-            return
-        if not total:
-            skip_task_id = self.create_task(progress_data={"status": "failed"})
-            self.complete_task(skip_task_id, error_message=_("未提供有效的书籍 ID"))
-            EpubBeautifyTool._last_task_id = skip_task_id
             return
 
         task_id = None

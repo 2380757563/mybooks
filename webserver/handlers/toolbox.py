@@ -1130,18 +1130,21 @@ class AdminEpubBeautifyRun(BaseHandler):
         cleanup = None
         if isinstance(cleanup_raw, dict):
             cleanup = {k: bool(cleanup_raw[k]) for k in ("leading", "empty", "meta", "toc_blank") if k in cleanup_raw}
-        # 自定义配色（校验键与 hex 格式，非法直接报参数错误）
+        # 自定义配色（校验键与 hex 格式，非法直接报参数错误；兼容 hexa 8位自动截断为 6位）
         palette_raw = data.get("palette_overrides")
         palette_overrides = None
         if isinstance(palette_raw, dict) and palette_raw:
             _hex_re = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
             palette_overrides = {}
             for k, v in palette_raw.items():
-                if k not in ("accent", "accent_light", "muted", "border", "quote_bg", "code_bg"):
+                if k not in ("accent", "accent_light", "accent_dark", "muted", "border", "quote_bg", "code_bg", "toc_gradient"):
                     continue
-                if not isinstance(v, str) or not _hex_re.match(v.strip()):
+                if not isinstance(v, str):
                     return {"err": "params.invalid", "msg": _("配色值不合法：%s=%s") % (k, v)}
-                palette_overrides[k] = v.strip()
+                vv = v.strip()[:7]
+                if not _hex_re.match(vv):
+                    return {"err": "params.invalid", "msg": _("配色值不合法：%s=%s") % (k, v)}
+                palette_overrides[k] = vv
         # 全书主题底色三态：True/False/'auto'
         page_tint = data.get("page_tint", None)
         if isinstance(page_tint, str):
@@ -1175,6 +1178,8 @@ class AdminEpubBeautifyRun(BaseHandler):
         _svg_ok = note_mark.startswith("svg:") and len(note_mark) > 4
         if note_mark != "orig" and note_mark not in ("sym", "num") and not _svg_ok:
             return {"err": "params.invalid", "msg": _("未知标注样式：%s") % note_mark}
+        # 背景图片开关（与前端 bg_image 一致）
+        bg_image = bool(data.get("bg_image", False))
 
         tool = EpubBeautifyTool()
         if tool.is_running():
@@ -1203,6 +1208,8 @@ class AdminEpubBeautifyRun(BaseHandler):
             kwargs["notes"] = True
             if note_mark != "orig":
                 kwargs["note_mark"] = note_mark
+        if bg_image:
+            kwargs["bg_image"] = True
         tool.run(book_ids=book_ids, preset=preset, use_system_fonts=use_system_fonts,
                  toc_style=toc_style, suffix=suffix, user_id=self.user_id(), **kwargs)
         return {"err": "ok", "msg": _("美化任务已启动，右上角可以查看进度")}

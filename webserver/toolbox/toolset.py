@@ -1,7 +1,7 @@
 """
 工具管理类，所有工具进行注册
 
-@author: PoxenStudio, 2026
+@author: shiningsprk-arch, 2026
 """
 
 

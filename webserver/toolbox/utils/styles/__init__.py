@@ -92,7 +92,7 @@ def _interpolate(template: str, params: dict, use_system_fonts: bool,
 
 # ── 自定义配色与全书底色────────────────────────────────────────────
 _HEX_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$')
-_PALETTE_KEYS = ('accent', 'accent_light', 'muted', 'border', 'quote_bg', 'code_bg')
+_PALETTE_KEYS = ('accent', 'accent_light', 'accent_dark', 'muted', 'border', 'quote_bg', 'code_bg', 'toc_gradient')
 
 
 def _blend_hex(color: str, target_rgb: tuple, ratio: float) -> str:
@@ -294,13 +294,21 @@ def get_preset_css(preset_id: str, use_system_fonts: bool = True,
         toc_css = _interpolate(f.read(), params, use_system_fonts, font_overrides)
     template = template.replace("{{TOC_STYLE}}", toc_css)
 
-    # 响应式与特殊元素补齐
+    # 响应式与特殊元素补齐：注入点统一前置（避免末尾注入的 responsive 覆盖各预设主题色长线；vertclassical 已前置验证正确）
     responsive_path = os.path.join(_PRESETS_DIR, "responsive.css")
     if os.path.exists(responsive_path):
         with open(responsive_path, encoding="utf-8") as f:
             responsive_css = _interpolate(f.read(), params, use_system_fonts, font_overrides)
         if "{{RESPONSIVE}}" in template:
-            template = template.replace("{{RESPONSIVE}}", responsive_css)
+            # 移除原占位符，统一前置到 @page 之后或文件头部，保证预设自身规则层叠胜出
+            template = template.replace("{{RESPONSIVE}}", "")
+            # 插到 @page 块之后（若有），否则直接前置
+            _m = re.search(r'@page\s*\{[^}]*\}', template)
+            if _m:
+                insert_at = _m.end()
+                template = template[:insert_at] + "\n\n/* ── responsive injected (front) ── */\n" + responsive_css + template[insert_at:]
+            else:
+                template = "/* ── responsive injected (front) ── */\n" + responsive_css + "\n" + template
         else:
             template = template.rstrip() + "\n\n/* ── responsive injected ── */\n" + responsive_css
 

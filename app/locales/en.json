@@ -1855,6 +1855,12 @@
     "markSvgSpark": "Shape · Spark star",
     "markSvgSealdot": "Shape · Seal square",
     "anaNotes": "{count} popup notes",
-    "notesPreviewLine": "Sample note: popup/end-of-chapter notes will render with this card style."
+    "notesPreviewLine": "Sample note: popup/end-of-chapter notes will render with this card style.",
+    "tuneIndentOff": "No Indent",
+    "tuneGap": "Gap {n}em",
+    "tuneNotes": "Notes Styled",
+    "taskNotFound": "Task interrupted",
+    "runPartial": "Batch done: {ok} ok, {fail} failed",
+    "batchFail": "Book {id} failed: {err}"
   }
 }
