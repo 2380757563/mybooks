@@ -11,7 +11,7 @@
                 <!-- Theme Mode -->
                 <div class="mb-4">
                     <div class="caption text--secondary mb-2">{{ $t('appearance.theme') }}</div>
-                    <v-btn-toggle v-model="settings.darkMode" mandatory dense class="w-100 d-flex" @change="applySettings(true)">
+                    <v-btn-toggle v-model="settings.darkMode" mandatory dense class="w-100 d-flex" @change="onDarkModeChange">
                         <v-btn :value="false" class="flex-grow-1" small>
                             <v-icon left small>mdi-white-balance-sunny</v-icon> {{ $t('appearance.light') }}
                         </v-btn>
@@ -127,6 +127,13 @@ export default {
         });
     },
     methods: {
+        onDarkModeChange() {
+            // 切换主题时自动联动背景图案：浅色 -> 浅色图2，深色 -> 深色图2
+            // （见 appearance.bg.repeatImage2/repeatImage4 的文案），避免深色主题下
+            // 还残留一张浅色背景图（反之亦然）。
+            this.settings.background = this.settings.darkMode ? 'repeat-image-4' : 'repeat-image-2';
+            this.applySettings(true);
+        },
         selectAccent(color) {
             this.settings.accent = color;
             this.applySettings();

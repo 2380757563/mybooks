@@ -42,7 +42,10 @@
     <div class="home-section-card" v-if="reading_books.length > 0">
         <v-row>
             <v-col cols=12>
-                <p class="ma-0 title">{{ $t('index.myReading') }}</p>
+                <div class="d-flex align-center">
+                    <v-icon small class="mr-1">mdi-book-open-page-variant-outline</v-icon>
+                    <p class="ma-0">{{ $t('index.myReading') }}</p>
+                </div>
             </v-col>
             <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_reading_books" :key="'reading'+idx+book.id" class="book-card">
                 <v-card :to="book.href" class="ma-1">
@@ -71,7 +74,8 @@
         <v-row>
             <v-col cols=12>
                 <div class="d-flex align-center">
-                    <p class="ma-0 title">{{ $t('index.randomRecommendation') }}</p>
+                    <v-icon small class="mr-1">mdi-apple-keyboard-command</v-icon>
+                    <p class="ma-0">{{ $t('index.randomRecommendation') }}</p>
                     <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
                 </div>
             </v-col>
@@ -94,7 +98,10 @@
     <div class="home-section-card" v-if="social_recommend_books.length > 0">
         <v-row>
             <v-col cols=12>
-                <p class="ma-0 title">{{ $t('index.socialRecommendation') }}</p>
+                <div class="d-flex align-center">
+                    <v-icon small class="mr-1">mdi-star-check</v-icon>
+                    <p class="ma-0">{{ $t('index.socialRecommendation') }}</p>
+                </div>
             </v-col>
             <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
                 <v-card :to="book.href" class="ma-1">
@@ -123,7 +130,10 @@
     <div class="home-section-card">
         <v-row>
             <v-col cols=12>
-                <p class="ma-0 title">{{ $t('index.newRecommendation') }}</p>
+                <div class="d-flex align-center">
+                    <v-icon small class="mr-1">mdi-apps</v-icon>
+                    <p class="ma-0">{{ $t('index.newRecommendation') }}</p>
+                </div>
             </v-col>
             <v-col cols=12>
                 <book-cards :books="get_recent_books"></book-cards>
@@ -411,7 +421,17 @@ export default {
 }
 
 .home-section-card {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(240, 255, 248, 0.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 16px !important;
+    padding: 12px 16px 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.theme--dark .home-section-card {
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border-radius: 16px !important;
