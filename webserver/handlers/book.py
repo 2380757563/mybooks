@@ -1950,7 +1950,7 @@ class BookDownload(BaseHandler, web.StaticFileHandler):
         path = book["fmt_%s" % fmt]
         book["fmt"] = fmt
         book["title"] = urllib.parse.quote_plus(book["title"][:128])
-        fname = "%(id)d-%(title)s.%(fmt)s" % book
+        fname = "%(title)s.%(fmt)s" % book
         att = "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (fname, fname)
         if self.is_opds:
             att = 'attachment; filename="%(id)d.%(fmt)s"' % book
@@ -1983,7 +1983,7 @@ class BookNav(ListHandler):
                 navs.append({"legend": h1, "tags": tag_items})
 
         tag_items = [{"name": tag, "count": cnt} for tag, cnt in tagmap.items() if tag not in done]
-        navs.append({"legend": _("其他"), "tags": tag_items})
+        navs.append({"legend": _("其它"), "tags": tag_items})
 
         return {"err": "ok", "navs": navs}
 

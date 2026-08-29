@@ -112,7 +112,7 @@ class WebDavResource(DAVNonCollection):
 
     def get_display_name(self):
         # Format: ID.书名.ext
-        name = "%d.%s.%s" % (self.id, self.title, self.ext)
+        name = "%s.%s" % (self.title, self.ext)
         return safe_xml(name)
 
     def get_content_length(self):

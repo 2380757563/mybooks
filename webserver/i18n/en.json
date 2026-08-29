@@ -123,7 +123,7 @@
   "全部标签": "All tags",
   "全部评分": "All ratings",
   "全部语言": "All languages",
-  "其他": "Other",
+  "其它": "Other",
   "内部处理错误": "Internal processing error",
   "写入元数据失败": "Failed to write metadata",
   "出版日期参数错误，格式应为 2026-05-10或2026-05或2026年或2026": "Invalid publication date. Expected 2026-05-10, 2026-05, YYYY, or YYYY",
