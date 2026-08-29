@@ -171,8 +171,8 @@
                     <div v-if="ts.id === 'cool'" class="eb-toc-mock" :style="{ backgroundColor: currentPreset.accent, backgroundImage: currentPreset.toc_gradient, color: '#F5E6D0', borderBottom: '1px solid #C9A96A' }">目 录</div>
                     <div v-else-if="ts.id === 'minimal'" class="eb-toc-mock" :style="{ background: 'transparent', color: currentPreset.accent, letterSpacing: '0.3em', fontSize: '0.72rem', fontWeight: 600 }">目 录</div>
                     <div v-else class="eb-toc-mock" :style="{ background: ts.id === 'seal' ? '#FFFFFF' : currentPreset.accent_light, color: currentPreset.accent, borderTop: ts.id === 'elegant' ? ('2px solid ' + currentPreset.accent) : 'none', textAlign: ts.id === 'seal' ? 'left' : 'center' }">目 录<span v-if="ts.id === 'seal'" style="background:#B54942;color:#F5E6D0;font-size:0.6em;padding:0 3px;border-radius:2px;margin-left:4px">隐</span></div>
-                    <div class="eb-toc-row" :style="ts.id === 'minimal' ? { borderBottom: 'none' } : {}"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">01</span>第一章 血尸</div>
-                    <div class="eb-toc-row" :style="{ borderBottom: 'none' }"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">02</span>第二章 五十年后<template v-if="ts.id === 'seal'"><span style="float:right;color:#A2906A">\ ✦</span></template></div>
+                    <div class="eb-toc-row" :style="ts.id === 'minimal' ? { borderBottom: 'none' } : {}"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">01</span>第一章 示例标题</div>
+                    <div class="eb-toc-row" :style="{ borderBottom: 'none' }"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">02</span>第二章 示例标题<template v-if="ts.id === 'seal'"><span style="float:right;color:#A2906A">\ ✦</span></template></div>
                   </div>
                 </v-card-text>
               </v-card>
@@ -465,12 +465,13 @@
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[0] }}</p>
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[1] }}</p>
                   <p v-if="dialogue" class="eb-p eb-dialog-demo" :class="{ 'eb-spacing': !paraIndent }" :style="dialogueStyle">{{ dialogDemoText }}</p>
-                  <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」</blockquote>
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[2] }}<sup v-if="notesOn" :style="{color: currentPreset.accent, fontWeight: 700, fontSize: '0.78em'}"> {{ markGlyph }}</sup></p>
                   <!-- 弹注注释卡预览（章末/弹出内容样式） -->
                   <div v-if="notesOn" :style="{background: currentPreset.quote_bg, borderLeft: '3px solid ' + currentPreset.accent, borderRadius: '3px', padding: '7px 9px', marginTop: '14px'}">
                     <div class="caption" :style="{fontFamily: kaiFont, color: '#666', lineHeight: 1.6}"><span :style="{color: currentPreset.muted}">{{ markGlyph }}</span> {{ $t('epubBeautify.notesPreviewLine') }}</div>
                   </div>
+                  <!-- 引文样式演示（保留但标“演示”并置末，避免全书误为正文） -->
+                  <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px', marginTop: '16px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」<span class="caption grey--text ml-2" style="font-size:10px; vertical-align:middle;">（样式演示）</span></blockquote>
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
@@ -654,11 +655,11 @@ export default {
     previewTab: 'ch',
     healthOpen: true,
     tocMockRows: [
-      ['01', '第一章 血尸'],
-      ['02', '第二章 五十年后'],
-      ['03', '第三章 夜话'],
-      ['04', '第四章 山神庙'],
-      ['05', '第五章 雪夜来客'],
+      ['01', '第一章 示例标题'],
+      ['02', '第二章 示例标题'],
+      ['03', '第三章 示例标题'],
+      ['04', '第四章 示例标题'],
+      ['05', '第五章 示例标题'],
     ],
 
     processing: false,
@@ -692,11 +693,13 @@ export default {
       return titles.map((t, i) => (i + 1) + '. ' + t).join('\n');
     },
     chapterSample() {
-      // 优先用首章真实标题（正文识别命中），其次目录预览标题
+      // 优先用首章真实标题（正文识别命中），其次目录预览标题，最后书籍标题派生（无条件信任域B）
       const pc = this.analysis && this.analysis.preview_chapter;
       if (pc && pc.title) return pc.title;
       const t = this.analysis && this.analysis.toc_preview_titles;
-      return (t && t[0]) || '第一章 血尸';
+      if (t && t[0]) return t[0];
+      if (this.selected && this.selected.title) return `第一章 ${String(this.selected.title).trim().slice(0, 18)}`;
+      return '第一章 示例标题';
     },
     // 首章真实段落（≤3）；不足或未命中时回落示例文案
     chapterParas() {
@@ -751,7 +754,13 @@ export default {
     },
     tocSampleRows() {
       const t = (this.analysis && this.analysis.toc_preview_titles) || [];
-      if (!t.length) return this.tocMockRows;
+      if (!t.length) {
+        if (this.selected && this.selected.title) {
+          const base = String(this.selected.title).trim().slice(0, 20);
+          return [['01', base], ...this.tocMockRows.slice(1)];
+        }
+        return this.tocMockRows;
+      }
       return t.slice(0, 5).map((title, i) => [('0' + (i + 1)).slice(-2), title]);
     },
     splitSample() {

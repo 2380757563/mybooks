@@ -1008,10 +1008,31 @@ def _sample_preview_chapter(html_str: str) -> dict:
 
     标题判定与 mark_chapters_in_html 同源（h1-h6 标签或段落文本章节正则）；
     遇到下一个标题块即停止收录；输出纯文本（剥内联标签、压空白、截断）。
-    仅扫描 p/h/blockquote/li 块——Calibre 类汤的纯 div 平铺文件不参与
-    （无块可匹配时返回 None，由后续文件兜底）。
+    增强：兼顾纯 div 平铺文件（Calibre 类汤）、标题后无段落的短章。
     """
     blocks = list(_BLOCK_RE.finditer(html_str))
+    # 纯 div 文件兜底：若未命中块，尝试 div 采样
+    if not blocks:
+        divs = list(_SIMPLE_DIV_RE.finditer(html_str))
+        for i, m in enumerate(divs):
+            text = _block_text(m.group(2))
+            if not text:
+                continue
+            if chapter_patterns.paragraph_is_heading(text):
+                title = text[:80]
+                paras = []
+                for dm in divs[i + 1:]:
+                    pt = _block_text(dm.group(2))
+                    if not pt:
+                        continue
+                    if chapter_patterns.paragraph_is_heading(pt):
+                        break
+                    paras.append(pt[:120])
+                    if len(paras) >= 3:
+                        break
+                # 短章允许仅标题
+                return {'title': title, 'paragraphs': paras}
+        return None
     start = -1
     for i, m in enumerate(blocks):
         tag = m.group(1).lower()
@@ -1037,8 +1058,7 @@ def _sample_preview_chapter(html_str: str) -> dict:
         paras.append(text[:120])
         if len(paras) >= 3:
             break
-    if not paras:
-        return None
+    # 短章允许仅标题，前端 MOCKS 会补段落
     return {'title': title, 'paragraphs': paras}
 
 
