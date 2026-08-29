@@ -447,7 +447,7 @@ export default {
 }
 
 .home-section-card {
-    background: rgba(240, 255, 248, 0.8);
+    background: rgba(245, 255, 248, 0.8);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     border-radius: 10px !important;

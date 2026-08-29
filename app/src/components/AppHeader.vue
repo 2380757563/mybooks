@@ -1115,13 +1115,15 @@ export default {
 
 .app-navigation-drawer {
     border-right: 2px solid rgba(0, 0, 0, 0.08) !important;
-    border-radius: 5%;
     box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08) !important;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
-    border-bottom-right-radius: 12px !important;
     top: 56px !important;
-    height: calc(100vh - 56px) !important;
+    height: calc(100vh - 60px) !important;
     opacity: 1 !important;
+}
+
+.v-application .v-navigation-drawer.app-navigation-drawer {
+    border-radius: 10px !important;
 }
 
 .theme--dark .app-navigation-drawer {
@@ -1132,7 +1134,7 @@ export default {
 @media (max-width: 1024px) {
     .app-navigation-drawer {
         top: 56px !important;
-        height: calc(100vh - 56px) !important;
+        height: calc(100vh - 60px) !important;
         opacity: 1 !important;
     }
 }
