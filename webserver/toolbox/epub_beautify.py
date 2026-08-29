@@ -62,7 +62,7 @@ class EpubBeautifyTool(BaseTool):
 
     def bg_image_path(self) -> str:
         """已上传背景图（工具根目录，全局复用）。"""
-        return os.path.join(self.get_work_dir(), self._BG_NAME)
+        return os.path.join(self.get_work_dir(""), self._BG_NAME)
 
     def save_bg_image(self, data: bytes, filename: str, builtin_id: str = '') -> dict:
         """保存全书背景图：PIL 统一重编码为 JPEG（宽>1080 等比缩小）。
@@ -239,6 +239,11 @@ class EpubBeautifyTool(BaseTool):
             ids = []
         ids = list(dict.fromkeys(ids))
         total = len(ids)
+        if not total:
+            skip_task_id = self.create_task(progress_data={"status": "failed"})
+            self.complete_task(skip_task_id, error_message=_("未提供有效的书籍 ID"))
+            EpubBeautifyTool._last_task_id = skip_task_id
+            return
 
         if not EpubBeautifyTool._run_lock.acquire(blocking=False):
             # 静默跳过会让前端永远轮询不到任务（卡"处理中"），落一条失败任务
@@ -252,11 +257,6 @@ class EpubBeautifyTool(BaseTool):
                 "[EpubBeautifyTool] Already running, skipping run for ids=%s [uid:%d]",
                 ids, user_id,
             )
-            return
-        if not total:
-            skip_task_id = self.create_task(progress_data={"status": "failed"})
-            self.complete_task(skip_task_id, error_message=_("未提供有效的书籍 ID"))
-            EpubBeautifyTool._last_task_id = skip_task_id
             return
 
         task_id = None

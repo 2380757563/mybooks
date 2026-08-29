@@ -352,7 +352,7 @@
                       <div class="caption mb-1">{{ $t('epubBeautify.paletteAccent') }}</div>
                       <v-color-picker
                         v-model="palAccent"
-                        mode="hexa" hide-mode-switch hide-inputs
+                        mode="hex" hide-mode-switch hide-inputs
                         width="120" flat
                         @update:color="palTouched.accent = true"
                       ></v-color-picker>
@@ -361,7 +361,7 @@
                       <div class="caption mb-1">{{ $t('epubBeautify.paletteBg') }}</div>
                       <v-color-picker
                         v-model="palBg"
-                        mode="hexa" hide-mode-switch hide-inputs
+                        mode="hex" hide-mode-switch hide-inputs
                         width="120" flat
                         @update:color="palTouched.bg = true"
                       ></v-color-picker>
@@ -538,9 +538,14 @@
           </div>
         </template>
         <template v-else-if="resultMsg">
-          <v-alert dense :type="resultType === 'success' ? 'success' : 'error'" text class="flex-grow-1 mb-0 py-1">
-            {{ resultMsg }}
-          </v-alert>
+          <div class="flex-grow-1">
+            <v-alert dense :type="resultType === 'success' ? 'success' : resultType === 'warning' ? 'warning' : 'error'" text class="mb-0 py-1">
+              {{ resultMsg }}
+            </v-alert>
+            <div v-if="resultDetails.length" class="mt-1">
+              <div v-for="r in resultDetails" :key="r.book_id" class="caption red--text">{{ $t('epubBeautify.batchFail', { id: r.book_id, err: r.error || '' }) }}</div>
+            </div>
+          </div>
           <v-btn
             v-if="resultType === 'success' && newBookId"
             small
@@ -662,7 +667,10 @@ export default {
     resultMsg: '',
     resultType: 'success',
     newBookId: null,
+    resultDetails: [],
     pollTimer: null,
+    pollNotFound: 0,
+    previewSeq: 0,
     searchDebounce: null,
   }),
   computed: {
@@ -817,10 +825,10 @@ export default {
         : this.pageTint === 'on' ? this.$t('epubBeautify.pageTintOn') : this.$t('epubBeautify.pageTintOff');
       let s = fm + '｜' + this.$t('epubBeautify.sumClean') + ' ' + this.cleanCount + '/3｜'
         + this.$t('epubBeautify.sumDepth') + ' ' + dl + '｜' + this.$t('epubBeautify.sumTint') + ' ' + dt;
-      if (!this.paraIndent) s += '｜顶格';
-      if (this.paraGap > 0) s += '｜段距 ' + this.paraGap.toFixed(2) + 'em';
+      if (!this.paraIndent) s += '｜' + this.$t('epubBeautify.tuneIndentOff');
+      if (this.paraGap > 0) s += '｜' + this.$t('epubBeautify.tuneGap', { n: this.paraGap.toFixed(2) });
       if (this.tocColumns) s += '｜' + this.$t('epubBeautify.tocColumns');
-      if (this.notesOn) s += '｜弹注·美化';
+      if (this.notesOn) s += '｜' + this.$t('epubBeautify.tuneNotes');
       if (this.paletteOn) s += '｜' + this.$t('epubBeautify.paletteTitle');
       return s;
     },
@@ -893,6 +901,7 @@ export default {
   },
   beforeDestroy() {
     this.stopPolling();
+    clearTimeout(this.searchDebounce);
     if (this.bgObjectUrl) URL.revokeObjectURL(this.bgObjectUrl);
   },
   methods: {
@@ -1005,17 +1014,18 @@ export default {
       if (this.recs.meta) this.cleanMeta = true;
     },
     paletteOverridesPayload() {
-      // 仅发送与预设默认不同的颜色；未动过取色器则不传
+      // 仅发送与预设默认不同的颜色；未动过取色器则不传（与原始预设对比，避免与已合并的 currentPreset 恒相等）
       if (!this.paletteOn) return null;
-      const cp = this.currentPreset || {};
+      const orig = (this.presets.find((x) => x.id === this.preset) || this.currentPreset || {});
+      const norm = (c) => String(c || '').trim().slice(0, 7).toLowerCase();
       const ov = {};
-      if (this.palTouched.accent && this.palAccent &&
-          this.palAccent.toLowerCase() !== String(cp.accent || '').toLowerCase()) {
-        ov.accent = this.palAccent;
+      if (this.palTouched.accent && this.palAccent) {
+        const v = norm(this.palAccent);
+        if (v && v !== norm(orig.accent)) ov.accent = v;
       }
-      if (this.palTouched.bg && this.palBg &&
-          this.palBg.toLowerCase() !== String(cp.accent_light || '').toLowerCase()) {
-        ov.accent_light = this.palBg;
+      if (this.palTouched.bg && this.palBg) {
+        const v = norm(this.palBg);
+        if (v && v !== norm(orig.accent_light)) ov.accent_light = v;
       }
       return Object.keys(ov).length ? ov : null;
     },
@@ -1087,6 +1097,8 @@ export default {
       this.analysisError = '';
       this.resultMsg = '';
       this.newBookId = null;
+      this.resultDetails = [];
+      const curSeq = ++this.previewSeq;
       const hasEpub = (book.files || []).some((f) => f.format === 'EPUB');
       if (!hasEpub) {
         this.analysisError = this.$t('epubBeautify.noEpub');
@@ -1111,12 +1123,15 @@ export default {
               return s;
             });
           }
+          if (this.previewSeq !== curSeq) return;
           if (this.presets.length > 0) this.preset = this.presets[0].id;
           this.applyCleanupRecommendations();
         } else {
+          if (this.previewSeq !== curSeq) return;
           this.analysisError = rsp.msg || rsp.err;
         }
       } catch (e) {
+        if (this.previewSeq !== curSeq) return;
         this.analysisError = String(e);
       }
     },
@@ -1143,8 +1158,16 @@ export default {
       try {
         const rsp = await this.$backend('/toolbox/epub_beautify/progress');
         if (rsp.err === 'task.not_found') {
+          this.pollNotFound += 1;
+          if (this.pollNotFound > 5) {
+            this.stopPolling();
+            this.processing = false;
+            this.resultMsg = this.$t('epubBeautify.taskNotFound');
+            this.resultType = 'error';
+          }
           return;
         }
+        this.pollNotFound = 0;
         const data = rsp.data || {};
         this.progress = data.progress || 0;
         let msg = this.stageText(data.stage);
@@ -1156,6 +1179,10 @@ export default {
         if (rsp.err === 'task.failed') {
           this.stopPolling();
           this.processing = false;
+          if (rsp.data && rsp.data.results) {
+            const fails = (rsp.data.results || []).filter((r) => !r.ok);
+            this.resultDetails = fails;
+          }
           this.resultMsg = rsp.msg || this.$t('epubBeautify.runFailed');
           this.resultType = 'error';
           return;
@@ -1164,10 +1191,19 @@ export default {
           this.stopPolling();
           this.processing = false;
           this.progress = 100;
-          this.resultMsg = this.$t('epubBeautify.runCompleted');
-          this.resultType = 'success';
+          const results = data.results || [];
+          const fails = results.filter((r) => !r.ok);
+          if (fails.length) {
+            this.resultDetails = fails;
+            this.resultMsg = this.$t('epubBeautify.runPartial', { ok: results.length - fails.length, fail: fails.length });
+            this.resultType = fails.length === results.length ? 'error' : 'warning';
+          } else {
+            this.resultDetails = [];
+            this.resultMsg = this.$t('epubBeautify.runCompleted');
+            this.resultType = 'success';
+          }
           this.newBookId = data.new_book_id || null;
-          this.batchIds = [];
+          if (!fails.length) this.batchIds = [];
         }
       } catch (_e) {
         // 网络抖动时忽略，继续轮询
@@ -1778,15 +1814,19 @@ export default {
 }
 /* ─── 底部操作栏 ─── */
 .eb-actionbar {
-  position: fixed;
-  left: 0;
-  right: 0;
+  position: sticky;
   bottom: 0;
-  z-index: 60;
+  z-index: 10;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-top: 1px solid #e8e8e8;
   box-shadow: 0 -6px 24px rgba(23, 42, 79, 0.08);
+  margin-top: 24px;
+  /* 限制在工具箱容器内：不再 fixed 全视口 */
+  width: 100%;
+  max-width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 .eb-bar-in {
   max-width: 1240px;

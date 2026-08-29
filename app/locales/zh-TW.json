@@ -1781,6 +1781,12 @@
     "markSvgSpark": "圖形 · 裝飾星",
     "markSvgSealdot": "圖形 · 方印點",
     "anaNotes": "彈註 {count} 處",
-    "notesPreviewLine": "範例注釋：彈註內容將以這張卡片樣式呈現（彈出/章末兩用）。"
+    "notesPreviewLine": "範例注釋：彈註內容將以這張卡片樣式呈現（彈出/章末兩用）。",
+    "tuneIndentOff": "顶格",
+    "tuneGap": "段距 {n}em",
+    "tuneNotes": "弹注·美化",
+    "taskNotFound": "任务已中断或服务重启",
+    "runPartial": "批量完成：成功 {ok} 本，失败 {fail} 本",
+    "batchFail": "书籍 {id} 失败：{err}"
   }
 }

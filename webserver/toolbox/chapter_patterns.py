@@ -133,6 +133,7 @@ def paragraph_is_heading(text: str) -> bool:
     txt2epub-next 的正则按整行匹配；EPUB 段落可能包含多行/长正文，
     故在原文基础上附加：长度上限、不以句末标点结尾、非纯数字符号。
     段落开头（含全角空格、【】包裹）命中任一标题模式即视为标题。
+    对裸数字分支额外收紧：弱形态（如 “2023 年”、“3 天后”）及纯年份/时间不视为标题。
     """
     t = (text or "").strip()
     if not t or len(t) > _HEADING_MAX_LEN:
@@ -141,4 +142,17 @@ def paragraph_is_heading(text: str) -> bool:
         return False
     if t.endswith(_SENTENCE_END):
         return False
-    return heading_kind(t) is not None
+    kind = heading_kind(t)
+    if kind is None:
+        return False
+    if kind == "bare_number":
+        # 弱裸数字（数字+空格+非章节字）极易误伤年份、时间、数量句
+        if is_weak_bare_number_heading(t):
+            return False
+        # 额外护栏：数字+年/月/日/天/小时/分钟 等时间量词不视为标题
+        if re.match(r"^\s*0*\d{1,4}\s*(?:年|月|日|天|小时|分钟|秒|号|元|块|个|人|次)\b", t):
+            return False
+        # 4位年+年/月/日 且后无章节语义，拒绝
+        if re.match(r"^\s*\d{4}\s*年", t):
+            return False
+    return True
