@@ -17,7 +17,7 @@
       <!-- ═══ 左栏：配置（① 选书 → ② 挑风格 → ③ 微调） ═══ -->
       <v-col cols="12" lg="7" class="pt-0">
         <!-- ─── ① 选书 ─── -->
-        <v-card outlined rounded="lg" class="eb-card mb-4 pa-5">
+        <v-card outlined class="eb-card mb-4 pa-5 rounded-lg">
           <div class="d-flex align-center mb-3">
             <span class="eb-stepnum mr-2">1</span>
             <span class="text-subtitle-1 font-weight-bold">{{ $t('epubBeautify.selectBookTitle') }}</span>
@@ -70,8 +70,8 @@
                   <v-list-item-subtitle class="eb-book-author">{{ (book.authors || []).join(', ') }}</v-list-item-subtitle>
                   <div class="mt-1">
                     <v-chip
-                      v-for="file in (book.files || [])"
-                      :key="file.format"
+                      v-for="(file, idx) in (book.files || [])"
+                      :key="file.format + '_' + idx"
                       x-small
                       :color="file.format === 'EPUB' ? 'primary' : 'default'"
                       outlined
@@ -88,7 +88,7 @@
 
           <!-- 分析结果 / 体检报告 -->
           <template v-if="selected">
-            <v-alert v-if="analysisError" type="error" dense text rounded="lg" class="mb-0 mt-3">{{ analysisError }}</v-alert>
+            <v-alert v-if="analysisError" type="error" dense text rounded class="mb-0 mt-3">{{ analysisError }}</v-alert>
             <div v-else-if="analysis" class="eb-health mt-3">
               <div class="eb-health-head" @click="healthOpen = !healthOpen">
                 <v-icon small class="mr-1" :class="{ 'eb-arr-open': healthOpen }">mdi-chevron-right</v-icon>
@@ -121,7 +121,7 @@
         </v-card>
 
         <!-- ─── ② 挑风格 ─── -->
-        <v-card outlined rounded="lg" class="eb-card mb-4 pa-5">
+        <v-card outlined class="eb-card mb-4 pa-5 rounded-lg">
           <div class="d-flex align-center mb-3">
             <span class="eb-stepnum mr-2">2</span>
             <span class="text-subtitle-1 font-weight-bold">{{ $t('epubBeautify.presetTitle') }}</span>
@@ -158,7 +158,7 @@
             <v-col v-for="ts in tocStyles" :key="ts.id" cols="6" sm="3" class="mb-1">
               <v-card
                 outlined
-                rounded="lg"
+                rounded
                 :class="['eb-preset', { 'eb-preset-selected': tocStyle === ts.id }]"
                 @click="tocStyle = ts.id"
               >
@@ -181,7 +181,7 @@
         </v-card>
 
         <!-- ─── ③ 微调选项（默认收起） ─── -->
-        <v-expansion-panels flat outlined class="eb-panels">
+        <v-expansion-panels flat class="eb-panels" style="border:1px solid #e0e0e0">
           <v-expansion-panel>
             <v-expansion-panel-header class="eb-tune-head">
               <div class="d-flex align-center min-width-0">
@@ -233,7 +233,6 @@
                     :max="1.5"
                     :step="0.05"
                     thumb-label="always"
-                    dense
                     hide-details
                     class="mt-0 pt-0"
                     style="max-width:230px"
@@ -1097,6 +1096,9 @@ export default {
       this.selected = null;
       this.analysis = null;
       this.analysisError = '';
+      this.resultMsg = '';
+      this.resultDetails = [];
+      this.progressMsg = '';
       this.searched = false;
     },
     async selectBook(book) {
@@ -1124,6 +1126,7 @@ export default {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ book_id: book.id }),
         });
+        if (this.previewSeq !== curSeq) return;
         if (rsp.err === 'ok') {
           this.analysis = (rsp.data || {}).analysis || null;
           this.presets = (rsp.data || {}).presets || [];
@@ -1137,11 +1140,9 @@ export default {
               return s;
             });
           }
-          if (this.previewSeq !== curSeq) return;
           if (this.presets.length > 0) this.preset = this.presets[0].id;
           this.applyCleanupRecommendations();
         } else {
-          if (this.previewSeq !== curSeq) return;
           this.analysisError = rsp.msg || rsp.err;
         }
       } catch (e) {
@@ -1224,7 +1225,7 @@ export default {
       }
     },
     async startRun() {
-      if (this.processing || (!this.selected && !this.batchIds.length)) return;
+      if (this.processing || ((!this.selected || this.analysisError) && !this.batchIds.length)) return;
       this.resultMsg = '';
       this.newBookId = null;
       this.processing = true;
