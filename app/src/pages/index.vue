@@ -127,6 +127,20 @@
             </v-col>
         </v-row>
     </div>
+    <div class="home-section-card" v-if="homepage_booklists.length > 0">
+        <v-row>
+            <v-col cols=12>
+                <div class="d-flex align-center">
+                    <v-icon small class="mr-1">mdi-format-list-bulleted-square</v-icon>
+                    <p class="ma-0">{{ $t('index.booklistRecommendation') }}</p>
+                </div>
+            </v-col>
+            <v-col cols=12 md=6 v-for="b in homepage_booklists" :key="'home-booklist-' + b.id">
+                <BookListCard :booklist="b" :show-recommend-badge="true" @toggle-like="toggleBooklistLike" />
+            </v-col>
+        </v-row>
+    </div>
+
     <div class="home-section-card">
         <v-row>
             <v-col cols=12>
@@ -166,11 +180,13 @@
 <script>
 import BookCards from "~/components/BookCards.vue";
 import ReadingStatsBanner from "~/components/ReadingStatsBanner.vue";
+import BookListCard from "~/components/BookListCard.vue";
 export default {
     name: 'IndexPage',
     components: {
         BookCards,
         ReadingStatsBanner,
+        BookListCard,
     },
     computed: {
         get_random_books: function() {
@@ -299,11 +315,35 @@ export default {
         onReadingStatsHasData(hasData) {
             this.readingStatsHasData = hasData;
         },
+        async loadBooklists() {
+            try {
+                const rsp = await this.$backend('/booklists/homepage');
+                if (rsp.err === 'ok') {
+                    this.homepage_booklists = rsp.booklists || [];
+                }
+            } catch (error) {
+                console.warn('Failed to load homepage booklists:', error);
+            }
+        },
+        async toggleBooklistLike(b) {
+            try {
+                const rsp = await this.$backend(`/booklist/${b.id}/like`, { method: 'POST' });
+                if (rsp.err === 'ok') {
+                    b.liked_by_me = rsp.liked;
+                    b.like_count += rsp.liked ? 1 : -1;
+                } else if (rsp.err === 'user.need_login') {
+                    this.$router.push('/login');
+                }
+            } catch (e) {
+                // ignore
+            }
+        },
     },
     mounted() {
         this.loadLibraryStats();
         this.checkReleaseNotes();
         this.loadReadingBooks();
+        this.loadBooklists();
         // 强制重新渲染图片，修复从其他页面返回时的布局问题
         this.$nextTick(() => {
             window.dispatchEvent(new Event('resize'));
@@ -334,6 +374,7 @@ export default {
         random_books: [],
         new_books: [],
         social_recommend_books: [],
+        homepage_booklists: [],
         reading_books: [],
         readingStatsHasData: false,
         libraryStats: null,

@@ -952,6 +952,98 @@ class InstalledTool(Base, SQLAlchemyMixin):
         }
 
 
+class BookList(Base, SQLAlchemyMixin):
+    """用户自建书单，见 document/BookList_Design.md。删除为物理硬删除（非关键数据，不做软删除），
+    关联的 BookListBook / BookListLike 记录在 service 层同一事务里一并删除。"""
+
+    __tablename__ = "booklists"
+
+    COLORS = ("marine", "velvet", "night_blue", "green", "yellow", "red", "purple", "orange")
+    DEFAULT_COLOR = "marine"
+    MAX_PER_USER = 20
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reader_id = Column(Integer, ForeignKey("readers.id"), nullable=False)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), default="", nullable=False)
+    color = Column(String(16), nullable=False, default=DEFAULT_COLOR)
+    is_public = Column(Boolean, nullable=False, default=False)
+    is_sticky = Column(Boolean, nullable=False, default=False)
+    sticky_order = Column(Integer, nullable=True)
+    view_count = Column(Integer, nullable=False, default=0)
+    like_count = Column(Integer, nullable=False, default=0)
+    book_count = Column(Integer, nullable=False, default=0)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=False)
+
+    reader = relationship(Reader)
+
+    __table_args__ = (
+        Index("ix_booklist_reader", "reader_id", "update_time"),
+        Index("ix_booklist_public", "is_public", "is_sticky", "update_time"),
+    )
+
+    def __init__(self, reader_id, name, description="", color=None, is_public=False):
+        super(BookList, self).__init__()
+        self.reader_id = reader_id
+        self.name = name
+        self.description = description or ""
+        self.color = color if color in self.COLORS else self.DEFAULT_COLOR
+        self.is_public = is_public
+        self.is_sticky = False
+        self.view_count = 0
+        self.like_count = 0
+        self.book_count = 0
+        now = datetime.datetime.now()
+        self.create_time = now
+        self.update_time = now
+
+
+class BookListBook(Base, SQLAlchemyMixin):
+    """书单-书籍关联表。book_id 不建跨库外键（Calibre 库独立管理，同 Item.book_id 的做法），
+    书籍被删除后本表记录成为悬空引用，展示层需要跳过/兼容。"""
+
+    __tablename__ = "booklist_books"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    booklist_id = Column(Integer, ForeignKey("booklists.id"), nullable=False)
+    book_id = Column(Integer, nullable=False)
+    update_time = Column(DateTime, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("booklist_id", "book_id", name="ux_booklist_book"),
+        Index("ix_booklist_books_booklist", "booklist_id", "update_time"),
+    )
+
+    def __init__(self, booklist_id, book_id):
+        super(BookListBook, self).__init__()
+        self.booklist_id = booklist_id
+        self.book_id = book_id
+        self.update_time = datetime.datetime.now()
+
+
+class BookListLike(Base, SQLAlchemyMixin):
+    """书单点赞/收藏关系表。侧边栏"收藏书单" = 当前用户在本表中的所有记录对应的书单。"""
+
+    __tablename__ = "booklist_likes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    booklist_id = Column(Integer, ForeignKey("booklists.id"), nullable=False)
+    reader_id = Column(Integer, ForeignKey("readers.id"), nullable=False)
+    create_time = Column(DateTime, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("booklist_id", "reader_id", name="ux_booklist_like"),
+        Index("ix_booklist_likes_reader", "reader_id", "create_time"),
+    )
+
+    def __init__(self, booklist_id, reader_id):
+        super(BookListLike, self).__init__()
+        self.booklist_id = booklist_id
+        self.reader_id = reader_id
+        self.create_time = datetime.datetime.now()
+
+
 def user_syncdb(engine):
     Base.metadata.create_all(engine)
 
@@ -959,7 +1051,7 @@ def user_syncdb(engine):
 # 表结构随功能迭代新增的表，不希望依赖运维方手动重新执行 `--syncdb` 才能用上
 # （`docker/start.sh` 每次启动都会跑 --syncdb，但手工部署/测试环境不一定会），
 # 在正常的 make_app() 启动路径里也顺带补建一次，checkfirst=True 天然幂等。
-_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview, InstalledTool, BookReadingStats)
+_NEW_TABLES_AUTO_ENSURE = (ReadingRecord, BookReview, InstalledTool, BookReadingStats, BookList, BookListBook, BookListLike)
 
 
 def ensure_new_tables(engine):

@@ -62,7 +62,8 @@
       "reading": "在读",
       "toRead": "待读",
       "finished": "已读"
-    }
+    },
+    "booklistRecommendation": "书单推荐"
   },
   "listBook": {
     "title": "书籍列表",
@@ -679,7 +680,10 @@
     "restore": "恢复生成",
     "delete": "删除",
     "ok": "确定",
-    "backToHome": "返回首页"
+    "backToHome": "返回首页",
+    "edit": "编辑",
+    "save": "保存",
+    "loadMore": "加载更多"
   },
   "settings": {
     "hint": "系统使用手册",
@@ -897,7 +901,8 @@
     "enable_book_review": "允许用户对书籍进行评论及评分",
     "review_requires_approval": "评论需要审核后才能展示（仅在允许评论时生效）",
     "enable_book_recommend_to_others": "展示其他用户评论过的书籍",
-    "enable_shared_notes": "阅读时支持查看其他用户的划线与笔记"
+    "enable_shared_notes": "阅读时支持查看其他用户的划线与笔记",
+    "enable_homepage_booklists": "首页展示书单推荐"
   },
   "user": {
     "avatar": "头像",
@@ -1056,7 +1061,11 @@
     "memoCancel": "取消",
     "memoSubmitSuccess": "留言已成功提交，我们将稍后查看处理。",
     "memoSubmitFailed": "留言提交失败，请稍后重试",
-    "memoContentRequired": "请输入留言内容"
+    "memoContentRequired": "请输入留言内容",
+    "myBooklists": "我的书单",
+    "booklists": "书单",
+    "publicBooklists": "公共书单",
+    "likedBooklists": "收藏书单"
   },
   "language": {
     "zh": "简体中文",
@@ -1106,7 +1115,8 @@
     "audioPlayFailed": "音频播放失败",
     "sendDeviceSuccess": "书籍已成功发送到 {name}",
     "sendDeviceFailed": "发送失败，请稍后重试",
-    "fillDeviceInfo": "请完整填写设备信息"
+    "fillDeviceInfo": "请完整填写设备信息",
+    "operationSuccess": "操作成功"
   },
   "bookCards": {
     "browseDetails": "点击浏览详情"
@@ -1863,5 +1873,56 @@
     "taskNotFound": "任务已中断或服务重启",
     "runPartial": "批量完成：成功 {ok} 本，失败 {fail} 本",
     "batchFail": "书籍 {id} 失败：{err}"
+  },
+  "booklist": {
+    "color": {
+      "marine": "Marine 海蓝",
+      "velvet": "Velvet 绒红",
+      "night_blue": "Night Blue 午夜蓝",
+      "green": "Green 绿",
+      "yellow": "Yellow 黄",
+      "red": "Red 红",
+      "purple": "Purple 紫",
+      "orange": "Orange 橙"
+    },
+    "recommendedBadge": "为您推荐",
+    "noDescription": "暂无描述",
+    "noBooks": "暂无书籍",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "makePrivate": "设为私有",
+    "makePublic": "设为公开",
+    "changeColor": "切换颜色",
+    "createTitle": "创建书单",
+    "editTitle": "编辑书单",
+    "fieldName": "书单名称",
+    "nameRequired": "书单名称不能为空",
+    "fieldDescription": "描述",
+    "fieldColor": "选择颜色",
+    "publicHint": "公开：其他人可浏览",
+    "privateHint": "私有：仅自己可见",
+    "addBooksTitle": "添加书籍",
+    "searchPlaceholder": "按书名、作者、ISBN 等搜索…",
+    "searchHint": "输入书名/作者/ISBN 等关键字搜索",
+    "searchNotFound": "未找到相关书籍",
+    "addToBooklist": "加入书单",
+    "added": "已添加",
+    "filterMyBooklists": "筛选我的书单",
+    "noMatchingBooklists": "没有匹配的书单",
+    "createAndAdd": "创建新书单并加入",
+    "createdAndAdded": "已创建书单并加入这本书",
+    "myBooklistsTitle": "我的书单",
+    "createNew": "创建书单",
+    "noBooklistsYet": "还没有创建任何书单",
+    "deleteConfirmTitle": "删除书单",
+    "deleteConfirmText": "确定要删除书单\"{name}\"吗？此操作不可恢复。",
+    "publicBooklistsTitle": "公共书单",
+    "noPublicBooklists": "暂无公共书单",
+    "likedBooklistsTitle": "收藏书单",
+    "noLikedBooklists": "还没有收藏任何书单",
+    "notFound": "书单不存在或无权访问",
+    "orderDesc": "从新到旧",
+    "orderAsc": "从旧到新",
+    "removeConfirmText": "确定要将《{title}》移出书单吗？"
   }
 }

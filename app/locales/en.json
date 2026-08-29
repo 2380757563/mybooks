@@ -62,7 +62,8 @@
       "reading": "Reading",
       "toRead": "To Read",
       "finished": "Finished"
-    }
+    },
+    "booklistRecommendation": "Booklist Recommendations"
   },
   "listBook": {
     "title": "Book List",
@@ -664,7 +665,8 @@
     "enable_book_review": "Allow users to rate and review books",
     "review_requires_approval": "Reviews require approval before showing (only when reviews are allowed)",
     "enable_book_recommend_to_others": "Allow users to recommend books to others",
-    "enable_shared_notes": "Allow readers to see other users' highlights and notes while reading"
+    "enable_shared_notes": "Allow readers to see other users' highlights and notes while reading",
+    "enable_homepage_booklists": "Show booklist recommendations on homepage"
   },
   "book": {
     "readingStats": {
@@ -896,7 +898,10 @@
     "restore": "Restore",
     "ok": "OK",
     "delete": "Delete",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "edit": "Edit",
+    "save": "Save",
+    "loadMore": "Load more"
   },
   "user": {
     "avatar": "Avatar",
@@ -1054,7 +1059,11 @@
     "memoCancel": "Cancel",
     "memoSubmitSuccess": "Message submitted successfully, we will review and process it later.",
     "memoSubmitFailed": "Failed to submit message, please try again later",
-    "memoContentRequired": "Please enter your message"
+    "memoContentRequired": "Please enter your message",
+    "myBooklists": "My Booklists",
+    "booklists": "Booklists",
+    "publicBooklists": "Public Booklists",
+    "likedBooklists": "Liked Booklists"
   },
   "language": {
     "zh": "简体中文",
@@ -1104,7 +1113,8 @@
     "audioPlayFailed": "Audio playback failed",
     "sendDeviceSuccess": "Book successfully sent to {name}",
     "sendDeviceFailed": "Send failed, please try again later",
-    "fillDeviceInfo": "Please fill in all device information"
+    "fillDeviceInfo": "Please fill in all device information",
+    "operationSuccess": "Operation succeeded"
   },
   "bookCards": {
     "browseDetails": "Click to browse details"
@@ -1862,5 +1872,56 @@
     "taskNotFound": "Task interrupted",
     "runPartial": "Batch done: {ok} ok, {fail} failed",
     "batchFail": "Book {id} failed: {err}"
+  },
+  "booklist": {
+    "color": {
+      "marine": "Marine",
+      "velvet": "Velvet",
+      "night_blue": "Night Blue",
+      "green": "Green",
+      "yellow": "Yellow",
+      "red": "Red",
+      "purple": "Purple",
+      "orange": "Orange"
+    },
+    "recommendedBadge": "Recommended",
+    "noDescription": "No description",
+    "noBooks": "No books yet",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "makePrivate": "Make Private",
+    "makePublic": "Make Public",
+    "changeColor": "Change Color",
+    "createTitle": "Create Booklist",
+    "editTitle": "Edit Booklist",
+    "fieldName": "Booklist Name",
+    "nameRequired": "Booklist name is required",
+    "fieldDescription": "Description",
+    "fieldColor": "Choose Color",
+    "publicHint": "Public: visible to everyone",
+    "privateHint": "Private: visible to you only",
+    "addBooksTitle": "Add Books",
+    "searchPlaceholder": "Search by title, author, ISBN…",
+    "searchHint": "Enter a title, author, ISBN, etc. to search",
+    "searchNotFound": "No matching books found",
+    "addToBooklist": "Add to Booklist",
+    "added": "Added",
+    "filterMyBooklists": "Filter my booklists",
+    "noMatchingBooklists": "No matching booklists",
+    "createAndAdd": "Create new booklist and add",
+    "createdAndAdded": "Booklist created and this book added",
+    "myBooklistsTitle": "My Booklists",
+    "createNew": "Create Booklist",
+    "noBooklistsYet": "No booklists yet",
+    "deleteConfirmTitle": "Delete Booklist",
+    "deleteConfirmText": "Delete booklist \"{name}\"? This cannot be undone.",
+    "publicBooklistsTitle": "Public Booklists",
+    "noPublicBooklists": "No public booklists yet",
+    "likedBooklistsTitle": "Liked Booklists",
+    "noLikedBooklists": "You haven't liked any booklists yet",
+    "notFound": "Booklist not found or access denied",
+    "orderDesc": "Newest first",
+    "orderAsc": "Oldest first",
+    "removeConfirmText": "Remove \"{title}\" from this booklist?"
   }
 }

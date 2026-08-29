@@ -542,6 +542,7 @@ class AdminSettings(BaseHandler):
             "ALLOW_USER_DISABLE_STATISTIC",
             "ENABLE_HOMEPAGE_READING_STATS",
             "ENABLE_HOMEPAGE_READING_BOOKS",
+            "ENABLE_HOMEPAGE_BOOKLISTS",
             "ENABLE_BOOK_REVIEW",
             "REVIEW_REQUIRES_APPROVAL",
             "ENABLE_BOOK_RECOMMEND_TO_OTHERS",

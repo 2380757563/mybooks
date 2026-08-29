@@ -614,6 +614,7 @@ export default {
                     expand: this.isPathMatch("/user/"),
                     groups: [
                         { icon: "mdi-account-cog", href: "/user/usersettings", text: "appHeader.user_setting", color: "primary" },
+                        { icon: "mdi-format-list-bulleted-square", href: "/user/booklists", text: "appHeader.myBooklists", color: "teal"},
                         { icon: "mdi-shield-account", href: "/soledbooks", text: "appHeader.soledBooks", color: "#EDC10A"},
                         { icon: "mdi-notebook", href: "/expected", text: "expected.title", color: "green"},
                     ],
@@ -660,6 +661,16 @@ export default {
             const nav_links = [
                 { icon: "mdi-headphones", href: "/audiobooks", text: "appHeader.audioBooks", count: this.sys.audiobooks, color: "purple"},
                 ...(this.sys.allow.physical_books ? [{ icon: "mdi-bookshelf", href: "/printbooks", text: "appHeader.physicalBooks", count: this.sys.physicals, color: "orange"}] : []),
+                {
+                    icon: "mdi-view-list",
+                    text: "appHeader.booklists",
+                    expand: this.isPathMatch("/booklists/"),
+                    color: "teal",
+                    groups: [
+                        { icon: "mdi-view-grid-plus", href: "/booklists", text: "appHeader.publicBooklists", color: "teal" },
+                        { icon: "mdi-heart-multiple", href: "/booklists/liked", text: "appHeader.likedBooklists", color: "red" },
+                    ],
+                },
                 { icon: "mdi-account-group", href: "/author", text: "appHeader.authors", count: this.sys.authors, color: "primary"},
                 { icon: "category", href: "/categories", text: "appHeader.categoryBrowse", count: this.sys.categories, color: "green" },
                 { icon: "mdi-tag-heart", href: "/tag", text: "appHeader.tags", count: this.sys.tags, color: "green"},

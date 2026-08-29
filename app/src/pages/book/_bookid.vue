@@ -543,6 +543,21 @@
                                         </template>
                                         <span>{{ $t('readingState.wantsHint') }}</span>
                                     </v-tooltip>
+                                    <BookListQuickAddMenu v-if="$store.state.user?.is_login" :book-id="book.id">
+                                        <template v-slot:activator="{ on, attrs }">
+                                            <v-tooltip bottom>
+                                                <template v-slot:activator="{ on: onTooltip, attrs: attrsTooltip }">
+                                                    <v-btn icon small class="ml-1" color="grey"
+                                                        v-bind="{ ...attrs, ...attrsTooltip }"
+                                                        v-on="{ ...on, ...onTooltip }"
+                                                    >
+                                                        <v-icon>mdi-playlist-plus</v-icon>
+                                                    </v-btn>
+                                                </template>
+                                                <span>{{ $t('booklist.addToBooklist') }}</span>
+                                            </v-tooltip>
+                                        </template>
+                                    </BookListQuickAddMenu>
                                     <v-tooltip bottom v-if="book.sole">
                                         <template v-slot:activator="{ on, attrs }">
                                             <v-btn icon small class="ml-1" v-bind="attrs" v-on="on">
@@ -1434,6 +1449,7 @@ import BookCards from "~/components/BookCards.vue";
 import BookSocialInfo from "~/components/BookSocialInfo.vue";
 import BookReviewList from "~/components/BookReviewList.vue";
 import BookReviewDialog from "~/components/BookReviewDialog.vue";
+import BookListQuickAddMenu from "~/components/BookListQuickAddMenu.vue";
 import QRCode from "qrcode";
 import { languageOptions } from "~/utils/languageCodes";
 import { toStars } from "~/utils/rating";
@@ -1444,6 +1460,7 @@ export default {
         BookSocialInfo,
         BookReviewList,
         BookReviewDialog,
+        BookListQuickAddMenu,
     },
     computed: {
         showUserInfo() {

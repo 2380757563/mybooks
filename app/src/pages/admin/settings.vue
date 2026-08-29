@@ -1092,6 +1092,12 @@ export default {
             type: "checkbox",
           },
           {
+            icon: "mdi-format-list-bulleted-square",
+            key: "ENABLE_HOMEPAGE_BOOKLISTS",
+            label: "settings.enable_homepage_booklists",
+            type: "checkbox",
+          },
+          {
             icon: "mdi-star-outline",
             key: "ENABLE_BOOK_REVIEW",
             label: "settings.enable_book_review",
