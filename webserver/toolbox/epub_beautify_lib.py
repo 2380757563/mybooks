@@ -1164,7 +1164,7 @@ def analyze_epub(epub_path: str, sample_limit: int = 20) -> dict:
     raw_toc = []
     if ctx.ncx_path and ctx.ncx_path in entries:
         raw_toc = [(lv, title, src) for lv, title, src in _parse_ncx(entries[ctx.ncx_path])]
-    elif ctx.nav_path and ctx.nav_path in entries:
+    if not raw_toc and ctx.nav_path and ctx.nav_path in entries:
         raw_toc = [(lv, title, href) for lv, title, href in _parse_nav_doc(entries[ctx.nav_path])]
     for lv, title, _src in raw_toc:
         if title and _toc_entry_allowed(title):
