@@ -33,7 +33,7 @@
             v-model="dialog"
             type="action"
             :title="$t('upload.title')"
-            color="teal darken-4"
+            color="#003153"
             width="360"
             transition="dialog-bottom-transition"
             :dismiss-label="$t('upload.close')"
