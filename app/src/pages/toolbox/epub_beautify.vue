@@ -17,7 +17,7 @@
       <!-- ═══ 左栏：配置（① 选书 → ② 挑风格 → ③ 微调） ═══ -->
       <v-col cols="12" lg="7" class="pt-0">
         <!-- ─── ① 选书 ─── -->
-        <v-card outlined rounded="lg" class="eb-card mb-4 pa-5">
+        <v-card outlined class="eb-card mb-4 pa-5 rounded-lg">
           <div class="d-flex align-center mb-3">
             <span class="eb-stepnum mr-2">1</span>
             <span class="text-subtitle-1 font-weight-bold">{{ $t('epubBeautify.selectBookTitle') }}</span>
@@ -70,8 +70,8 @@
                   <v-list-item-subtitle class="eb-book-author">{{ (book.authors || []).join(', ') }}</v-list-item-subtitle>
                   <div class="mt-1">
                     <v-chip
-                      v-for="file in (book.files || [])"
-                      :key="file.format"
+                      v-for="(file, idx) in (book.files || [])"
+                      :key="file.format + '_' + idx"
                       x-small
                       :color="file.format === 'EPUB' ? 'primary' : 'default'"
                       outlined
@@ -88,7 +88,7 @@
 
           <!-- 分析结果 / 体检报告 -->
           <template v-if="selected">
-            <v-alert v-if="analysisError" type="error" dense text rounded="lg" class="mb-0 mt-3">{{ analysisError }}</v-alert>
+            <v-alert v-if="analysisError" type="error" dense text rounded class="mb-0 mt-3">{{ analysisError }}</v-alert>
             <div v-else-if="analysis" class="eb-health mt-3">
               <div class="eb-health-head" @click="healthOpen = !healthOpen">
                 <v-icon small class="mr-1" :class="{ 'eb-arr-open': healthOpen }">mdi-chevron-right</v-icon>
@@ -121,7 +121,7 @@
         </v-card>
 
         <!-- ─── ② 挑风格 ─── -->
-        <v-card outlined rounded="lg" class="eb-card mb-4 pa-5">
+        <v-card outlined class="eb-card mb-4 pa-5 rounded-lg">
           <div class="d-flex align-center mb-3">
             <span class="eb-stepnum mr-2">2</span>
             <span class="text-subtitle-1 font-weight-bold">{{ $t('epubBeautify.presetTitle') }}</span>
@@ -158,7 +158,7 @@
             <v-col v-for="ts in tocStyles" :key="ts.id" cols="6" sm="3" class="mb-1">
               <v-card
                 outlined
-                rounded="lg"
+                rounded
                 :class="['eb-preset', { 'eb-preset-selected': tocStyle === ts.id }]"
                 @click="tocStyle = ts.id"
               >
@@ -171,8 +171,8 @@
                     <div v-if="ts.id === 'cool'" class="eb-toc-mock" :style="{ backgroundColor: currentPreset.accent, backgroundImage: currentPreset.toc_gradient, color: '#F5E6D0', borderBottom: '1px solid #C9A96A' }">目 录</div>
                     <div v-else-if="ts.id === 'minimal'" class="eb-toc-mock" :style="{ background: 'transparent', color: currentPreset.accent, letterSpacing: '0.3em', fontSize: '0.72rem', fontWeight: 600 }">目 录</div>
                     <div v-else class="eb-toc-mock" :style="{ background: ts.id === 'seal' ? '#FFFFFF' : currentPreset.accent_light, color: currentPreset.accent, borderTop: ts.id === 'elegant' ? ('2px solid ' + currentPreset.accent) : 'none', textAlign: ts.id === 'seal' ? 'left' : 'center' }">目 录<span v-if="ts.id === 'seal'" style="background:#B54942;color:#F5E6D0;font-size:0.6em;padding:0 3px;border-radius:2px;margin-left:4px">隐</span></div>
-                    <div class="eb-toc-row" :style="ts.id === 'minimal' ? { borderBottom: 'none' } : {}"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">01</span>第一章 血尸</div>
-                    <div class="eb-toc-row" :style="{ borderBottom: 'none' }"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">02</span>第二章 五十年后<template v-if="ts.id === 'seal'"><span style="float:right;color:#A2906A">\ ✦</span></template></div>
+                    <div class="eb-toc-row" :style="ts.id === 'minimal' ? { borderBottom: 'none' } : {}"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">01</span>第一章 示例标题</div>
+                    <div class="eb-toc-row" :style="{ borderBottom: 'none' }"><span :style="{ color: ts.id === 'minimal' ? (currentPreset.muted || '#999') : currentPreset.accent, fontWeight: ts.id === 'minimal' ? 400 : 700 }">02</span>第二章 示例标题<template v-if="ts.id === 'seal'"><span style="float:right;color:#A2906A">\ ✦</span></template></div>
                   </div>
                 </v-card-text>
               </v-card>
@@ -181,7 +181,7 @@
         </v-card>
 
         <!-- ─── ③ 微调选项（默认收起） ─── -->
-        <v-expansion-panels flat outlined class="eb-panels">
+        <v-expansion-panels flat class="eb-panels" style="border:1px solid #e0e0e0">
           <v-expansion-panel>
             <v-expansion-panel-header class="eb-tune-head">
               <div class="d-flex align-center min-width-0">
@@ -233,7 +233,6 @@
                     :max="1.5"
                     :step="0.05"
                     thumb-label="always"
-                    dense
                     hide-details
                     class="mt-0 pt-0"
                     style="max-width:230px"
@@ -438,23 +437,23 @@
                 </div>
               </template>
                 <template v-else-if="previewTab === 'ch'">
-                <!-- 竖排古籍：整体竖排渲染 -->
+                <!-- 竖排古籍：整体竖排渲染（titleSplit 亦生效） -->
                 <div v-if="currentPreset.id === 'vertclassical'" class="eb-vpad">
                   <div class="eb-vbody" :style="{ background: currentPreset.accent_light, borderLeftColor: currentPreset.border, borderRightColor: currentPreset.border, fontFamily: bodyFont }">
-                    <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }">{{ chapterSample }}</div>
+                    <div class="eb-vtitle" :style="{ color: currentPreset.accent, fontFamily: kaiFont }"><template v-if="titleSplit && splitSample"><span style="display:block;font-size:0.6em;opacity:0.7;letter-spacing:0.2em">{{ splitSample[0] }}</span>{{ splitSample[1] }}</template><template v-else>{{ chapterSample }}</template></div>
                     <div>{{ chapterParas[0] }}</div>
                     <div>{{ chapterParas[1] }}</div>
                   </div>
                   <div class="eb-vnote">← {{ $t('epubBeautify.verticalNote') }}</div>
                 </div>
                 <div v-else>
-                  <!-- 章节标题：按预设特例渲染 -->
-                  <div v-if="currentPreset.id === 'inkstone'" class="eb-t-ink" :style="{ background: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                  <!-- 章节标题：按预设特例渲染（titleSplit 对三特例亦生效） -->
+                  <div v-if="currentPreset.id === 'inkstone'" class="eb-t-ink" :style="{ background: currentPreset.accent, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num" style="display:block;font-size:0.55em;opacity:0.85;letter-spacing:0.35em;margin-bottom:2px">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
                   <div v-else-if="currentPreset.id === 'xuanzhi'" class="eb-t-xz-wrap">
-                    <div class="eb-t-xz-title" :style="{ color: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                    <div class="eb-t-xz-title" :style="{ color: currentPreset.accent, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num" style="display:block;font-size:0.55em;opacity:0.7;letter-spacing:0.3em;margin-bottom:4px">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
                     <div class="eb-t-xz-bar mx-auto" :style="{ background: currentPreset.accent }"></div>
                   </div>
-                  <div v-else-if="currentPreset.id === 'modern'" class="eb-t-leftbar" :style="{ color: currentPreset.accent, borderLeftColor: currentPreset.accent, fontFamily: headFont }">{{ chapterSample }}</div>
+                  <div v-else-if="currentPreset.id === 'modern'" class="eb-t-leftbar" :style="{ color: currentPreset.accent, borderLeftColor: currentPreset.accent, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num" style="display:block;font-size:0.6em;opacity:0.7;letter-spacing:0.3em;margin-bottom:2px">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
                   <div v-else class="eb-t-card" :class="{ 'eb-round': currentPreset.id === 'children' }" :style="{ background: currentPreset.accent_light, color: currentPreset.accent, borderTopColor: currentPreset.accent, borderBottomColor: currentPreset.border, fontFamily: headFont }"><template v-if="titleSplit && splitSample"><span class="eb-t-num">{{ splitSample[0] }}</span><span class="eb-t-title">{{ splitSample[1] }}</span></template><template v-else>{{ chapterSample }}</template></div>
 
                   <!-- 标题下长线 -->
@@ -465,20 +464,22 @@
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[0] }}</p>
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[1] }}</p>
                   <p v-if="dialogue" class="eb-p eb-dialog-demo" :class="{ 'eb-spacing': !paraIndent }" :style="dialogueStyle">{{ dialogDemoText }}</p>
-                  <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」</blockquote>
                   <p :class="['eb-p', paraIndent ? 'eb-indent' : 'eb-spacing']" :style="paraPStyle">{{ chapterParas[2] }}<sup v-if="notesOn" :style="{color: currentPreset.accent, fontWeight: 700, fontSize: '0.78em'}"> {{ markGlyph }}</sup></p>
                   <!-- 弹注注释卡预览（章末/弹出内容样式） -->
                   <div v-if="notesOn" :style="{background: currentPreset.quote_bg, borderLeft: '3px solid ' + currentPreset.accent, borderRadius: '3px', padding: '7px 9px', marginTop: '14px'}">
                     <div class="caption" :style="{fontFamily: kaiFont, color: '#666', lineHeight: 1.6}"><span :style="{color: currentPreset.muted}">{{ markGlyph }}</span> {{ $t('epubBeautify.notesPreviewLine') }}</div>
                   </div>
+                  <!-- 引文样式演示（保留但标“演示”并置末，避免全书误为正文） -->
+                  <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px', marginTop: '16px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」<span class="caption grey--text ml-2" style="font-size:10px; vertical-align:middle;">（样式演示）</span></blockquote>
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
-                <!-- 目录预览：按目录形式渲染 -->
-                <div class="eb-tocbig">
+                <!-- 目录预览：按目录形式渲染（tocIsMock 时标“示例”） -->
+                <div class="eb-tocbig" :class="{ 'eb-toc-cols': tocColumns && tocStyle !== 'seal' }">
+                  <div v-if="tocIsMock" class="caption grey--text text-center mb-2">（示例 — 未读取到真实目录）</div>
                   <div v-if="tocStyle === 'elegant'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-th-elegant" :style="{ background: currentPreset.accent_light, borderTopColor: currentPreset.accent, color: currentPreset.accent }">目 录<div class="eb-th-sub" :style="{ color: currentPreset.muted }">CONTENTS</div></div>
-                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
+                    <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
                       <span class="eb-num-badge" :style="{ background: currentPreset.accent_light, color: currentPreset.accent }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                     </div>
                     <div class="text-center py-2" :style="{ color: currentPreset.accent, fontSize: '11px' }">◆</div>
@@ -486,7 +487,7 @@
                   <div v-else-if="tocStyle === 'cool'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-cool-head" :style="{ background: currentPreset.toc_gradient || currentPreset.accent }">目 录<div class="eb-th-sub">CONTENTS</div></div>
                     <div class="eb-cool-items" :style="{ borderLeftColor: currentPreset.accent, background: currentPreset.quote_bg }">
-                      <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-cool-row" :style="{ borderBottomColor: currentPreset.border }">
+                      <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-cool-row" :style="{ borderBottomColor: currentPreset.border }">
                         <span :style="{ color: currentPreset.accent, fontWeight: 800, fontSize: '14px', minWidth: '24px' }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                       </div>
                     </div>
@@ -496,15 +497,16 @@
                       <span class="eb-seal-title" :style="{ color: currentPreset.accent }">目 录</span>
                       <span class="eb-seal-stamp">隐</span>
                     </div>
-                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-seal-row">
+                    <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-seal-row">
                       <span :style="{ color: currentPreset.accent, fontWeight: 700, fontSize: '12px' }">{{ r[0] }}</span>
                       <span class="flex-grow-1 eb-rt">{{ r[1] }}</span>
                       <span style="color:#A2906A;font-size:11px">\ ✦</span>
                     </div>
+                    <div v-if="tocColumns" class="caption grey--text text-center mt-2">（朱印表格不支持分栏）</div>
                   </div>
                   <div v-else class="eb-min-frame">
                     <div class="eb-min-head" :style="{ color: currentPreset.accent }">目 录</div>
-                    <div v-for="(r, i) in tocSampleRows" :key="i" class="eb-min-row">
+                    <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-min-row">
                       <span :style="{ color: currentPreset.muted, minWidth: '18px', fontSize: '12px' }">{{ r[0] }}</span><span class="eb-rt">{{ r[1] }}</span>
                     </div>
                     <div class="eb-min-end" :style="{ borderTopColor: currentPreset.border }"></div>
@@ -654,11 +656,11 @@ export default {
     previewTab: 'ch',
     healthOpen: true,
     tocMockRows: [
-      ['01', '第一章 血尸'],
-      ['02', '第二章 五十年后'],
-      ['03', '第三章 夜话'],
-      ['04', '第四章 山神庙'],
-      ['05', '第五章 雪夜来客'],
+      ['01', '第一章 示例标题'],
+      ['02', '第二章 示例标题'],
+      ['03', '第三章 示例标题'],
+      ['04', '第四章 示例标题'],
+      ['05', '第五章 示例标题'],
     ],
 
     processing: false,
@@ -692,11 +694,12 @@ export default {
       return titles.map((t, i) => (i + 1) + '. ' + t).join('\n');
     },
     chapterSample() {
-      // 优先用首章真实标题（正文识别命中），其次目录预览标题
+      // 优先用首章真实标题（正文识别命中），其次目录预览标题，最后通用示例（不派生书名，避免误为真实目录）
       const pc = this.analysis && this.analysis.preview_chapter;
       if (pc && pc.title) return pc.title;
       const t = this.analysis && this.analysis.toc_preview_titles;
-      return (t && t[0]) || '第一章 血尸';
+      if (t && t[0]) return t[0];
+      return '第一章 示例标题';
     },
     // 首章真实段落（≤3）；不足或未命中时回落示例文案
     chapterParas() {
@@ -751,11 +754,21 @@ export default {
     },
     tocSampleRows() {
       const t = (this.analysis && this.analysis.toc_preview_titles) || [];
-      if (!t.length) return this.tocMockRows;
+      if (!t.length) return null;
       return t.slice(0, 5).map((title, i) => [('0' + (i + 1)).slice(-2), title]);
     },
+    tocSampleRowsDisplay() {
+      // 真实数据优先，空时回落示例并由模板标“示例”避免误为真实目录
+      return this.tocSampleRows || this.tocMockRows;
+    },
+    tocIsMock() {
+      return !this.tocSampleRows;
+    },
     splitSample() {
-      const m = this.chapterSample.trim().match(
+      const s = this.chapterSample.trim();
+      // 卷级不拆（与后端 _is_volume_text 同口径）
+      if (/^\s*(?:【\[\s*)?(?:第\s*[\d零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]|0*\d{1,4}\s*卷|卷\s*[\d零〇一二三四五六七八九十百千万兩两]+|[上中下]\s*卷)/i.test(s)) return null;
+      const m = s.match(
         /^\s*(第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[章节回篇卷部集季]|(?:chapter|chap\.?)\s*\d+)[\s、．.:：\-—·]*(.+)$/i);
       return m ? [m[1].replace(/\s+/g, ''), m[2]] : null;
     },
@@ -785,7 +798,7 @@ export default {
       const a = this.analysis || {};
       return {
         leading: (a.leading_space_paras || 0) > 0,
-        empty: (a.empty_para_est || 0) > 100,
+        empty: (a.empty_para_est || 0) > 20,
         meta: !!a.calibre_soup || (a.p_close_mismatch_files || 0) > 0,
       };
     },
@@ -798,7 +811,7 @@ export default {
     },
     cleanEmptyDesc() {
       const n = this.analysis && this.analysis.empty_para_est;
-      return n > 100 ? this.$t('epubBeautify.cleanEmptyRec', { count: n }) : this.$t('epubBeautify.cleanEmptyDesc');
+      return n > 20 ? this.$t('epubBeautify.cleanEmptyRec', { count: n }) : this.$t('epubBeautify.cleanEmptyDesc');
     },
     cleanMetaDesc() {
       const risky = this.analysis && (this.analysis.calibre_soup || this.analysis.p_close_mismatch_files > 0);
@@ -1008,10 +1021,10 @@ export default {
       }
     },
     applyCleanupRecommendations() {
-      // 按体检结果自动勾选推荐项（只增不减）
-      if (this.recs.leading) this.cleanLeading = true;
-      if (this.recs.empty) this.cleanEmpty = true;
-      if (this.recs.meta) this.cleanMeta = true;
+      // 按体检结果自动对齐开关（与徽章一致，双向同步）
+      this.cleanLeading = !!this.recs.leading;
+      this.cleanEmpty = !!this.recs.empty;
+      this.cleanMeta = !!this.recs.meta;
     },
     paletteOverridesPayload() {
       // 仅发送与预设默认不同的颜色；未动过取色器则不传（与原始预设对比，避免与已合并的 currentPreset 恒相等）
@@ -1083,6 +1096,9 @@ export default {
       this.selected = null;
       this.analysis = null;
       this.analysisError = '';
+      this.resultMsg = '';
+      this.resultDetails = [];
+      this.progressMsg = '';
       this.searched = false;
     },
     async selectBook(book) {
@@ -1110,6 +1126,7 @@ export default {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ book_id: book.id }),
         });
+        if (this.previewSeq !== curSeq) return;
         if (rsp.err === 'ok') {
           this.analysis = (rsp.data || {}).analysis || null;
           this.presets = (rsp.data || {}).presets || [];
@@ -1123,11 +1140,9 @@ export default {
               return s;
             });
           }
-          if (this.previewSeq !== curSeq) return;
           if (this.presets.length > 0) this.preset = this.presets[0].id;
           this.applyCleanupRecommendations();
         } else {
-          if (this.previewSeq !== curSeq) return;
           this.analysisError = rsp.msg || rsp.err;
         }
       } catch (e) {
@@ -1210,7 +1225,7 @@ export default {
       }
     },
     async startRun() {
-      if (this.processing || (!this.selected && !this.batchIds.length)) return;
+      if (this.processing || ((!this.selected || this.analysisError) && !this.batchIds.length)) return;
       this.resultMsg = '';
       this.newBookId = null;
       this.processing = true;
@@ -1710,6 +1725,19 @@ export default {
 .eb-tocbig {
   font-size: 14px;
   color: #33302b;
+}
+.eb-toc-cols .eb-toc-frame,
+.eb-toc-cols .eb-cool-items,
+.eb-toc-cols .eb-min-frame {
+  columns: 2;
+  column-gap: 1.6em;
+}
+.eb-toc-cols .eb-tr,
+.eb-toc-cols .eb-cool-row,
+.eb-toc-cols .eb-min-row,
+.eb-toc-cols .eb-seal-row {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
 }
 .eb-toc-frame {
   border: 1px solid;

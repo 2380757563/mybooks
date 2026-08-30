@@ -827,6 +827,7 @@ class AdminTextReplaceProgress(BaseHandler):
 
 class AdminEpubBeautifyPreview(BaseHandler):
     @js
+    @js
     @is_admin
     def post(self):
         data = tornado.escape.json_decode(self.request.body)
@@ -834,13 +835,17 @@ class AdminEpubBeautifyPreview(BaseHandler):
         if not book_id:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
         try:
-            result = EpubBeautifyTool().preview(int(book_id))
+            book_id = int(book_id)
+        except (TypeError, ValueError):
+            return {"err": "params.invalid", "msg": _("书籍 ID 不合法")}
+        try:
+            result = EpubBeautifyTool().preview(book_id)
         except RuntimeError as err:
             return {"err": "preview.failed", "msg": str(err)}
         except Exception as err:
             # 畸形 OPF/NCX（ET.ParseError 等）不应 500，转为友好业务错误
             logging.warning("[EpubBeautifyPreview] book_id=%s analyze failed: %s", book_id, err)
-            return {"err": "preview.failed", "msg": _("EPUB 解析失败，文件可能已损坏：%s") % err}
+            return {"err": "preview.failed", "msg": _("EPUB 解析失败，文件可能已损坏：%s") % str(err)[:200]}
         return {"err": "ok", "data": result}
 
 
@@ -1015,17 +1020,29 @@ class AdminEpubBeautifyBgMeta(BaseHandler):
 
 
 class AdminEpubBeautifyBgRaw(BaseHandler):
-    @is_admin
     def get(self):
+        # 手动鉴权（无 @js 时需显式 finish）
+        if not self.current_user:
+            self.set_status(401)
+            self.finish({"err": "user.need_login", "msg": _("请先登录")})
+            return
+        if not self.admin_user:
+            self.set_status(403)
+            self.finish({"err": "permission.not_admin", "msg": _("当前用户非管理员, 无权限操作")})
+            return
         p = EpubBeautifyTool().bg_image_path()
         if not os.path.exists(p):
             self.set_status(404)
-            self.write("Background image not found")
+            self.finish("Background image not found")
             return
-        self.set_header("Content-Type", "image/jpeg")
+        # 依实际文件类型返回正确 MIME
+        import mimetypes
+        mime = mimetypes.guess_type(p)[0] or "image/jpeg"
+        self.set_header("Content-Type", mime)
         self.set_header("Cache-Control", "no-store")
         with open(p, "rb") as f:
             self.write(f.read())
+        self.finish()
 
 
 class AdminEpubBeautifyBgDelete(BaseHandler):

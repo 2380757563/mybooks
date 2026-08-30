@@ -301,9 +301,10 @@ class BaseHandler(web.RequestHandler):
             raise web.Finish()
 
     def set_hosts(self):
-        # site_url为完整路径，用于发邮件等
-        host = self.request.headers.get("X-Forwarded-Host", self.request.host)
-        self.site_url = self.request.protocol + "://" + host
+        # site_url为完整路径，用于发邮件等 — 无条件信任反代透传的 Host / Proto（见 plan 域A）
+        host = self.request.headers.get("X-Forwarded-Host", self.request.host).split(",")[0].strip()
+        proto = self.request.headers.get("X-Forwarded-Proto", self.request.headers.get("X-Scheme", self.request.protocol)).split(",")[0].strip()
+        self.site_url = proto + "://" + host
 
         # 默认情况下，访问站内资源全部采用相对路径
         self.api_url = ""  # API动态请求地址
@@ -311,8 +312,8 @@ class BaseHandler(web.RequestHandler):
 
         # 如果设置有static_host配置，则改为绝对路径
         if CONF["static_host"]:
-            self.api_url = self.request.protocol + "://" + host
-            self.cdn_url = self.request.protocol + "://" + CONF["static_host"]
+            self.api_url = proto + "://" + host
+            self.cdn_url = proto + "://" + CONF["static_host"]
         CONF["site_url"] = self.site_url
 
     def prepare(self):
