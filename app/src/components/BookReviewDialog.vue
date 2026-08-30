@@ -1,8 +1,16 @@
 <template>
-    <v-dialog v-model="internalValue" max-width="420">
-        <v-card>
-            <v-card-title>{{ $t('book.reviewDialogTitle') }}</v-card-title>
-            <v-card-text>
+    <AppDialog
+        v-model="internalValue"
+        :persistent="false"
+        type="action"
+        :title="$t('book.reviewDialogTitle')"
+        max-width="420"
+        :dismiss-label="$t('book.cancel')"
+        :confirm-text="$t('book.recommend')"
+        :confirm-loading="saving"
+        :confirm-disabled="rating === 0"
+        @confirm="submit"
+    >
                 <div class="text-center mb-2">
                     <v-rating
                         v-model="ratingStars"
@@ -22,16 +30,7 @@
                     :label="$t('book.reviewCommentLabel')"
                     :placeholder="$t('book.reviewCommentPlaceholder')"
                 ></v-textarea>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="close">{{ $t('book.cancel') }}</v-btn>
-                <v-btn color="primary" :loading="saving" :disabled="rating === 0" @click="submit">
-                    {{ $t('book.recommend') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 </template>
 
 <script>

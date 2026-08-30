@@ -141,61 +141,62 @@
     </v-row>
 
     <!-- 本地上传安装（开发者模式） -->
-    <v-dialog v-model="installDialog" max-width="480">
-      <v-card>
-        <v-card-title>{{ $t('toolbox.installFromZip') }}</v-card-title>
-        <v-card-text>
-          <v-file-input
-            v-model="installFile"
-            accept=".zip"
-            :label="$t('toolbox.selectZip')"
-            show-size
-          ></v-file-input>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="installDialog = false">{{ $t('toolbox.cancel') }}</v-btn>
-          <v-btn color="primary" :loading="installing" :disabled="!installFile" @click="submitInstall">
-            {{ $t('toolbox.install') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="installDialog"
+      :persistent="false"
+      type="action"
+      :title="$t('toolbox.installFromZip')"
+      max-width="480"
+      :dismiss-label="$t('toolbox.cancel')"
+      :confirm-text="$t('toolbox.install')"
+      :confirm-loading="installing"
+      :confirm-disabled="!installFile"
+      @confirm="submitInstall"
+    >
+      <v-file-input
+        v-model="installFile"
+        accept=".zip"
+        :label="$t('toolbox.selectZip')"
+        show-size
+      ></v-file-input>
+    </AppDialog>
 
     <!-- 本地上传更新（开发者模式，builtin/tool 均可） -->
-    <v-dialog v-model="updateDialog" max-width="480">
-      <v-card>
-        <v-card-title>{{ $t('toolbox.updateTool', { name: updateTarget && updateTarget.name }) }}</v-card-title>
-        <v-card-text>
-          <v-file-input
-            v-model="updateFile"
-            accept=".zip"
-            :label="$t('toolbox.selectZip')"
-            show-size
-          ></v-file-input>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="updateDialog = false">{{ $t('toolbox.cancel') }}</v-btn>
-          <v-btn color="primary" :loading="updating" :disabled="!updateFile" @click="submitUpdate">
-            {{ $t('toolbox.update') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="updateDialog"
+      :persistent="false"
+      type="action"
+      :title="$t('toolbox.updateTool', { name: updateTarget && updateTarget.name })"
+      max-width="480"
+      :dismiss-label="$t('toolbox.cancel')"
+      :confirm-text="$t('toolbox.update')"
+      :confirm-loading="updating"
+      :confirm-disabled="!updateFile"
+      @confirm="submitUpdate"
+    >
+      <v-file-input
+        v-model="updateFile"
+        accept=".zip"
+        :label="$t('toolbox.selectZip')"
+        show-size
+      ></v-file-input>
+    </AppDialog>
 
     <!-- 卸载确认 -->
-    <v-dialog v-model="uninstallDialog" max-width="420">
-      <v-card>
-        <v-card-title>{{ $t('toolbox.uninstall') }}</v-card-title>
-        <v-card-text>{{ $t('toolbox.uninstallConfirm', { name: uninstallTarget && uninstallTarget.name }) }}</v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="uninstallDialog = false">{{ $t('toolbox.cancel') }}</v-btn>
-          <v-btn color="error" @click="doUninstall">{{ $t('toolbox.uninstall') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="uninstallDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('toolbox.uninstall')"
+      color="deep-orange"
+      confirm-dark
+      max-width="420"
+      :dismiss-label="$t('toolbox.cancel')"
+      :confirm-text="$t('toolbox.uninstall')"
+      @confirm="doUninstall"
+    >
+      {{ $t('toolbox.uninstallConfirm', { name: uninstallTarget && uninstallTarget.name }) }}
+    </AppDialog>
   </v-container>
 </template>
 

@@ -135,41 +135,40 @@
     </div>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="dialog" max-width="400">
-      <v-card>
-        <v-card-title class="headline">{{ $t('listBook.confirmBatchUpdate') }}</v-card-title>
-        <v-card-text v-html="$t('listBook.confirmBatchUpdateContent', { category: targetCategory, tag: currentTag, total: total })"></v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey darken-1" text @click="dialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" text @click="doBatchSet">{{ $t('common.ok') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="dialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('listBook.confirmBatchUpdate')"
+      max-width="400"
+      :confirm-text="$t('common.ok')"
+      @confirm="doBatchSet"
+    >
+      <div v-html="$t('listBook.confirmBatchUpdateContent', { category: targetCategory, tag: currentTag, total: total })"></div>
+    </AppDialog>
 
     <!-- Update Tags Confirmation Dialog -->
-    <v-dialog v-model="updateDialog" max-width="500">
-      <v-card>
-        <v-card-title class="headline">{{ $t('listBook.confirmUpdateTags') }}</v-card-title>
-        <v-card-text>
-          <div v-html="$t('listBook.confirmUpdateTagsContent', { tag: currentTag })"></div>
-          <div class="mt-2" v-html="$t('listBook.confirmUpdateTagsCount', { total: total })"></div>
-          <div class="mt-2 error--text" v-if="total > 300">
-            <v-icon color="error" small>mdi-alert</v-icon>
-            {{ $t('listBook.confirmUpdateTagsLimit') }}
-          </div>
-          <div class="mt-2 warning--text">
-            <v-icon color="warning" small>mdi-clock-alert</v-icon>
-            {{ $t('listBook.confirmUpdateTagsWarning') }}
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey darken-1" text @click="updateDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="error" text @click="doUpdateTags">{{ $t('listBook.confirmUpdateTagsButton') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="updateDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('listBook.confirmUpdateTags')"
+      color="error"
+      max-width="500"
+      :confirm-text="$t('listBook.confirmUpdateTagsButton')"
+      @confirm="doUpdateTags"
+    >
+      <div v-html="$t('listBook.confirmUpdateTagsContent', { tag: currentTag })"></div>
+      <div class="mt-2" v-html="$t('listBook.confirmUpdateTagsCount', { total: total })"></div>
+      <div class="mt-2 error--text" v-if="total > 300">
+        <v-icon color="error" small>mdi-alert</v-icon>
+        {{ $t('listBook.confirmUpdateTagsLimit') }}
+      </div>
+      <div class="mt-2 warning--text">
+        <v-icon color="warning" small>mdi-clock-alert</v-icon>
+        {{ $t('listBook.confirmUpdateTagsWarning') }}
+      </div>
+    </AppDialog>
   </div>
 </template>
 

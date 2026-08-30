@@ -210,111 +210,101 @@
         ></reading-range-dialog>
 
         <!-- Change Password Dialog -->
-        <v-dialog v-model="showChangePasswordDialog" max-width="420px" persistent>
-            <v-card>
-                <v-card-title>
-                    {{ $t('admin.users.change_password_dialog_title') }}
-                    <v-spacer></v-spacer>
-                    <v-btn icon @click="closeChangePasswordDialog">
-                        <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                </v-card-title>
-                <v-card-text>
-                    <v-form ref="changePasswordForm" @submit.prevent="submitChangePassword">
-                        <v-text-field
-                            v-model="changePassword.password"
-                            :label="$t('admin.users.new_password')"
-                            type="password"
-                            prepend-icon="lock"
-                            autocomplete="new-password"
-                            :rules="[rules.pass]"
-                            required
-                        ></v-text-field>
-                        <v-text-field
-                            v-model="changePassword.password2"
-                            :label="$t('admin.users.confirm_new_password')"
-                            type="password"
-                            prepend-icon="lock_outline"
-                            autocomplete="new-password2"
-                            :rules="[validateChangePassword]"
-                            required
-                        ></v-text-field>
-                    </v-form>
-                    <v-alert v-if="changePasswordError" type="error" class="mt-2">{{ changePasswordError }}</v-alert>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn color="primary" @click="submitChangePassword" :loading="changingPassword">{{ $t('admin.users.change_password_save') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="showChangePasswordDialog"
+            type="action"
+            :title="$t('admin.users.change_password_dialog_title')"
+            max-width="420px"
+            dismiss-icon
+            :confirm-text="$t('admin.users.change_password_save')"
+            :confirm-loading="changingPassword"
+            @dismiss="closeChangePasswordDialog"
+            @confirm="submitChangePassword"
+        >
+            <v-form ref="changePasswordForm" @submit.prevent="submitChangePassword">
+                <v-text-field
+                    v-model="changePassword.password"
+                    :label="$t('admin.users.new_password')"
+                    type="password"
+                    prepend-icon="lock"
+                    autocomplete="new-password"
+                    :rules="[rules.pass]"
+                    required
+                ></v-text-field>
+                <v-text-field
+                    v-model="changePassword.password2"
+                    :label="$t('admin.users.confirm_new_password')"
+                    type="password"
+                    prepend-icon="lock_outline"
+                    autocomplete="new-password2"
+                    :rules="[validateChangePassword]"
+                    required
+                ></v-text-field>
+            </v-form>
+            <v-alert v-if="changePasswordError" type="error" class="mt-2">{{ changePasswordError }}</v-alert>
+        </AppDialog>
 
         <!-- Add User Dialog -->
-        <v-dialog v-model="showAddUserDialog" max-width="500px" persistent>
-            <v-card>
-                <v-card-title>
-                    {{ $t('admin.users.add_user') }}
-                    <v-spacer></v-spacer>
-                    <v-btn icon @click="closeAddUserDialog">
-                        <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                </v-card-title>
-                <v-card-text>
-                    <v-form ref="addUserForm" @submit.prevent="addUser">
-                        <v-text-field
-                            required
-                            prepend-icon="person"
-                            v-model="newUser.username"
-                            :label="$t('admin.users.username')"
-                            type="text"
-                            autocomplete="new-username"
-                            :rules="[rules.user]"
-                        ></v-text-field>
-                        <v-text-field
-                            required
-                            prepend-icon="lock"
-                            v-model="newUser.password"
-                            :label="$t('admin.users.password')"
-                            type="password"
-                            autocomplete="new-password"
-                            :rules="[rules.pass]"
-                        ></v-text-field>
-                        <v-text-field
-                            required
-                            prepend-icon="lock"
-                            v-model="newUser.password2"
-                            :label="$t('admin.users.confirm_password')"
-                            type="password"
-                            autocomplete="new-password2"
-                            :rules="[validatePassword]"
-                        ></v-text-field>
-                        <v-text-field
-                            required
-                            prepend-icon="face"
-                            v-model="newUser.nickname"
-                            :label="$t('admin.users.nickname')"
-                            type="text"
-                            autocomplete="new-nickname"
-                            :rules="[rules.nick]"
-                        ></v-text-field>
-                        <v-text-field
-                            required
-                            prepend-icon="email"
-                            v-model="newUser.email"
-                            :label="$t('admin.users.email')"
-                            type="text"
-                            autocomplete="new-email"
-                            :rules="[rules.email]"
-                        ></v-text-field>
-                    </v-form>
-                    <v-alert v-if="addUserError" type="error">{{ addUserError }}</v-alert>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn color="primary" @click="addUser" :loading="addingUser">{{ $t('admin.users.add') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="showAddUserDialog"
+            type="action"
+            :title="$t('admin.users.add_user')"
+            max-width="500px"
+            dismiss-icon
+            :confirm-text="$t('admin.users.add')"
+            :confirm-loading="addingUser"
+            @dismiss="closeAddUserDialog"
+            @confirm="addUser"
+        >
+            <v-form ref="addUserForm" @submit.prevent="addUser">
+                <v-text-field
+                    required
+                    prepend-icon="person"
+                    v-model="newUser.username"
+                    :label="$t('admin.users.username')"
+                    type="text"
+                    autocomplete="new-username"
+                    :rules="[rules.user]"
+                ></v-text-field>
+                <v-text-field
+                    required
+                    prepend-icon="lock"
+                    v-model="newUser.password"
+                    :label="$t('admin.users.password')"
+                    type="password"
+                    autocomplete="new-password"
+                    :rules="[rules.pass]"
+                ></v-text-field>
+                <v-text-field
+                    required
+                    prepend-icon="lock"
+                    v-model="newUser.password2"
+                    :label="$t('admin.users.confirm_password')"
+                    type="password"
+                    autocomplete="new-password2"
+                    :rules="[validatePassword]"
+                ></v-text-field>
+                <v-text-field
+                    required
+                    prepend-icon="face"
+                    v-model="newUser.nickname"
+                    :label="$t('admin.users.nickname')"
+                    type="text"
+                    autocomplete="new-nickname"
+                    :rules="[rules.nick]"
+                ></v-text-field>
+                <v-text-field
+                    required
+                    prepend-icon="email"
+                    v-model="newUser.email"
+                    :label="$t('admin.users.email')"
+                    type="text"
+                    autocomplete="new-email"
+                    :rules="[rules.email]"
+                ></v-text-field>
+            </v-form>
+            <v-alert v-if="addUserError" type="error">{{ addUserError }}</v-alert>
+        </AppDialog>
     </v-card>
 </template>
 

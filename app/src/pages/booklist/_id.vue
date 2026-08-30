@@ -92,6 +92,21 @@
         </template>
 
         <p v-else class="grey--text text-center my-6">{{ $t('booklist.notFound') }}</p>
+
+        <!-- Remove Book Confirm Dialog -->
+        <AppDialog
+            v-model="showRemoveDialog"
+            type="confirm"
+            :title="$t('booklist.removeConfirmTitle')"
+            icon="mdi-close-circle-outline"
+            color="deep-orange"
+            confirm-dark
+            max-width="480px"
+            :confirm-text="$t('booklist.removeConfirmTitle')"
+            @confirm="doRemoveBook"
+        >
+            {{ removeTarget ? $t('booklist.removeConfirmText', { title: removeTarget.title }) : '' }}
+        </AppDialog>
     </div>
 </template>
 
@@ -111,6 +126,8 @@ export default {
             booksTotal: 0,
             order: 'desc',
             addDialog: false,
+            showRemoveDialog: false,
+            removeTarget: null,
         };
     },
     head() {
@@ -181,10 +198,12 @@ export default {
             }
         },
         confirmRemove(book) {
-            if (!confirm(this.$t('booklist.removeConfirmText', { title: book.title }))) return;
-            this.removeBook(book);
+            this.removeTarget = book;
+            this.showRemoveDialog = true;
         },
-        async removeBook(book) {
+        async doRemoveBook() {
+            const book = this.removeTarget;
+            if (!book) return;
             try {
                 const rsp = await this.$backend(`/booklist/${this.booklist.id}/books/remove`, {
                     method: 'POST',
@@ -199,6 +218,9 @@ export default {
                 }
             } catch (e) {
                 this.$alert('error', this.$t('message.networkError'));
+            } finally {
+                this.showRemoveDialog = false;
+                this.removeTarget = null;
             }
         },
         onBookAdded() {

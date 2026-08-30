@@ -1,11 +1,15 @@
 <template>
-    <v-dialog v-model="internalValue" persistent max-width="600">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-format-list-bulleted-square</v-icon>
-                {{ mode === 'create' ? $t('booklist.createTitle') : $t('booklist.editTitle') }}
-            </v-card-title>
-            <v-card-text>
+    <AppDialog
+        v-model="internalValue"
+        type="action"
+        :title="mode === 'create' ? $t('booklist.createTitle') : $t('booklist.editTitle')"
+        icon="mdi-format-list-bulleted-square"
+        max-width="600"
+        :confirm-text="$t('common.save')"
+        :confirm-loading="submitting"
+        :confirm-disabled="!form.name || !form.name.trim()"
+        @confirm="submit"
+    >
                 <v-text-field
                     v-model="form.name"
                     :label="$t('booklist.fieldName')"
@@ -40,14 +44,7 @@
                     :label="form.is_public ? $t('booklist.publicHint') : $t('booklist.privateHint')"
                     color="primary"
                 ></v-switch>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="close">{{ $t('common.cancel') }}</v-btn>
-                <v-btn color="primary" :loading="submitting" :disabled="!form.name || !form.name.trim()" @click="submit">{{ $t('common.save') }}</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 </template>
 
 <script>

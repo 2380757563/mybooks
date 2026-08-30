@@ -90,17 +90,17 @@
     </div>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="dialog" max-width="400">
-      <v-card>
-        <v-card-title class="headline">{{ $t('listBook.confirmBatchUpdate') }}</v-card-title>
-        <v-card-text v-html="$t('listBook.confirmBatchUpdateContentSeries', { category: targetCategory, series: currentSeries, total: total })"></v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey darken-1" text @click="dialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" text @click="doBatchSet">{{ $t('common.ok') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="dialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('listBook.confirmBatchUpdate')"
+      max-width="400"
+      :confirm-text="$t('common.ok')"
+      @confirm="doBatchSet"
+    >
+      <div v-html="$t('listBook.confirmBatchUpdateContentSeries', { category: targetCategory, series: currentSeries, total: total })"></div>
+    </AppDialog>
   </div>
 </template>
 

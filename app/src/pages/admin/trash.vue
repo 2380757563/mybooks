@@ -62,17 +62,18 @@
       :no-data-text="$t('adminTrash.empty')"
     ></v-data-table>
 
-    <v-dialog v-model="purgeConfirmDialog" max-width="400" persistent>
-      <v-card>
-        <v-card-title class="headline">{{ $t('adminTrash.purgeConfirmTitle') }}</v-card-title>
-        <v-card-text>{{ $t('adminTrash.purgeConfirmMessage', { count: selected.length }) }}</v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="purgeConfirmDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="red" dark @click="purgeSelected">{{ $t('adminTrash.purgeConfirmButton') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="purgeConfirmDialog"
+      type="confirm"
+      :title="$t('adminTrash.purgeConfirmTitle')"
+      color="deep-orange"
+      confirm-dark
+      max-width="400"
+      :confirm-text="$t('adminTrash.purgeConfirmButton')"
+      @confirm="purgeSelected"
+    >
+      {{ $t('adminTrash.purgeConfirmMessage', { count: selected.length }) }}
+    </AppDialog>
   </v-card>
 </template>
 

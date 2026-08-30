@@ -33,17 +33,21 @@
       </v-col>
     </v-row>
 
-    <v-dialog v-model="confirmDialog" max-width="420">
-      <v-card>
-        <v-card-title class="headline">{{ $t('listBook.confirmRemoveTitle') }}</v-card-title>
-        <v-card-text>{{ confirmRemoveContent }}</v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="confirmDialog = false">{{ $t('listBook.cancel') }}</v-btn>
-          <v-btn color="red" dark :loading="removing" @click="removeSelected">{{ $t('listBook.confirm') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="confirmDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('listBook.confirmRemoveTitle')"
+      color="deep-orange"
+      confirm-dark
+      max-width="420"
+      :dismiss-label="$t('listBook.cancel')"
+      :confirm-text="$t('listBook.confirm')"
+      :confirm-loading="removing"
+      @confirm="removeSelected"
+    >
+      {{ confirmRemoveContent }}
+    </AppDialog>
   </div>
 </template>
 

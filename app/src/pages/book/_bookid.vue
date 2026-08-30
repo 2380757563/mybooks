@@ -19,7 +19,7 @@
                 v-model="dialog_epub2audio"
                 type="action"
                 :title="$t('book.convertToAudio')"
-                color="blue darken-4"
+                color="#003153"
                 confirm-dark
                 width="380"
                 :confirm-text="$t('common.start')"
@@ -1251,6 +1251,7 @@
     <!-- 读书分享卡片对话框 -->
     <AppDialog
         v-model="dialog_share_card"
+        :persistent="false"
         type="action"
         :title="$t('book.generateShareCard')"
         icon="mdi-card-bulleted-outline"

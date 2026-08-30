@@ -153,61 +153,57 @@
     </div>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="dialog" max-width="400">
-      <v-card>
-        <v-card-title class="headline">{{ $t('listBook.confirmBatchUpdate') }}</v-card-title>
-        <v-card-text v-html="$t('listBook.confirmBatchUpdateContentAuthor', { category: targetCategory, author: currentAuthor, total: total })"></v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey darken-1" text @click="dialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" text @click="doBatchSet">{{ $t('common.ok') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="dialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('listBook.confirmBatchUpdate')"
+      max-width="400"
+      :confirm-text="$t('common.ok')"
+      @confirm="doBatchSet"
+    >
+      <div v-html="$t('listBook.confirmBatchUpdateContentAuthor', { category: targetCategory, author: currentAuthor, total: total })"></div>
+    </AppDialog>
 
     <!-- Set Avatar Dialog -->
-    <v-dialog v-model="dialog_set_avatar" persistent max-width="400">
-      <v-card>
-        <v-card-title>{{ $t('listBook.setAvatar') }}</v-card-title>
-        <v-card-text>
-          <v-file-input
-            accept="image/png,image/jpeg"
-            :label="$t('listBook.selectAvatar')"
-            v-model="avatar_file"
-            show-size
-            :error-messages="avatar_error"
-            filled
-          ></v-file-input>
-        </v-card-text>
-        <v-card-actions>
-          <v-btn text @click="dialog_set_avatar = false">{{ $t('common.cancel') }}</v-btn>
-          <v-spacer></v-spacer>
-          <v-btn text color="primary" @click="uploadAuthorAvatar">{{ $t('common.ok') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="dialog_set_avatar"
+      type="action"
+      :title="$t('listBook.setAvatar')"
+      max-width="400"
+      :confirm-text="$t('common.ok')"
+      @confirm="uploadAuthorAvatar"
+    >
+      <v-file-input
+        accept="image/png,image/jpeg"
+        :label="$t('listBook.selectAvatar')"
+        v-model="avatar_file"
+        show-size
+        :error-messages="avatar_error"
+        filled
+      ></v-file-input>
+    </AppDialog>
 
     <!-- Edit Bio Dialog -->
-    <v-dialog v-model="dialog_edit_bio" max-width="560">
-      <v-card>
-        <v-card-title>{{ $t('listBook.editAuthorBio') }}</v-card-title>
-        <v-card-text>
-          <v-textarea
-            v-model="bio_draft"
-            :label="$t('listBook.authorBioLabel')"
-            :error-messages="bio_error"
-            rows="6"
-            counter="4096"
-            outlined
-          ></v-textarea>
-        </v-card-text>
-        <v-card-actions>
-          <v-btn text @click="dialog_edit_bio = false">{{ $t('common.cancel') }}</v-btn>
-          <v-spacer></v-spacer>
-          <v-btn text color="primary" :loading="savingBio" @click="saveAuthorBio">{{ $t('common.ok') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="dialog_edit_bio"
+      :persistent="false"
+      type="action"
+      :title="$t('listBook.editAuthorBio')"
+      max-width="560"
+      :confirm-text="$t('common.ok')"
+      :confirm-loading="savingBio"
+      @confirm="saveAuthorBio"
+    >
+      <v-textarea
+        v-model="bio_draft"
+        :label="$t('listBook.authorBioLabel')"
+        :error-messages="bio_error"
+        rows="6"
+        counter="4096"
+        outlined
+      ></v-textarea>
+    </AppDialog>
   </div>
 </template>
 

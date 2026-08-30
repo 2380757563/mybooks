@@ -26,41 +26,51 @@
     </v-data-table>
 
     <!-- Add Dialog -->
-    <v-dialog v-model="showAddDialog" max-width="480px" persistent>
-      <v-card>
-        <v-card-title>
-          {{ $t('expected.addDialogTitle') }}
-          <v-spacer></v-spacer>
-          <v-btn icon @click="closeAddDialog">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-card-title>
-        <v-card-text>
-          <v-form ref="addForm">
-            <v-text-field
-              v-model="newItem.title"
-              :label="$t('expected.fieldTitle')"
-              :rules="[v => !!v.trim() || $t('expected.titleRequired')]"
-              required
-              autofocus
-            ></v-text-field>
-            <v-text-field
-              v-model="newItem.author"
-              :label="$t('expected.fieldAuthor')"
-            ></v-text-field>
-            <v-text-field
-              v-model="newItem.publisher"
-              :label="$t('expected.fieldPublisher')"
-            ></v-text-field>
-          </v-form>
-          <v-alert v-if="addError" type="error" class="mt-2">{{ addError }}</v-alert>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" @click="submitAdd" :loading="adding">{{ $t('expected.add') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showAddDialog"
+      type="action"
+      :title="$t('expected.addDialogTitle')"
+      max-width="480px"
+      dismiss-icon
+      :confirm-text="$t('expected.add')"
+      :confirm-loading="adding"
+      @dismiss="closeAddDialog"
+      @confirm="submitAdd"
+    >
+      <v-form ref="addForm">
+        <v-text-field
+          v-model="newItem.title"
+          :label="$t('expected.fieldTitle')"
+          :rules="[v => !!v.trim() || $t('expected.titleRequired')]"
+          required
+          autofocus
+        ></v-text-field>
+        <v-text-field
+          v-model="newItem.author"
+          :label="$t('expected.fieldAuthor')"
+        ></v-text-field>
+        <v-text-field
+          v-model="newItem.publisher"
+          :label="$t('expected.fieldPublisher')"
+        ></v-text-field>
+      </v-form>
+      <v-alert v-if="addError" type="error" class="mt-2">{{ addError }}</v-alert>
+    </AppDialog>
+
+    <!-- Delete Confirm Dialog -->
+    <AppDialog
+      v-model="showDeleteDialog"
+      type="confirm"
+      :title="$t('expected.delete')"
+      icon="mdi-delete-outline"
+      color="deep-orange"
+      confirm-dark
+      max-width="480px"
+      :confirm-text="$t('expected.delete')"
+      @confirm="confirmDelete"
+    >
+      {{ deleteTarget ? $t('expected.deleteConfirm', { title: deleteTarget.title }) : '' }}
+    </AppDialog>
   </v-card>
 </template>
 
@@ -74,6 +84,8 @@ export default {
       sortDesc: true,
       showAddDialog: false,
       adding: false,
+      showDeleteDialog: false,
+      deleteTarget: null,
       addError: '',
       newItem: {
         title: '',
@@ -148,7 +160,12 @@ export default {
         });
     },
     deleteItem(item) {
-      if (!confirm(this.$t('expected.deleteConfirm', { title: item.title }))) return;
+      this.deleteTarget = item;
+      this.showDeleteDialog = true;
+    },
+    confirmDelete() {
+      const item = this.deleteTarget;
+      if (!item) return;
       this.$backend('/user/expected', {
         method: 'DELETE',
         body: JSON.stringify({ id: item.id }),
@@ -158,6 +175,9 @@ export default {
         } else {
           this.items = this.items.filter(i => i.id !== item.id);
         }
+      }).finally(() => {
+        this.showDeleteDialog = false;
+        this.deleteTarget = null;
       });
     },
   },

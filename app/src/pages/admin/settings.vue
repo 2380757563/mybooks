@@ -836,46 +836,31 @@
       </v-expand-transition>
     </v-card>
 
-    <v-dialog v-model="trashConfirmDialog" max-width="400" persistent>
-      <v-card>
-        <v-card-title class="headline">{{
-          $t("settings.trash_clear_confirm_title")
-        }}</v-card-title>
-        <v-card-text>{{
-          $t("settings.trash_clear_confirm_message")
-        }}</v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="trashConfirmDialog = false">{{
-            $t("common.cancel")
-          }}</v-btn>
-          <v-btn color="red" dark @click="clearTrash">{{
-            $t("settings.trash_clear_confirm_button")
-          }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="trashConfirmDialog"
+      type="confirm"
+      :title="$t('settings.trash_clear_confirm_title')"
+      color="deep-orange"
+      confirm-dark
+      max-width="400"
+      :confirm-text="$t('settings.trash_clear_confirm_button')"
+      @confirm="clearTrash"
+    >
+      {{ $t("settings.trash_clear_confirm_message") }}
+    </AppDialog>
 
-
-    <v-dialog v-model="restartConfirmDialog" max-width="400" persistent>
-      <v-card>
-        <v-card-title class="headline">{{
-          $t("settings.restart_confirm_title")
-        }}</v-card-title>
-        <v-card-text>{{
-          $t("settings.restart_confirm_message")
-        }}</v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="restartConfirmDialog = false">{{
-            $t("common.cancel")
-          }}</v-btn>
-          <v-btn color="orange darken-2" dark @click="restartServer">{{
-            $t("settings.restart_confirm_button")
-          }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="restartConfirmDialog"
+      type="confirm"
+      :title="$t('settings.restart_confirm_title')"
+      color="orange"
+      confirm-dark
+      max-width="400"
+      :confirm-text="$t('settings.restart_confirm_button')"
+      @confirm="restartServer"
+    >
+      {{ $t("settings.restart_confirm_message") }}
+    </AppDialog>
 
     <br />
     <div class="text-center">

@@ -84,19 +84,21 @@
     </v-row>
 
     <!-- Confirm dialog -->
-    <v-dialog v-model="showConfirmDialog" max-width="460px">
-      <v-card>
-        <v-card-title class="headline">{{ $t('authorClean.confirmTitle') }}</v-card-title>
-        <v-card-text>
-          <p v-if="action === 'clean'">{{ $t('authorClean.confirmClean', { author: authorName }) }}</p>
-          <p v-else>{{ $t('authorClean.confirmReplace', { author: authorName, newAuthor: newAuthorName }) }}</p>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="showConfirmDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="red" :loading="loading" @click="confirmStart">{{ $t('authorClean.startBtn') }}</v-btn>
-        </v-card-actions>
-      </v-card>
+    <AppDialog
+      v-model="showConfirmDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('authorClean.confirmTitle')"
+      color="deep-orange"
+      confirm-dark
+      max-width="460px"
+      :confirm-text="$t('authorClean.startBtn')"
+      :confirm-loading="loading"
+      @confirm="confirmStart"
+    >
+      <p v-if="action === 'clean'">{{ $t('authorClean.confirmClean', { author: authorName }) }}</p>
+      <p v-else>{{ $t('authorClean.confirmReplace', { author: authorName, newAuthor: newAuthorName }) }}</p>
+    </AppDialog>
     </v-dialog>
   </v-container>
 </template>

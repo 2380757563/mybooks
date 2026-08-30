@@ -1930,6 +1930,7 @@
     "notFound": "Booklist not found or access denied",
     "orderDesc": "Newest first",
     "orderAsc": "Oldest first",
-    "removeConfirmText": "Remove \"{title}\" from this booklist?"
+    "removeConfirmText": "Remove \"{title}\" from this booklist?",
+    "removeConfirmTitle": "Remove from Booklist"
   }
 }

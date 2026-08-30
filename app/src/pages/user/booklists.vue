@@ -29,17 +29,20 @@
 
         <BookListEditDialog v-model="editDialog" :mode="editMode" :booklist="editing" @saved="onSaved" />
 
-        <v-dialog v-model="deleteDialog" max-width="400">
-            <v-card>
-                <v-card-title class="headline">{{ $t('booklist.deleteConfirmTitle') }}</v-card-title>
-                <v-card-text>{{ $t('booklist.deleteConfirmText', { name: deleting && deleting.name }) }}</v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn text @click="deleteDialog = false">{{ $t('common.cancel') }}</v-btn>
-                    <v-btn color="red" text :loading="deleting_loading" @click="doDelete">{{ $t('common.delete') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="deleteDialog"
+            :persistent="false"
+            type="confirm"
+            :title="$t('booklist.deleteConfirmTitle')"
+            color="deep-orange"
+            confirm-dark
+            max-width="400"
+            :confirm-text="$t('common.delete')"
+            :confirm-loading="deleting_loading"
+            @confirm="doDelete"
+        >
+            {{ $t('booklist.deleteConfirmText', { name: deleting && deleting.name }) }}
+        </AppDialog>
     </div>
 </template>
 

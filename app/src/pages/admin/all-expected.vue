@@ -39,28 +39,42 @@
     </v-data-table>
 
     <!-- Upload Dialog -->
-    <v-dialog v-model="showUploadDialog" persistent transition="dialog-bottom-transition" width="400">
-      <v-card>
-        <v-toolbar flat dense dark color="#003153">
-          {{ $t('expected.uploadDialogTitle') }}
-          <v-spacer></v-spacer>
-          <v-btn text @click="closeUploadDialog">{{ $t('expected.cancel') }}</v-btn>
-        </v-toolbar>
-        <v-card-text class="pt-4">
-          <v-radio-group v-model="uploadBookType" row class="mt-0">
-            <v-radio :label="$t('expected.ebook')" value="ebook"></v-radio>
-            <v-radio :label="$t('expected.physicalBook')" value="physical"></v-radio>
-          </v-radio-group>
-          <v-file-input v-if="uploadBookType === 'ebook'" v-model="uploadFile" :label="$t('expected.selectFile')" prepend-icon="mdi-book-open-variant"></v-file-input>
-          <v-text-field v-else ref="isbnField" v-model="uploadIsbn" :label="$t('expected.isbnNumber')" :rules="debouncedIsbnRules" prepend-icon="mdi-barcode" clearable @input="clearValidationCache"></v-text-field>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn :loading="uploading" color="primary" @click="submitUpload">{{ $t('expected.upload') }}</v-btn>
-          <v-spacer></v-spacer>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showUploadDialog"
+      type="action"
+      :title="$t('expected.uploadDialogTitle')"
+      color="blue darken-4"
+      confirm-dark
+      width="400"
+      transition="dialog-bottom-transition"
+      :dismiss-label="$t('expected.cancel')"
+      :confirm-text="$t('expected.upload')"
+      :confirm-loading="uploading"
+      @dismiss="closeUploadDialog"
+      @confirm="submitUpload"
+    >
+      <v-radio-group v-model="uploadBookType" row class="mt-0">
+        <v-radio :label="$t('expected.ebook')" value="ebook"></v-radio>
+        <v-radio :label="$t('expected.physicalBook')" value="physical"></v-radio>
+      </v-radio-group>
+      <v-file-input v-if="uploadBookType === 'ebook'" v-model="uploadFile" :label="$t('expected.selectFile')" prepend-icon="mdi-book-open-variant"></v-file-input>
+      <v-text-field v-else ref="isbnField" v-model="uploadIsbn" :label="$t('expected.isbnNumber')" :rules="debouncedIsbnRules" prepend-icon="mdi-barcode" clearable @input="clearValidationCache"></v-text-field>
+    </AppDialog>
+
+    <!-- Delete Confirm Dialog -->
+    <AppDialog
+      v-model="showDeleteDialog"
+      type="confirm"
+      :title="$t('expected.delete')"
+      icon="mdi-delete-outline"
+      color="deep-orange"
+      confirm-dark
+      max-width="480px"
+      :confirm-text="$t('expected.delete')"
+      @confirm="confirmDelete"
+    >
+      {{ deleteTarget ? $t('expected.deleteConfirm', { title: deleteTarget.title }) : '' }}
+    </AppDialog>
   </v-card>
 </template>
 
@@ -83,6 +97,8 @@ export default {
       },
       showUploadDialog: false,
       uploading: false,
+      showDeleteDialog: false,
+      deleteTarget: null,
       uploadItem: null,
       uploadFile: null,
       uploadBookType: 'ebook',
@@ -230,7 +246,12 @@ export default {
         });
     },
     deleteItem(item) {
-      if (!confirm(this.$t('expected.deleteConfirm', { title: item.title }))) return;
+      this.deleteTarget = item;
+      this.showDeleteDialog = true;
+    },
+    confirmDelete() {
+      const item = this.deleteTarget;
+      if (!item) return;
       this.$backend('/user/expected', {
         method: 'DELETE',
         body: JSON.stringify({ id: item.id }),
@@ -240,6 +261,9 @@ export default {
         } else {
           this.items = this.items.filter(i => i.id !== item.id);
         }
+      }).finally(() => {
+        this.showDeleteDialog = false;
+        this.deleteTarget = null;
       });
     },
     openUploadDialog(item) {

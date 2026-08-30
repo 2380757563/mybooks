@@ -262,67 +262,50 @@
     ></audio>
 
     <!-- VIP信息对话框 -->
-    <v-dialog v-model="showVipDialog" max-width="600px">
-      <v-card>
-        <v-card-title class="headline">{{ vipDialogTitle }}</v-card-title>
-        <v-card-text>
-          <div v-html="vipDialogContent"></div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" text @click="showVipDialog = false">
-            {{ $t('common.close') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showVipDialog"
+      :persistent="false"
+      type="action"
+      :title="vipDialogTitle"
+      max-width="600px"
+      :dismiss-label="$t('common.close')"
+      hide-footer-button
+    >
+      <div v-html="vipDialogContent"></div>
+    </AppDialog>
 
     <!-- 购买确认对话框 -->
-    <v-dialog v-model="showPurchaseDialog" max-width="400px">
-      <v-card>
-        <v-card-title class="headline">{{ $t('audio.confirmPurchase') }}</v-card-title>
-        <v-card-text>
-          <p>{{ $t('audio.purchaseDescription', { title: book.title }) }}</p>
-          <p class="price-text">{{ $t('audio.price') }}1个额度</p>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="showPurchaseDialog = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn
-            color="orange"
-            @click="purchaseAudio"
-            :loading="purchaseLoading"
-          >
-            {{ $t('audio.confirmPurchase') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showPurchaseDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('audio.confirmPurchase')"
+      color="orange"
+      confirm-dark
+      max-width="400px"
+      :confirm-text="$t('audio.confirmPurchase')"
+      :confirm-loading="purchaseLoading"
+      @confirm="purchaseAudio"
+    >
+      <p>{{ $t('audio.purchaseDescription', { title: book.title }) }}</p>
+      <p class="price-text">{{ $t('audio.price') }}1个额度</p>
+    </AppDialog>
 
     <!-- 删除确认对话框 -->
-    <v-dialog v-model="showDeleteDialog" max-width="400px">
-      <v-card>
-        <v-card-title class="headline">{{ $t('audio.audioDelete') }}</v-card-title>
-        <v-card-text>
-          <p>{{ $t('audio.deleteDescription', { title: book.title }) }}</p>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="showDeleteDialog = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn
-            color="red"
-            @click="deleteAudio"
-            :loading="deleteLoading"
-          >
-            {{ $t('common.delete') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showDeleteDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('audio.audioDelete')"
+      color="deep-orange"
+      confirm-dark
+      max-width="400px"
+      :confirm-text="$t('common.delete')"
+      :confirm-loading="deleteLoading"
+      @confirm="deleteAudio"
+    >
+      <p>{{ $t('audio.deleteDescription', { title: book.title }) }}</p>
+    </AppDialog>
   </div>
 </template>
 

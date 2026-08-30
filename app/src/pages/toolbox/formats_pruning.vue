@@ -81,27 +81,20 @@
     </v-row>
 
     <!-- Confirm dialog -->
-    <v-dialog v-model="showConfirmDialog" max-width="400px">
-      <v-card>
-        <v-card-title class="headline">{{ $t('formatsPruning.confirmTitle') }}</v-card-title>
-        <v-card-text>
-          <p>{{ $t('formatsPruning.confirmDescription', { format: selectedLabel }) }}</p>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="showConfirmDialog = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn
-            color="red"
-            @click="confirmStart"
-            :loading="processing"
-          >
-            {{ $t('formatsPruning.startBtn') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showConfirmDialog"
+      :persistent="false"
+      type="confirm"
+      :title="$t('formatsPruning.confirmTitle')"
+      color="deep-orange"
+      confirm-dark
+      max-width="400px"
+      :confirm-text="$t('formatsPruning.startBtn')"
+      :confirm-loading="processing"
+      @confirm="confirmStart"
+    >
+      <p>{{ $t('formatsPruning.confirmDescription', { format: selectedLabel }) }}</p>
+    </AppDialog>
   </v-container>
 </template>
 

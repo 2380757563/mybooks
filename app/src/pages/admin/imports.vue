@@ -190,36 +190,34 @@
         </v-card-text>
 
         <!-- Batch Add Dialog -->
-        <v-dialog v-model="batchAddDialog" max-width="600px">
-            <v-card>
-                <v-card-title>{{ $t('imports.batch_add_dialog_title') }}</v-card-title>
-                <v-card-text>
-                    <p>{{ $t('imports.batch_add_dialog_description') }}</p>
-                    <ul>
-                        <li>{{ $t('imports.batch_add_dialog_rule1') }}</li>
-                        <li>{{ $t('imports.batch_add_dialog_rule2') }}</li>
-                        <li>{{ $t('imports.batch_add_dialog_rule3') }}</li>
-                        <li>{{ $t('imports.batch_add_dialog_rule4') }}</li>
-                    </ul>
-                    <v-file-input
-                        v-model="csvFile"
-                        :label="$t('imports.batch_add_select_file')"
-                        accept=".csv"
-                        prepend-icon="mdi-file-delimited"
-                        :disabled="batchAdding"
-                    ></v-file-input>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn text @click="batchAddDialog = false" :disabled="batchAdding">{{ $t('common.cancel') }}</v-btn>
-                    <v-btn color="primary" @click="startBatchAdd" :disabled="!csvFile || batchAdding">
-                        <v-icon left v-if="!batchAdding">mdi-upload</v-icon>
-                        <v-progress-circular v-if="batchAdding" indeterminate size="20" class="mr-2"></v-progress-circular>
-                        {{ batchAdding ? $t('imports.batch_add_processing') : $t('imports.batch_add_start') }}
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="batchAddDialog"
+            :persistent="false"
+            type="action"
+            :title="$t('imports.batch_add_dialog_title')"
+            max-width="600px"
+            :dismiss-disabled="batchAdding"
+            confirm-icon="mdi-upload"
+            :confirm-text="batchAdding ? $t('imports.batch_add_processing') : $t('imports.batch_add_start')"
+            :confirm-loading="batchAdding"
+            :confirm-disabled="!csvFile || batchAdding"
+            @confirm="startBatchAdd"
+        >
+            <p>{{ $t('imports.batch_add_dialog_description') }}</p>
+            <ul>
+                <li>{{ $t('imports.batch_add_dialog_rule1') }}</li>
+                <li>{{ $t('imports.batch_add_dialog_rule2') }}</li>
+                <li>{{ $t('imports.batch_add_dialog_rule3') }}</li>
+                <li>{{ $t('imports.batch_add_dialog_rule4') }}</li>
+            </ul>
+            <v-file-input
+                v-model="csvFile"
+                :label="$t('imports.batch_add_select_file')"
+                accept=".csv"
+                prepend-icon="mdi-file-delimited"
+                :disabled="batchAdding"
+            ></v-file-input>
+        </AppDialog>
     </v-card>
 </template>
 

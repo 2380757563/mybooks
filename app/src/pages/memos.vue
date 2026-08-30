@@ -31,34 +31,33 @@
       </template>
     </v-data-table>
 
-    <v-dialog v-model="memoDialog" max-width="500px">
-        <v-card>
-            <v-card-title class="headline">{{ $t('appHeader.memoDialogTitle') }}</v-card-title>
-            <v-card-text>
-                <v-select
-                    v-model="memoType"
-                    :items="memoTypeOptions"
-                    item-text="text"
-                    item-value="value"
-                    :label="$t('appHeader.memoTypeLabel')"
-                    outlined
-                    dense
-                ></v-select>
-                <v-textarea
-                    v-model="memoContent"
-                    :placeholder="$t('appHeader.memoContentPlaceholder')"
-                    outlined
-                    rows="6"
-                    hide-details
-                ></v-textarea>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="memoDialog = false">{{ $t('appHeader.memoCancel') }}</v-btn>
-                <v-btn color="primary" @click="submitMemo" :loading="memoSubmitting">{{ $t('appHeader.memoSubmit') }}</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="memoDialog"
+        :persistent="false"
+        type="action"
+        :title="$t('appHeader.memoDialogTitle')"
+        max-width="500px"
+        :confirm-text="$t('appHeader.memoSubmit')"
+        :confirm-loading="memoSubmitting"
+        @confirm="submitMemo"
+    >
+        <v-select
+            v-model="memoType"
+            :items="memoTypeOptions"
+            item-text="text"
+            item-value="value"
+            :label="$t('appHeader.memoTypeLabel')"
+            outlined
+            dense
+        ></v-select>
+        <v-textarea
+            v-model="memoContent"
+            :placeholder="$t('appHeader.memoContentPlaceholder')"
+            outlined
+            rows="6"
+            hide-details
+        ></v-textarea>
+    </AppDialog>
 
   </v-card>
 </template>

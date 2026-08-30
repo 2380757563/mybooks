@@ -38,25 +38,39 @@
     </v-data-table>
 
     <!-- Reply Dialog -->
-    <v-dialog v-model="showReplyDialog" max-width="500px" persistent>
-      <v-card>
-        <v-card-title>{{ $t('memos.replyDialogTitle') }}</v-card-title>
-        <v-card-text>
-          <v-textarea
-            v-model="replyContent"
-            :placeholder="$t('memos.replyPlaceholder')"
-            outlined
-            rows="3"
-            hide-details
-          ></v-textarea>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="showReplyDialog = false">{{ $t('memos.replyCancel') }}</v-btn>
-          <v-btn color="primary" @click="submitReply" :loading="replySubmitting">{{ $t('memos.replySubmit') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="showReplyDialog"
+      type="action"
+      :title="$t('memos.replyDialogTitle')"
+      max-width="500px"
+      :dismiss-label="$t('memos.replyCancel')"
+      :confirm-text="$t('memos.replySubmit')"
+      :confirm-loading="replySubmitting"
+      @confirm="submitReply"
+    >
+      <v-textarea
+        v-model="replyContent"
+        :placeholder="$t('memos.replyPlaceholder')"
+        outlined
+        rows="3"
+        hide-details
+      ></v-textarea>
+    </AppDialog>
+
+    <!-- Delete Confirm Dialog -->
+    <AppDialog
+      v-model="showDeleteDialog"
+      type="confirm"
+      :title="$t('memos.actionDelete')"
+      icon="mdi-delete-outline"
+      color="deep-orange"
+      confirm-dark
+      max-width="480px"
+      :confirm-text="$t('memos.actionDelete')"
+      @confirm="confirmDelete"
+    >
+      {{ $t('memos.deleteConfirm') }}
+    </AppDialog>
   </v-card>
 </template>
 
@@ -72,6 +86,8 @@ export default {
       replySubmitting: false,
       replyContent: '',
       currentMemoItem: null,
+      showDeleteDialog: false,
+      deleteTarget: null,
     };
   },
   head() {
@@ -151,7 +167,12 @@ export default {
       });
     },
     deleteItem(item) {
-      if (!confirm(this.$t('memos.deleteConfirm'))) return;
+      this.deleteTarget = item;
+      this.showDeleteDialog = true;
+    },
+    confirmDelete() {
+      const item = this.deleteTarget;
+      if (!item) return;
       this.$backend('/user/memo', {
         method: 'DELETE',
         body: JSON.stringify({ id: item.id }),
@@ -161,6 +182,9 @@ export default {
         } else {
           this.items = this.items.filter(i => i.id !== item.id);
         }
+      }).finally(() => {
+        this.showDeleteDialog = false;
+        this.deleteTarget = null;
       });
     },
   },

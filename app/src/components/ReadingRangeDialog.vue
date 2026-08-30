@@ -1,14 +1,14 @@
 <template>
-    <v-dialog v-model="visible" max-width="600px" persistent>
-        <v-card>
-            <v-card-title>
-                {{ title || $t('admin.users.reading_range_dialog_title') }}
-                <v-spacer></v-spacer>
-                <v-btn icon @click="visible = false">
-                    <v-icon>mdi-close</v-icon>
-                </v-btn>
-            </v-card-title>
-            <v-card-text>
+    <AppDialog
+        v-model="visible"
+        type="action"
+        :title="title || $t('admin.users.reading_range_dialog_title')"
+        max-width="600px"
+        dismiss-icon
+        :confirm-text="$t('admin.users.reading_range_save')"
+        :confirm-loading="saving"
+        @confirm="onSave"
+    >
                 <!-- Mode radio group -->
                 <v-radio-group v-model="range.mode" mandatory>
                     <v-radio :label="$t('admin.users.reading_range_all')" :value="0"></v-radio>
@@ -73,13 +73,7 @@
                         </v-list-item>
                     </v-list>
                 </template>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn color="primary" @click="onSave" :loading="saving">{{ $t('admin.users.reading_range_save') }}</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 </template>
 
 <script>

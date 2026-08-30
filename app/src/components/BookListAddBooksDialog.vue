@@ -1,11 +1,14 @@
 <template>
-    <v-dialog v-model="internalValue" max-width="800">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-book-plus-outline</v-icon>
-                {{ $t('booklist.addBooksTitle') }}
-            </v-card-title>
-            <v-card-text>
+    <AppDialog
+        v-model="internalValue"
+        :persistent="false"
+        type="action"
+        :title="$t('booklist.addBooksTitle')"
+        icon="mdi-book-plus-outline"
+        max-width="800"
+        :dismiss-label="$t('common.close')"
+        hide-footer-button
+    >
                 <div class="d-flex mb-2">
                     <v-text-field
                         v-model="query"
@@ -60,13 +63,7 @@
                         </div>
                     </div>
                 </template>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="close">{{ $t('common.close') }}</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 </template>
 
 <script>

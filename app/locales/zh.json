@@ -1931,6 +1931,7 @@
     "notFound": "书单不存在或无权访问",
     "orderDesc": "从新到旧",
     "orderAsc": "从旧到新",
-    "removeConfirmText": "确定要将《{title}》移出书单吗？"
+    "removeConfirmText": "确定要将《{title}》移出书单吗？",
+    "removeConfirmTitle": "移出书单"
   }
 }
