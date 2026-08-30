@@ -418,7 +418,6 @@
                 </v-card-text>
                 <v-card-actions class="px-6 pb-4">
                     <v-spacer></v-spacer>
-                    <v-btn text @click="memoDialog = false">{{ $t('appHeader.memoCancel') }}</v-btn>
                     <v-btn color="primary" @click="submitMemo" :loading="memoSubmitting">{{ $t('appHeader.memoSubmit') }}</v-btn>
                 </v-card-actions>
             </v-card>
@@ -604,7 +603,7 @@ export default {
         items: function () {
             const login_link = { icon: "account_circle", href: "/login", text: "appHeader.please_login", color:"white" };
             const home_links = [
-                { icon: "home", href: "/", text: "appHeader.home", color:"primary" },
+                { icon: "mdi-view-dashboard-outline", href: "/", text: "appHeader.home", color:"primary" },
             ];
             const user_links = [
                 {
@@ -614,8 +613,7 @@ export default {
                     expand: this.isPathMatch("/user/"),
                     groups: [
                         { icon: "mdi-account-cog", href: "/user/usersettings", text: "appHeader.user_setting", color: "primary" },
-                        { icon: "mdi-format-list-bulleted-square", href: "/user/booklists", text: "appHeader.myBooklists", color: "teal"},
-                        { icon: "mdi-shield-account", href: "/soledbooks", text: "appHeader.soledBooks", color: "#EDC10A"},
+                        { icon: "mdi-shield-account", href: "/soledbooks", text: "appHeader.soledBooks", color: "deep-orange"},
                         { icon: "mdi-notebook", href: "/expected", text: "expected.title", color: "green"},
                     ],
                 }
@@ -625,20 +623,20 @@ export default {
                     icon: "mdi-cog",
                     text: "appHeader.admin",
                     expand: this.isPathMatch("/admin/"),
-                    color: "orange",
+                    color: "deep-orange",
                     groups: [
                         { icon: "mdi-cog", href: "/admin/settings", text: "appHeader.systemSettings", color: "primary"},
-                        { icon: "mdi-account", href: "/admin/users", text: "appHeader.userManagement", color: "#EDC10A"},
+                        { icon: "mdi-account", href: "/admin/users", text: "appHeader.userManagement", color: "deep-orange"},
                         { icon: "mdi-import", href: "/admin/imports", text: "appHeader.importBooks", color: "green"},
                         { icon: "mdi-library-shelves", href: "/admin/books", text: "appHeader.bookManagement", color: "primary"},
                         { icon: "mdi-notebook", href: "/admin/all-expected", text: "expected.allPageTitle", color: "green"},
                         { icon: "mdi-message-text-outline", href: "/admin/user-memos", text: "memos.pageTitle", color: "blue"},
                         ...(this.sys.allow.book_review ? [{ icon: "mdi-comment-text-multiple-outline", href: "/admin/book-reviews", text: "adminBookReviews.pageTitle", color: "deep-orange"}] : []),
-                        { icon: "mdi-math-log", href: "/admin/syslog", text: "appHeader.syslog", color: "#FB9795"},
-                        { icon: "mdi-toolbox-outline", href: "/admin/toolbox", text: "appHeader.toolbox", color: "#FB9795"},
+                        { icon: "mdi-math-log", href: "/admin/syslog", text: "appHeader.syslog", color: "green"},
+                        { icon: "mdi-toolbox-outline", href: "/admin/toolbox", text: "appHeader.toolbox", color: "deep-orange"},
                         { icon: "mdi-rhombus-split", href: "/admin/resources", text: "appHeader.resources", color: "teal"},
-                        { icon: "mdi-delete-restore", href: "/admin/trash", text: "appHeader.trashManagement", color: "#FB9795"},
-                        { icon: "sms_failed", action: "openFeedback", text: "appHeader.feedback", color: "orange"},
+                        { icon: "mdi-delete-restore", href: "/admin/trash", text: "appHeader.trashManagement", color: "deep-orange"},
+                        { icon: "sms_failed", action: "openFeedback", text: "appHeader.feedback", color: "teal"},
                     ],
                 },
             ];
@@ -667,17 +665,18 @@ export default {
                     expand: this.isPathMatch("/booklists/"),
                     color: "teal",
                     groups: [
-                        { icon: "mdi-view-grid-plus", href: "/booklists", text: "appHeader.publicBooklists", color: "teal" },
+                        { icon: "mdi-account-eye-outline", href: "/booklists", text: "appHeader.publicBooklists", color: "#005CAF" },
                         { icon: "mdi-heart-multiple", href: "/booklists/liked", text: "appHeader.likedBooklists", color: "red" },
+                        { icon: "mdi-format-list-bulleted-square", href: "/user/booklists", text: "appHeader.myBooklists", color: "orange"},
                     ],
                 },
                 { icon: "mdi-account-group", href: "/author", text: "appHeader.authors", count: this.sys.authors, color: "primary"},
-                { icon: "category", href: "/categories", text: "appHeader.categoryBrowse", count: this.sys.categories, color: "green" },
-                { icon: "mdi-tag-heart", href: "/tag", text: "appHeader.tags", count: this.sys.tags, color: "green"},
+                { icon: "mdi-shape-plus", href: "/categories", text: "appHeader.categoryBrowse", count: this.sys.categories, color: "green" },
+                { icon: "mdi-tag-heart", href: "/tag", text: "appHeader.tags", count: this.sys.tags, color: "deep-orange"},
                 { icon: "mdi-home-group", href: "/publisher", text: "appHeader.publishers", count: this.sys.publishers, color: "primary"},
                 { icon: "mdi-library-shelves", href: "/series", text: "appHeader.series", count: this.sys.series, color: "primary"},
                 { icon: "mdi-translate", href: "/language", text: "appHeader.languages", color: "purple"},
-                { icon: "mdi-star-shooting", href: "/rating", text: "appHeader.rating", color: "orange"},
+                { icon: "mdi-star-shooting", href: "/rating", text: "appHeader.rating", color: "deep-orange"},
                 { icon: "mdi-check-all", href: "/all", text: "appHeader.allBooks", color: "primary"},
             ];
 

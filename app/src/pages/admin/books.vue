@@ -23,7 +23,7 @@
                             <v-btn
                                 :disabled="loading || scraping"
                                 color="#2d6d4b"
-                                class="flex-shrink-0"
+                                class="flex-shrink-0 white--text"
                                 :icon="$vuetify.breakpoint.xs"
                                 :small="$vuetify.breakpoint.xs"
                                 v-bind="attrs"

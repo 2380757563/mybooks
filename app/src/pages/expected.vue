@@ -57,7 +57,6 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="closeAddDialog">{{ $t('expected.cancel') }}</v-btn>
           <v-btn color="primary" @click="submitAdd" :loading="adding">{{ $t('expected.add') }}</v-btn>
         </v-card-actions>
       </v-card>

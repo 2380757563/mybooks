@@ -115,3 +115,4 @@ Refer to [Metadata Plugin](document/meta_plugins.md) for details to add new meta
 
 - Python: flake8-checked (config in `.style.yapf` and `.flake8`; `E501` line-length ignored), formatted with yapf using a Google-based style (`column_limit=240`). Pylint config disables several docstring/logging warnings.
 - TypeScript/JS (frontend): see `.claude/rules/typescript.md` — never use `any`; strict mode; ES2022 target; `_`-prefixed unused vars allowed.
+- UI/Vuetify (frontend): see `.claude/rules/ui.md` — shared dialog structure/colors and other cross-page UI conventions.

@@ -70,31 +70,6 @@
         </v-row>
     </div>
 
-    <div class="home-section-card" v-if="random_books.length > 0">
-        <v-row>
-            <v-col cols=12>
-                <div class="d-flex align-center">
-                    <v-icon small class="mr-1">mdi-apple-keyboard-command</v-icon>
-                    <p class="ma-0">{{ $t('index.randomRecommendation') }}</p>
-                    <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
-                </div>
-            </v-col>
-            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
-                <v-card :to="book.href" class="ma-1">
-                    <div class="book-img-container" :title="book.title">
-                        <v-img
-                            :src="book.thumb"
-                            class="cover-fill-img book-img-hover"
-                        ></v-img>
-                        <!-- 实体书角标 -->
-                        <div v-if="book.book_type === 1" class="physical-book-badge">
-                            <v-icon small color="white">mdi-bookshelf</v-icon>
-                        </div>
-                    </div>
-                </v-card>
-            </v-col>
-        </v-row>
-    </div>
     <div class="home-section-card" v-if="social_recommend_books.length > 0">
         <v-row>
             <v-col cols=12>
@@ -137,6 +112,32 @@
             </v-col>
             <v-col cols=12 md=6 v-for="b in homepage_booklists" :key="'home-booklist-' + b.id">
                 <BookListCard :booklist="b" :show-recommend-badge="true" @toggle-like="toggleBooklistLike" />
+            </v-col>
+        </v-row>
+    </div>
+
+    <div class="home-section-card" v-if="random_books.length > 0">
+        <v-row>
+            <v-col cols=12>
+                <div class="d-flex align-center">
+                    <v-icon small class="mr-1">mdi-apple-keyboard-command</v-icon>
+                    <p class="ma-0">{{ $t('index.randomRecommendation') }}</p>
+                    <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
+                </div>
+            </v-col>
+            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
+                <v-card :to="book.href" class="ma-1">
+                    <div class="book-img-container" :title="book.title">
+                        <v-img
+                            :src="book.thumb"
+                            class="cover-fill-img book-img-hover"
+                        ></v-img>
+                        <!-- 实体书角标 -->
+                        <div v-if="book.book_type === 1" class="physical-book-badge">
+                            <v-icon small color="white">mdi-bookshelf</v-icon>
+                        </div>
+                    </div>
+                </v-card>
             </v-col>
         </v-row>
     </div>

@@ -939,21 +939,30 @@
 
     <v-dialog v-model="dialog_set_cover" persistent max-width="400">
       <v-card>
-        <v-card-title>{{ $t('book.setCover') }}</v-card-title>
+        <v-card-title class="headline">
+          <v-icon class="mr-2">mdi-image-outline</v-icon>
+          {{ $t('book.setCover') }}
+        </v-card-title>
         <v-card-text>
           <v-file-input
-            accept="image/png,image/jpeg"
-            :label="$t('book.selectCover')"
             v-model="cover_file"
+            :label="$t('book.selectCover')"
+            outlined
+            dense
             show-size
+            accept="image/png,image/jpeg"
+            prepend-icon="mdi-file-image"
             :error-messages="cover_error"
-            filled
           ></v-file-input>
         </v-card-text>
         <v-card-actions>
-          <v-btn text @click="dialog_set_cover = false">{{ $t('common.cancel') }}</v-btn>
           <v-spacer></v-spacer>
-          <v-btn text color="primary" @click="uploadCover">{{ $t('common.ok') }}</v-btn>
+          <v-btn text @click="dialog_set_cover = false">
+            {{ $t('common.cancel') }}
+          </v-btn>
+          <v-btn color="primary" @click="uploadCover">
+            {{ $t('common.ok') }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

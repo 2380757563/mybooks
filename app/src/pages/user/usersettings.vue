@@ -33,7 +33,7 @@
                   <v-toolbar flat dense dark color="primary">
                     {{ $t("user.uploadAvatar") }}
                     <v-spacer></v-spacer>
-                    <v-btn icon dark @click="closeAvatarDialog">
+                    <v-btn icon dark @click="closeAvatarDialog" :disabled="isUploading">
                       <v-icon>mdi-close</v-icon>
                     </v-btn>
                   </v-toolbar>
@@ -75,13 +75,6 @@
                       :disabled="!avatarUrl || isUploading"
                     >
                       {{ $t("user.save") }}
-                    </v-btn>
-                    <v-btn
-                      text
-                      @click="closeAvatarDialog"
-                      :disabled="isUploading"
-                    >
-                      {{ $t("user.cancel") }}
                     </v-btn>
                   </v-card-actions>
                 </v-card>

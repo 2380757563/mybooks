@@ -244,7 +244,6 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn text @click="closeChangePasswordDialog">{{ $t('admin.users.cancel') }}</v-btn>
                     <v-btn color="primary" @click="submitChangePassword" :loading="changingPassword">{{ $t('admin.users.change_password_save') }}</v-btn>
                 </v-card-actions>
             </v-card>
@@ -312,7 +311,6 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn text @click="closeAddUserDialog">{{ $t('admin.users.cancel') }}</v-btn>
                     <v-btn color="primary" @click="addUser" :loading="addingUser">{{ $t('admin.users.add') }}</v-btn>
                 </v-card-actions>
             </v-card>

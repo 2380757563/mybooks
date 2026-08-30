@@ -68,11 +68,10 @@
                         <v-btn
                             v-if="booklist.is_owner"
                             icon
-                            x-small
                             class="booklist-remove-btn"
                             @click="confirmRemove(b)"
                         >
-                            <v-icon small color="white">mdi-close-circle</v-icon>
+                            <v-icon color="white">mdi-close-circle</v-icon>
                         </v-btn>
                     </v-card>
                 </v-col>
@@ -236,8 +235,8 @@ export default {
 }
 .booklist-remove-btn {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 1px;
+    right: 1px;
     background: rgba(0, 0, 0, 0.5);
 }
 </style>
