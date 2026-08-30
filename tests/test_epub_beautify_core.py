@@ -8,6 +8,7 @@
 """
 import os
 import sys
+import tempfile
 import types
 import unittest
 import zipfile
@@ -477,6 +478,21 @@ class TestAnalyze(unittest.TestCase):
         finally:
             os.remove(tmp)
 
+
+class TestZipGuard(unittest.TestCase):
+    """损坏/超限 EPUB 的友好报错（_read_zip_entries 防护路径）。"""
+
+    def test_corrupt_zip_friendly_error(self):
+        # 损坏文件应抛 RuntimeError(友好文案)——若防护文案误用未导入的 _()，
+        # 这里会先炸 NameError: name '_' is not defined（回归哨兵）
+        p = os.path.join(tempfile.mkdtemp(prefix="eb_test_"), "broken.epub")
+        with open(p, "wb") as f:
+            f.write(b"this is definitely not a zip file")
+        try:
+            lib._read_zip_entries(p)
+            self.fail("expected RuntimeError")
+        except RuntimeError as err:
+            self.assertIn("损坏", str(err))
 
 class TestBeautify(unittest.TestCase):
     """主流程：目录生成 / 标题标记 / CSS 注入 / 规范重写。"""

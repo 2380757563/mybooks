@@ -146,12 +146,12 @@ def _read_zip_entries(path: str) -> dict:
                 # ZipBomb 阈值（500MB 总量 / 5000 文件）
                 total += info.file_size
                 if total > 500 * 1024 * 1024 or len(entries) > 5000:
-                    raise RuntimeError(_("EPUB 文件过大或条目过多，疑似 Zip Bomb"))
+                    raise RuntimeError("EPUB 文件过大或条目过多，疑似 Zip Bomb")
                 entries[info.filename] = zf.read(info.filename)
     except zipfile.BadZipFile as e:
-        raise RuntimeError(_("EPUB 解析失败，文件可能已损坏：%s") % e) from e
+        raise RuntimeError("EPUB 解析失败，文件可能已损坏：%s" % e) from e
     except zipfile.LargeZipFile as e:
-        raise RuntimeError(_("EPUB 文件过大：%s") % e) from e
+        raise RuntimeError("EPUB 文件过大：%s" % e) from e
     return entries
 
 
