@@ -74,7 +74,7 @@
                             </v-list-item>
                         </v-list>
                     </v-menu>
-                    <v-btn icon small @click="generateShareCard">
+                    <v-btn icon small :disabled="!booklist.is_public" @click="generateShareCard">
                         <v-icon small>mdi-share-variant</v-icon>
                     </v-btn>
                 </div>
@@ -145,7 +145,7 @@
             </div>
 
             <v-row v-if="books.length || booklist.is_owner">
-                <v-col v-if="booklist.is_owner" cols="6" sm="4" md="3" lg="2">
+                <v-col v-if="booklist.is_owner" cols="4" xs="4" sm="3" md="2" lg="2" xl="1">
                     <v-card class="booklist-add-tile d-flex align-center justify-center" height="100%" @click="addDialog = true">
                         <div class="text-center grey--text">
                             <v-icon large>mdi-plus</v-icon>
@@ -153,21 +153,26 @@
                         </div>
                     </v-card>
                 </v-col>
-                <v-col v-for="b in books" :key="b.book_id" cols="6" sm="4" md="3" lg="2">
-                    <v-card class="position-relative">
-                        <a :href="b.href" target="_blank">
-                            <v-img :src="b.thumb || b.img" :aspect-ratio="11 / 15"></v-img>
-                        </a>
-                        <div class="text-caption text-truncate pa-1">{{ b.title }}</div>
-                        <v-btn
-                            v-if="booklist.is_owner"
-                            icon
-                            class="booklist-remove-btn"
-                            @click="confirmRemove(b)"
-                        >
-                            <v-icon color="white">mdi-close-circle</v-icon>
-                        </v-btn>
-                    </v-card>
+                <v-col v-for="b in books" :key="b.book_id" cols="4" xs="4" sm="3" md="2" lg="2" xl="1">
+                    <v-tooltip top>
+                        <template v-slot:activator="{ on, attrs }">
+                            <v-card class="position-relative" v-bind="attrs" v-on="on">
+                                <a :href="b.href" target="_blank">
+                                    <v-img :src="b.thumb || b.img" :aspect-ratio="11 / 15"></v-img>
+                                </a>
+                                <div class="text-caption text-truncate pa-1">{{ b.title }}</div>
+                                <v-btn
+                                    v-if="booklist.is_owner"
+                                    icon
+                                    class="booklist-remove-btn"
+                                    @click="confirmRemove(b)"
+                                >
+                                    <v-icon color="white">mdi-close-circle</v-icon>
+                                </v-btn>
+                            </v-card>
+                        </template>
+                        <span>{{ b.title }}</span>
+                    </v-tooltip>
                 </v-col>
             </v-row>
             <p v-else class="grey--text text-center my-6">{{ $t('booklist.noBooks') }}</p>
@@ -782,7 +787,7 @@ export default {
 <style scoped>
 .booklist-header-card {
     position: relative;
-    border-left-width: 4px;
+    border-left-width: 6px;
     border-left-style: solid;
 }
 .booklist-header-actions {

@@ -2,7 +2,7 @@
     <div>
     <!-- 书库统计标题栏 -->
     <v-row v-if="libraryStats" class="library-stats-bar">
-        <v-col cols=12>
+        <v-col cols="12">
             <div class="stats-container">
                 <div class="stats-title"></div>
                 <div class="stats-content">
@@ -41,13 +41,13 @@
 
     <div class="home-section-card" v-if="reading_books.length > 0">
         <v-row>
-            <v-col cols=12>
+            <v-col cols="12">
                 <div class="d-flex align-center">
                     <v-icon small class="mr-1">mdi-book-open-page-variant-outline</v-icon>
                     <p class="ma-0">{{ $t('index.myReading') }}</p>
                 </div>
             </v-col>
-            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_reading_books" :key="'reading'+idx+book.id" class="book-card">
+            <v-col cols="4" xs="4" sm="3" md="2" lg="1" v-for="(book,idx) in get_reading_books" :key="'reading'+idx+book.id" class="book-card">
                 <v-card :to="book.href" class="ma-1">
                     <div class="book-img-container reading-book-cover" :title="book.title">
                         <v-img
@@ -72,13 +72,13 @@
 
     <div class="home-section-card" v-if="social_recommend_books.length > 0">
         <v-row>
-            <v-col cols=12>
+            <v-col cols="12">
                 <div class="d-flex align-center">
                     <v-icon small class="mr-1">mdi-star-check</v-icon>
                     <p class="ma-0">{{ $t('index.socialRecommendation') }}</p>
                 </div>
             </v-col>
-            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
+            <v-col cols="4" xs="4" sm="3" md="2" lg="1" v-for="(book,idx) in get_social_recommend_books" :key="'social-rec'+idx+book.id" class="book-card">
                 <v-card :to="book.href" class="ma-1">
                     <div class="book-img-container" :title="book.title">
                         <v-img
@@ -104,13 +104,13 @@
     </div>
     <div class="home-section-card" v-if="homepage_booklists.length > 0">
         <v-row>
-            <v-col cols=12>
+            <v-col cols="12">
                 <div class="d-flex align-center">
                     <v-icon small class="mr-1">mdi-format-list-bulleted-square</v-icon>
                     <p class="ma-0">{{ $t('index.booklistRecommendation') }}</p>
                 </div>
             </v-col>
-            <v-col cols=12 md=6 v-for="b in homepage_booklists" :key="'home-booklist-' + b.id">
+            <v-col cols="12" md="6" v-for="b in homepage_booklists" :key="'home-booklist-' + b.id">
                 <BookListCard :booklist="b" :show-recommend-badge="true" @toggle-like="toggleBooklistLike" />
             </v-col>
         </v-row>
@@ -118,14 +118,14 @@
 
     <div class="home-section-card" v-if="random_books.length > 0">
         <v-row>
-            <v-col cols=12>
+            <v-col cols="12">
                 <div class="d-flex align-center">
                     <v-icon small class="mr-1">mdi-apple-keyboard-command</v-icon>
                     <p class="ma-0">{{ $t('index.randomRecommendation') }}</p>
                     <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
                 </div>
             </v-col>
-            <v-col cols=4 xs=4 sm=3 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
+            <v-col cols="4" xs="4" sm="3" md="2" lg="1" v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
                 <v-card :to="book.href" class="ma-1">
                     <div class="book-img-container" :title="book.title">
                         <v-img
@@ -144,13 +144,13 @@
 
     <div class="home-section-card">
         <v-row>
-            <v-col cols=12>
+            <v-col cols="12">
                 <div class="d-flex align-center">
                     <v-icon small class="mr-1">mdi-apps</v-icon>
                     <p class="ma-0">{{ $t('index.newRecommendation') }}</p>
                 </div>
             </v-col>
-            <v-col cols=12>
+            <v-col cols="12">
                 <book-cards :books="get_recent_books"></book-cards>
             </v-col>
         </v-row>
