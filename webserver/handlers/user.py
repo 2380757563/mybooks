@@ -18,6 +18,16 @@ from webserver.handlers.base import BaseHandler, auth, js
 from webserver.models import Device, ExpectedItem, Memo, Message, Reader, Reading, StickyItem
 
 CONF = loader.get_settings()
+
+
+def apply_default_read_range(user):
+    """Seed a newly-created Reader with the site-wide default reading range."""
+    default_range = CONF.get("DEFAULT_READ_RANGE") or {}
+    user.read_limit = default_range.get("mode", 0) or 0
+    user.limit_categories = default_range.get("categories", "") or ""
+    user.limit_tags = default_range.get("tags", "") or ""
+
+
 COOKIE_REDIRECT = "login_redirect"
 ENABLE_VIP_QUOTA_KEY = "ENABLE_VIP_QUOTA"
 
@@ -205,6 +215,7 @@ class SignUp(BaseHandler):
         user.extra = {"kindle_email": ""}
         user.set_secure_password(password)
         user.active = CONF.get("ENABLE_AUTO_NEW_USER_APPROVAL", False)
+        apply_default_read_range(user)
         try:
             user.save()
         except Exception:
@@ -270,6 +281,7 @@ class UserNew(BaseHandler):
         user.active = True  # 管理员添加的用户直接激活
         user.extra = {"kindle_email": ""}
         user.set_secure_password(password)
+        apply_default_read_range(user)
         try:
             user.save()
         except:

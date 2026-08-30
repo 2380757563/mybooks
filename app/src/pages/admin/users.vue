@@ -19,79 +19,53 @@
             :expanded="expandedItems"
             class="elevation-1"
         >
-            <template v-slot:item.login_ip="{ item }">
-                {{ item.extra.login_ip }}
-            </template>
             <template v-slot:item.total_reading_seconds="{ item }">
                 {{ (item.total_reading_seconds / 3600).toFixed(1) }}
             </template>
             <template v-slot:item.download_quota="{ item }">
                 {{ item.download_quota_used || 0 }}/{{ item.download_quota_limit ? item.download_quota_limit : '∞' }}
             </template>
-            <template v-slot:item.create_time="{ item }">
-                <div>{{ splitDateTime(item.create_time).date }}</div>
-                <div>{{ splitDateTime(item.create_time).time }}</div>
-            </template>
-            <template v-slot:item.access_time="{ item }">
-                <div>{{ splitDateTime(item.access_time).date }}</div>
-                <div>{{ splitDateTime(item.access_time).time }}</div>
-            </template>
             <template v-slot:item.detail="{ item }">
                 <div>
                     <span v-if="item.extra.upload_history_count"> {{ $t('admin.users.upload_cnt', { count: item.extra.upload_history_count }) }} </span>
                 </div>
-                <v-btn text color="primary" class="pa-0 detail-toggle-btn" @click="toggleStatsDetail(item)">
+                <v-btn small color="primary" class="rounded-btn" @click="toggleStatsDetail(item)">
                     {{ expandedUserId === item.id ? $t('admin.users.collapse_detail') : $t('admin.users.expand_detail') }}
                 </v-btn>
             </template>
             <template v-slot:expanded-item="{ headers, item }">
                 <td :colspan="headers.length" v-if="expandedUserId === item.id">
+                    <div class="user-detail-banner">
+                        <div class="user-detail-item">
+                            <div class="user-detail-label">{{ $t('admin.users.provider') }}</div>
+                            <div class="user-detail-value">{{ item.provider }}</div>
+                        </div>
+                        <div class="user-detail-item">
+                            <div class="user-detail-label">{{ $t('admin.users.create_time') }}</div>
+                            <div class="user-detail-value">{{ splitDateTime(item.create_time).date }} {{ splitDateTime(item.create_time).time }}</div>
+                        </div>
+                        <div class="user-detail-item">
+                            <div class="user-detail-label">{{ $t('admin.users.access_time') }}</div>
+                            <div class="user-detail-value">{{ splitDateTime(item.access_time).date }} {{ splitDateTime(item.access_time).time }}</div>
+                        </div>
+                        <div class="user-detail-item">
+                            <div class="user-detail-label">{{ $t('admin.users.login_ip') }}</div>
+                            <div class="user-detail-value">{{ item.extra.login_ip }}</div>
+                        </div>
+                    </div>
                     <reading-stats-banner :uid="item.id" :show-title="false" />
                 </td>
             </template>
             <template v-slot:item.actions="{ item }">
-                <v-btn small color="primary" class="white--text" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
-                <v-btn small color="primary" class="white--text" v-if="enableDownloadQuota" @click="openDownloadQuotaMenu(item, $event)">{{ $t('admin.users.set_download_quota') }}</v-btn>
-                <v-menu
-                    v-if="enableDownloadQuota"
-                    v-model="item._quotaMenuOpen"
-                    absolute
-                    :position-x="quotaMenuX"
-                    :position-y="quotaMenuY"
-                    :close-on-content-click="false"
-                >
-                    <v-card min-width="300">
-                        <v-card-text class="pb-0">
-                            <v-form :ref="'downloadQuotaForm-' + item.id">
-                                <v-text-field
-                                    v-model.number="item._quotaEditValue"
-                                    :label="$t('admin.users.download_quota_label')"
-                                    type="number"
-                                    min="-1"
-                                    max="1000"
-                                    :rules="[rules.downloadQuota]"
-                                    autofocus
-                                    class="quota-input"
-                                ></v-text-field>
-                            </v-form>
-                        </v-card-text>
-                        <v-card-actions>
-                            <v-spacer></v-spacer>
-                            <v-btn text @click="item._quotaMenuOpen = false">{{ $t('admin.users.cancel') }}</v-btn>
-                            <v-btn color="primary" @click="saveDownloadQuota(item)" :loading="savingDownloadQuota">{{ $t('admin.users.save') }}</v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-menu>
                 <v-menu offset-y right>
                     <template v-slot:activator="{ on }">
-                        <v-btn color="primary" small v-on="on">{{ $t('admin.users.actions') }} <v-icon small>more_vert</v-icon></v-btn>
+                        <v-btn color="#1B813E" class="white--text rounded-btn" small v-on="on">{{ $t('admin.users.modify_permissions') }} <v-icon small>more_vert</v-icon></v-btn>
                     </template>
                     <v-list dense>
-                        <v-subheader>{{ $t('admin.users.modify_permissions') }}</v-subheader>
                         <template v-for="perm in permissions">
                             <v-list-item :key="'disable-' + perm.name" v-if="item[perm.name]">
-                                <v-list-item-title
-                                    ><v-icon color="success">mdi-account-check</v-icon> {{ $t('admin.users.allowed', { permission: perm.text }) }}
+                                <v-list-item-title>
+                                    <v-icon color="success">mdi-account-check</v-icon> {{ $t('admin.users.allowed', { permission: perm.text }) }}
                                 </v-list-item-title>
                                 <v-list-item-action>
                                     <v-btn
@@ -126,9 +100,45 @@
                                 </v-list-item-action>
                             </v-list-item>
                         </template>
-
-                        <v-divider></v-divider>
-                        <v-subheader>{{ $t('admin.users.account_management') }}</v-subheader>
+                    </v-list>
+                </v-menu>
+                <v-btn small color="primary" class="white--text rounded-btn" @click="openReadingRangeDialog(item)" v-if="allowReadRangeSetting">{{ $t('admin.users.set_reading_range') }}</v-btn>
+                <v-btn small color="#1B813E" class="white--text rounded-btn" v-if="enableDownloadQuota" @click="openDownloadQuotaMenu(item, $event)">{{ $t('admin.users.set_download_quota') }}</v-btn>
+                <v-menu
+                    v-if="enableDownloadQuota"
+                    v-model="item._quotaMenuOpen"
+                    absolute
+                    :position-x="quotaMenuX"
+                    :position-y="quotaMenuY"
+                    :close-on-content-click="false"
+                >
+                    <v-card min-width="300">
+                        <v-card-text class="pb-0">
+                            <v-form :ref="'downloadQuotaForm-' + item.id">
+                                <v-text-field
+                                    v-model.number="item._quotaEditValue"
+                                    :label="$t('admin.users.download_quota_label')"
+                                    type="number"
+                                    min="-1"
+                                    max="1000"
+                                    :rules="[rules.downloadQuota]"
+                                    autofocus
+                                    class="quota-input"
+                                ></v-text-field>
+                            </v-form>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer></v-spacer>
+                            <v-btn text @click="item._quotaMenuOpen = false">{{ $t('admin.users.cancel') }}</v-btn>
+                            <v-btn color="primary" @click="saveDownloadQuota(item)" :loading="savingDownloadQuota">{{ $t('admin.users.save') }}</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-menu>
+                <v-menu offset-y right>
+                    <template v-slot:activator="{ on }">
+                        <v-btn color="primary" class="rounded-btn" small v-on="on">{{ $t('admin.users.account_management') }} <v-icon small>more_vert</v-icon></v-btn>
+                    </template>
+                    <v-list dense>
                         <v-list-item
                             v-if="!item.is_active"
                             @click="
@@ -193,87 +203,11 @@
         </v-data-table>
 
         <!-- Reading Range Dialog -->
-        <v-dialog v-model="showReadingRangeDialog" max-width="600px" persistent>
-            <v-card>
-                <v-card-title>
-                    {{ $t('admin.users.reading_range_dialog_title') }}
-                    <v-spacer></v-spacer>
-                    <v-btn icon @click="showReadingRangeDialog = false">
-                        <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                </v-card-title>
-                <v-card-text>
-                    <!-- Mode radio group -->
-                    <v-radio-group v-model="readingRange.mode" mandatory>
-                        <v-radio :label="$t('admin.users.reading_range_all')" :value="0"></v-radio>
-                        <v-radio :label="$t('admin.users.reading_range_whitelist')" :value="1"></v-radio>
-                        <v-radio :label="$t('admin.users.reading_range_blacklist')" :value="2"></v-radio>
-                    </v-radio-group>
-
-                    <template v-if="readingRange.mode !== 0">
-                        <!-- Categories multi-select -->
-                        <v-select
-                            v-model="readingRange.selectedCategories"
-                            :items="allCategories"
-                            item-text="name"
-                            item-value="name"
-                            :label="$t('admin.users.reading_range_categories_label')"
-                            multiple
-                            chips
-                            small-chips
-                            deletable-chips
-                            :loading="loadingCategories"
-                            class="mb-2"
-                        ></v-select>
-
-                        <!-- Tag search + chips -->
-                        <div class="mb-1 subtitle-2">{{ $t('admin.users.reading_range_tags_label') }}</div>
-                        <v-text-field
-                            v-model="tagSearchInput"
-                            :label="$t('admin.users.reading_range_tags_hint')"
-                            :loading="loadingTags"
-                            clearable
-                            dense
-                            outlined
-                            @input="onTagSearchInput"
-                            @click:clear="tagSuggestions = []"
-                        ></v-text-field>
-                        <!-- Tag suggestions list -->
-                        <v-list dense class="mb-2" v-if="tagSuggestions.length > 0" style="max-height:160px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;">
-                            <v-list-item
-                                v-for="tag in tagSuggestions"
-                                :key="tag.name"
-                                @click="addTag(tag.name)"
-                                :disabled="readingRange.selectedTags.includes(tag.name)"
-                            >
-                                <v-list-item-title>{{ tag.name }} <span class="grey--text caption">({{ tag.count }})</span></v-list-item-title>
-                                <v-list-item-action>
-                                    <v-icon small color="primary">mdi-plus</v-icon>
-                                </v-list-item-action>
-                            </v-list-item>
-                            <v-list-item v-if="tagSuggestions.length === 0 && tagSearchInput">
-                                <v-list-item-title class="grey--text">{{ $t('admin.users.reading_range_tags_no_result') }}</v-list-item-title>
-                            </v-list-item>
-                        </v-list>
-                        <!-- Selected tags chips -->
-                        <div v-if="readingRange.selectedTags.length > 0" class="d-flex flex-wrap gap-1 mt-1">
-                            <v-chip
-                                v-for="tag in readingRange.selectedTags"
-                                :key="tag"
-                                close
-                                small
-                                @click:close="removeTag(tag)"
-                            >{{ tag }}</v-chip>
-                        </div>
-                    </template>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn text @click="showReadingRangeDialog = false">{{ $t('admin.users.cancel') }}</v-btn>
-                    <v-btn color="primary" @click="saveReadingRange" :loading="savingReadingRange">{{ $t('admin.users.reading_range_save') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <reading-range-dialog
+            ref="readingRangeDialog"
+            :saving="savingReadingRange"
+            @save="saveReadingRange"
+        ></reading-range-dialog>
 
         <!-- Change Password Dialog -->
         <v-dialog v-model="showChangePasswordDialog" max-width="420px" persistent>
@@ -388,9 +322,10 @@
 
 <script>
 import ReadingStatsBanner from '~/components/ReadingStatsBanner.vue';
+import ReadingRangeDialog from '~/components/ReadingRangeDialog.vue';
 
 export default {
-    components: { ReadingStatsBanner },
+    components: { ReadingStatsBanner, ReadingRangeDialog },
     data: () => ({
         page: 1,
         items: [],
@@ -405,20 +340,8 @@ export default {
         addingUser: false,
         addUserError: "",
         // Reading range dialog
-        showReadingRangeDialog: false,
         savingReadingRange: false,
         readingRangeUserId: null,
-        readingRange: {
-            mode: 0,
-            selectedCategories: [],
-            selectedTags: [],
-        },
-        allCategories: [],
-        loadingCategories: false,
-        tagSearchInput: "",
-        tagSuggestions: [],
-        loadingTags: false,
-        tagSearchTimer: null,
         allowReadRangeSetting: false,
         // Download quota menu (open state & edit value live per-row on each item, see getDataFromApi)
         savingDownloadQuota: false,
@@ -450,14 +373,10 @@ export default {
     }),
     created() {
         this.baseHeaders = [
-            { text: this.$t('admin.users.id'), sortable: true, value: "id" },
+            { text: this.$t('admin.users.id'), sortable: true, value: "id", width: 80 },
             { text: this.$t('admin.users.username'), sortable: true, value: "username" },
             { text: this.$t('admin.users.nickname'), sortable: false, value: "name" },
             { text: this.$t('admin.users.email'), sortable: true, value: "email" },
-            { text: this.$t('admin.users.provider'), sortable: false, value: "provider" },
-            { text: this.$t('admin.users.create_time'), sortable: true, value: "create_time" },
-            { text: this.$t('admin.users.access_time'), sortable: true, value: "access_time" },
-            { text: this.$t('admin.users.login_ip'), sortable: false, value: "login_ip" },
             { text: this.$t('admin.users.total_reading_hours'), sortable: true, value: "total_reading_seconds" },
             { text: this.$t('admin.users.download_count'), sortable: true, value: "download_count" },
             { text: this.$t('admin.users.download_quota'), sortable: false, value: "download_quota" },
@@ -511,59 +430,19 @@ export default {
         },
         openReadingRangeDialog(item) {
             this.readingRangeUserId = item.id;
-            this.readingRange = {
+            this.$refs.readingRangeDialog.open({
                 mode: item.read_limit || 0,
-                selectedCategories: item.limit_categories ? item.limit_categories.split(',').filter(Boolean) : [],
-                selectedTags: item.limit_tags ? item.limit_tags.split(',').filter(Boolean) : [],
-            };
-            this.tagSearchInput = "";
-            this.tagSuggestions = [];
-            this.showReadingRangeDialog = true;
-            this.fetchCategories();
+                categories: item.limit_categories || "",
+                tags: item.limit_tags || "",
+            });
         },
-        fetchCategories() {
-            if (this.allCategories.length > 0) return;
-            this.loadingCategories = true;
-            this.$backend("/categories")
-                .then(rsp => {
-                    if (rsp.err === "ok") {
-                        this.allCategories = rsp.categories || [];
-                    }
-                })
-                .finally(() => { this.loadingCategories = false; });
-        },
-        onTagSearchInput(val) {
-            if (this.tagSearchTimer) clearTimeout(this.tagSearchTimer);
-            if (!val || val.trim().length === 0) {
-                this.tagSuggestions = [];
-                return;
-            }
-            this.tagSearchTimer = setTimeout(() => {
-                this.loadingTags = true;
-                this.$backend("/tags/search?q=" + encodeURIComponent(val.trim()) + "&limit=20")
-                    .then(rsp => {
-                        if (rsp.err === "ok") {
-                            this.tagSuggestions = rsp.tags || [];
-                        }
-                    })
-                    .finally(() => { this.loadingTags = false; });
-            }, 300);
-        },
-        addTag(name) {
-            if (!this.readingRange.selectedTags.includes(name)) {
-                this.readingRange.selectedTags.push(name);
-            }
-        },
-        removeTag(name) {
-            this.readingRange.selectedTags = this.readingRange.selectedTags.filter(t => t !== name);
-        },
-        saveReadingRange() {
+        saveReadingRange(range) {
             this.savingReadingRange = true;
             const payload = {
                 id: this.readingRangeUserId,
-                read_limit: this.readingRange.mode,
-                limit_categories: this.readingRange.mode === 0 ? "" : this.readingRange.selectedCategories.join(','),
-                limit_tags: this.readingRange.mode === 0 ? "" : this.readingRange.selectedTags.join(','),
+                read_limit: range.mode,
+                limit_categories: range.categories,
+                limit_tags: range.tags,
             };
             this.$backend("/admin/users", {
                 body: JSON.stringify(payload),
@@ -574,7 +453,7 @@ export default {
                     this.$alert("error", rsp.msg);
                 } else {
                     this.$alert("success", this.$t('admin.users.reading_range_save_ok'));
-                    this.showReadingRangeDialog = false;
+                    this.$refs.readingRangeDialog.close();
                     // Update local item to reflect saved state
                     const user = this.items.find(u => u.id === this.readingRangeUserId);
                     if (user) {
@@ -761,8 +640,23 @@ export default {
 </script>
 
 <style scoped>
-.detail-toggle-btn >>> .v-btn__content {
+.v-application .v-btn.rounded-btn:not(.v-btn--round):not(.v-btn--icon) {
+    border-radius: 6px !important;
+}
+.user-detail-banner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 12px;
+    padding: 12px 16px;
+    margin: 8px 0 16px;
+}
+.user-detail-label {
+    font-size: 12px;
+}
+.user-detail-value {
     font-size: 14px;
+    font-weight: 500;
 }
 .quota-input >>> .v-label {
     line-height: 1.2;

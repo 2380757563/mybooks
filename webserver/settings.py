@@ -120,6 +120,8 @@ settings = {
     "ALLOW_NEW_USER_PUSH_BOOK": True,
     "ENABLE_AUTO_NEW_USER_APPROVAL": False,
     "ALLOW_READ_RANGE_SETTING": False,
+    # 新用户默认的阅读范围：mode 0=全部可见 1=白名单(仅可见) 2=黑名单(不可见)
+    "DEFAULT_READ_RANGE": {"mode": 0, "categories": "", "tags": ""},
     "IMPORT_BY_INOTIFY": False,
     "IMPORT_CATEGORY_WITH_FOLDER": False,
     "UPDATE_CATEGORY_WITH_FOLDER_RENAME": False,

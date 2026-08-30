@@ -85,6 +85,7 @@ META_SOURCE_UJXSW = "ujxsw"
 
 # User reading range setting
 ALLOW_READ_RANGE_SETTING = "ALLOW_READ_RANGE_SETTING"
+DEFAULT_READ_RANGE = "DEFAULT_READ_RANGE"
 
 # audio books
 AUDIO_BOOK_IMPORTS = "audiobooks"

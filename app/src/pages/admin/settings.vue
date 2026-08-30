@@ -302,6 +302,19 @@
                     :key="f.key"
                     :label="$t(f.label)"
                   ></v-textarea>
+                  <div
+                    v-else-if="f.type === 'reading_range'"
+                    :key="f.key + '-reading_range'"
+                  >
+                    <p class="mb-2">{{ defaultReadRangeSummary }}</p>
+                    <v-btn
+                      color="primary"
+                      @click="openDefaultReadRangeDialog"
+                    >
+                      <v-icon left>mdi-book-cog-outline</v-icon>
+                      {{ $t(f.label) }}
+                    </v-btn>
+                  </div>
                   <v-text-field
                     v-else
                     :prepend-icon="f.icon"
@@ -886,16 +899,25 @@
         {{ $t("settings.restart_server") }}
       </v-btn>
     </div>
+
+    <reading-range-dialog
+      ref="defaultReadRangeDialog"
+      :title="$t('settings.default_read_range_dialog_title')"
+      :saving="savingDefaultReadRange"
+      @save="saveDefaultReadRange"
+    ></reading-range-dialog>
   </div>
 </template>
 
 <script>
 import SSLManager from "~/components/SSLManager.vue";
+import ReadingRangeDialog from "~/components/ReadingRangeDialog.vue";
 import { languageOptions } from "~/utils/languageCodes";
 
 export default {
   components: {
     "ssl-manager": SSLManager,
+    "reading-range-dialog": ReadingRangeDialog,
   },
   created() {
     // 为body添加settings-page类名，应用背景图样式
@@ -1163,14 +1185,20 @@ export default {
             label: "settings.allow_new_user_push_book",
             type: "checkbox",
           },
-          {
-            icon: "info",
-            key: "ALLOW_READ_RANGE_SETTING",
-            label: "settings.allow_read_range_setting",
-            type: "checkbox",
-          },
         ],
         groups: [
+          {
+            icon: "mdi-book-lock-outline",
+            key: "ALLOW_READ_RANGE_SETTING",
+            label: "settings.allow_read_range_setting",
+            fields: [
+              {
+                key: "DEFAULT_READ_RANGE",
+                type: "reading_range",
+                label: "settings.default_read_range",
+              },
+            ],
+          },
           {
             icon: "mdi-at",
             key: "ALLOW_REGISTER",
@@ -1626,6 +1654,7 @@ export default {
     sns: {},
     sns_items: [],
     settings: {},
+    savingDefaultReadRange: false,
     site_url: "",
     cards: [],
     bookNavList: [],
@@ -1709,6 +1738,21 @@ export default {
       });
       return Object.keys(counts).filter((name) => counts[name] > 1);
     },
+    defaultReadRangeSummary() {
+      const range = this.settings["DEFAULT_READ_RANGE"] || {};
+      const mode = range.mode || 0;
+      if (mode === 0) {
+        return this.$t("settings.default_read_range_all");
+      }
+      const names = [
+        ...(range.categories ? range.categories.split(",").filter(Boolean) : []),
+        ...(range.tags ? range.tags.split(",").filter(Boolean) : []),
+      ];
+      const list = names.length ? names.join("、") : this.$t("settings.default_read_range_unset");
+      return mode === 1
+        ? this.$t("settings.default_read_range_whitelist", { list })
+        : this.$t("settings.default_read_range_blacklist", { list });
+    },
   },
   mounted() {
     this.fetchTrashSize();
@@ -1722,6 +1766,36 @@ export default {
     }
   },
   methods: {
+    openDefaultReadRangeDialog() {
+      const range = this.settings["DEFAULT_READ_RANGE"] || {};
+      this.$refs.defaultReadRangeDialog.open({
+        mode: range.mode || 0,
+        categories: range.categories || "",
+        tags: range.tags || "",
+      });
+    },
+    saveDefaultReadRange(range) {
+      const defaultReadRange = {
+        mode: range.mode,
+        categories: range.categories,
+        tags: range.tags,
+      };
+      this.savingDefaultReadRange = true;
+      this.$backend("/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({DEFAULT_READ_RANGE: defaultReadRange }),
+      }).then((rsp) => {
+        if (rsp.err !== "ok") {
+          this.$alert("error", rsp.msg || this.$t("settings.save_error"));
+          return;
+        }
+        this.$set(this.settings, "DEFAULT_READ_RANGE", defaultReadRange);
+        this.$refs.defaultReadRangeDialog.close();
+        this.$alert("success", rsp.msg || this.$t("settings.save_success"));
+      }).finally(() => {
+        this.savingDefaultReadRange = false;
+      });
+    },
     async loadThanksTo() {
       try {
         const rsp = await this.$backend("/admin/thanks/notes");
