@@ -111,7 +111,7 @@
                         v-if="!loading && books_selected.length > 0"
                         color="#9f353a"
                         @click="showDeleteSelectedBooksDialog"
-                        class="flex-shrink-0"
+                        class="flex-shrink-0 white--text"
                         :icon="$vuetify.breakpoint.xs"
                         :small="$vuetify.breakpoint.xs"
                     >
@@ -451,151 +451,148 @@
         </v-snackbar>
 
         <!-- 提醒拉取图书的规则说明 -->
-        <v-dialog v-model="meta_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="primary"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p v-if="books_selected.length > 0">
-                        {{ $t('admin.books.reminder.descriptionSelected') }}
-                    </p>
-                    <p v-else>
-                        {{ $t('admin.books.reminder.description') }}
-                    </p>
-                    <p> {{ $t('admin.books.reminder.rule1') }} </p>
-                    <p> {{ $t('admin.books.reminder.rule2') }} </p>
-                    <p> {{ $t('admin.books.reminder.rule3') }} </p>
-                    <p> {{ $t('admin.books.reminder.estimate', { minutes: auto_fill_mins }) }} </p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="meta_dialog = !meta_dialog">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="primary" @click="autoFill">{{ $t('admin.books.execute') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="meta_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="primary"
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.execute')"
+            @confirm="autoFill"
+        >
+            <p v-if="books_selected.length > 0">
+                {{ $t('admin.books.reminder.descriptionSelected') }}
+            </p>
+            <p v-else>
+                {{ $t('admin.books.reminder.description') }}
+            </p>
+            <p> {{ $t('admin.books.reminder.rule1') }} </p>
+            <p> {{ $t('admin.books.reminder.rule2') }} </p>
+            <p> {{ $t('admin.books.reminder.rule3') }} </p>
+            <p> {{ $t('admin.books.reminder.estimate', { minutes: auto_fill_mins }) }} </p>
+        </AppDialog>
 
         <!-- 图书类型互转确认对话框 -->
-        <v-dialog v-model="exchange_type_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="warning"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p> {{ $t('admin.books.exchangeTypeConfirm') }} </p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="exchange_type_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="warning" @click="exchangeBookType">{{ $t('admin.books.execute') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="exchange_type_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="orange"
+            confirm-dark
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.execute')"
+            @confirm="exchangeBookType"
+        >
+            <p> {{ $t('admin.books.exchangeTypeConfirm') }} </p>
+        </AppDialog>
 
         <!-- 清理稀少标签确认对话框 -->
-        <v-dialog v-model="clear_rare_tags_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="secondary"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p> {{ $t('admin.books.clearRareTagsConfirm') }} </p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="clear_rare_tags_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="secondary" @click="clearRareTags">{{ $t('admin.books.execute') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="clear_rare_tags_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="orange"
+            confirm-dark
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.execute')"
+            @confirm="clearRareTags"
+        >
+            <p> {{ $t('admin.books.clearRareTagsConfirm') }} </p>
+        </AppDialog>
 
         <!-- 转EPUB确认对话框 -->
-        <v-dialog v-model="kindle_convert_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="info"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p v-if="books_selected.length > 0">
-                        {{ $t('admin.books.epubConvertSelectedConfirm', { count: books_selected.length }) }}
-                    </p>
-                    <p v-else>
-                        {{ $t('admin.books.epubConvertAllConfirm') }}
-                    </p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="kindle_convert_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="info" @click="epubConvert">{{ $t('admin.books.execute') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="kindle_convert_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="info"
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.execute')"
+            @confirm="epubConvert"
+        >
+            <p v-if="books_selected.length > 0">
+                {{ $t('admin.books.epubConvertSelectedConfirm', { count: books_selected.length }) }}
+            </p>
+            <p v-else>
+                {{ $t('admin.books.epubConvertAllConfirm') }}
+            </p>
+        </AppDialog>
 
         <!-- 更新拼音书名确认对话框 -->
-        <v-dialog v-model="update_title_sort_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="info"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p v-if="books_selected.length > 0">
-                        {{ $t('admin.books.updateTitleSortSelectedConfirm', { count: books_selected.length }) }}
-                    </p>
-                    <p v-else>
-                        {{ $t('admin.books.updateTitleSortAllConfirm') }}
-                    </p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="update_title_sort_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="info" @click="updateTitleSort">{{ $t('admin.books.execute') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="update_title_sort_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="info"
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.execute')"
+            @confirm="updateTitleSort"
+        >
+            <p v-if="books_selected.length > 0">
+                {{ $t('admin.books.updateTitleSortSelectedConfirm', { count: books_selected.length }) }}
+            </p>
+            <p v-else>
+                {{ $t('admin.books.updateTitleSortAllConfirm') }}
+            </p>
+        </AppDialog>
 
         <!-- 清理无效记录确认对话框 -->
-        <v-dialog v-model="clear_invalid_items_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="warning"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p>{{ $t('admin.books.clearInvalidItemsConfirm') }}</p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="clear_invalid_items_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="warning" @click="clearInvalidItems">{{ $t('admin.books.execute') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="clear_invalid_items_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="orange"
+            confirm-dark
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.execute')"
+            @confirm="clearInvalidItems"
+        >
+            <p>{{ $t('admin.books.clearInvalidItemsConfirm') }}</p>
+        </AppDialog>
 
         <!-- 删除单本书籍确认对话框 -->
-        <v-dialog v-model="delete_book_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="error"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p>{{ $t('admin.books.deleteBookConfirm') }}</p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="delete_book_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="error" @click="deleteBook">{{ $t('admin.books.confirmDelete') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="delete_book_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="deep-orange"
+            confirm-dark
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.confirmDelete')"
+            @confirm="deleteBook"
+        >
+            <p>{{ $t('admin.books.deleteBookConfirm') }}</p>
+        </AppDialog>
 
         <!-- 批量删除书籍确认对话框 -->
-        <v-dialog v-model="delete_selected_books_dialog" persistent transition="dialog-bottom-transition" width="500">
-            <v-card>
-                <v-toolbar flat dense dark color="error"> {{ $t('admin.books.reminderTitle') }} </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p>{{ $t('admin.books.deleteSelectedBooksConfirm', { count: books_selected.length }) }}</p>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="delete_selected_books_dialog = false">{{ $t('admin.books.cancel') }}</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn color="error" @click="deleteSelectedBooks">{{ $t('admin.books.confirmDelete') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="delete_selected_books_dialog"
+            type="confirm"
+            :title="$t('admin.books.reminderTitle')"
+            color="deep-orange"
+            confirm-dark
+            width="500"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('admin.books.cancel')"
+            :confirm-text="$t('admin.books.confirmDelete')"
+            @confirm="deleteSelectedBooks"
+        >
+            <p>{{ $t('admin.books.deleteSelectedBooksConfirm', { count: books_selected.length }) }}</p>
+        </AppDialog>
 
 </v-card>
 </template>

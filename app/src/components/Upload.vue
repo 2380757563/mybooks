@@ -29,32 +29,29 @@
             <v-icon>mdi-book-plus</v-icon>
         </v-btn>
 
-        <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="360">
-            <v-card class="upload-dialog-card">
-                <v-toolbar flat dense dark color="#003153" class="upload-dialog-toolbar">
-                    {{ $t('upload.title') }}
-                    <v-spacer></v-spacer>
-                    <v-btn color="" text @click="dialog = false">{{ $t('upload.close') }}</v-btn>
-                </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <v-form ref="form" @submit="do_upload">
-                        <v-file-input
-                            v-model="ebooks"
-                            multiple
-                            show-size
-                            counter
-                            :label="$t('upload.selectFile')"
-                        ></v-file-input>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn :loading="loading" color="primary" @click="do_upload">{{ $t('upload.upload') }}</v-btn>
-                    <v-spacer></v-spacer>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="dialog"
+            type="action"
+            :title="$t('upload.title')"
+            color="teal darken-4"
+            width="360"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('upload.close')"
+            :confirm-text="$t('upload.upload')"
+            confirm-dark
+            :confirm-loading="loading"
+            @confirm="do_upload"
+        >
+            <v-form ref="form" @submit="do_upload">
+                <v-file-input
+                    v-model="ebooks"
+                    multiple
+                    show-size
+                    counter
+                    :label="$t('upload.selectFile')"
+                ></v-file-input>
+            </v-form>
+        </AppDialog>
 
         <BatchImportDialog
             v-model="batchDialog"
@@ -64,17 +61,26 @@
 
 
         <!-- 添加实体书对话框 -->
-        <v-dialog v-if="($store.state.sys.allow.upload || $store.state.user.is_login) && $store.state.sys.allow.physical_books"
-                            v-model="isbn_dialog" persistent transition="dialog-bottom-transition" width="410">
-            <v-card class="upload-dialog-card">
-                <v-toolbar flat dense dark color="green" class="upload-dialog-toolbar">
-                    <v-icon>mdi-book-plus</v-icon>
-                    <v-toolbar-title class="ml-2">{{ $t('upload.addPhysicalBook') }}</v-toolbar-title>
-                    <v-spacer></v-spacer>
-                    <v-btn color="" text @click="cancelAddBook">{{ $t('upload.close') }}</v-btn>
-                </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
+        <AppDialog
+            v-if="($store.state.sys.allow.upload || $store.state.user.is_login) && $store.state.sys.allow.physical_books"
+            v-model="isbn_dialog"
+            type="action"
+            :title="$t('upload.addPhysicalBook')"
+            icon="mdi-book-plus"
+            color="green"
+            width="410"
+            transition="dialog-bottom-transition"
+            card-class="upload-dialog-card"
+            toolbar-class="upload-dialog-toolbar"
+            :dismiss-label="$t('upload.close')"
+            :confirm-text="$t('upload.confirmAdd')"
+            confirm-color="green"
+            confirm-dark
+            :confirm-loading="adding_book"
+            :confirm-disabled="!isValidIsbn"
+            @dismiss="cancelAddBook"
+            @confirm="confirmAddBook"
+        >
                     <p class="body-1">{{ $t('upload.addPhysicalBookDesc') }}</p>
                     <v-text-field
                         ref="isbnField"
@@ -131,21 +137,7 @@
                         color="green"
                         class="mt-4"
                     ></v-checkbox>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                        :loading="adding_book"
-                        color="green"
-                        @click="confirmAddBook"
-                        :disabled="!isValidIsbn"
-                    >
-                        {{ $t('upload.confirmAdd') }}
-                    </v-btn>
-                    <v-spacer></v-spacer>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        </AppDialog>
     </div>
 </template>
 
@@ -615,14 +607,3 @@ export default {
 
 }
 </script>
-
-<style scoped>
-.upload-dialog-card {
-    border-radius: 16px 16px 4px 4px !important;
-}
-.upload-dialog-toolbar {
-    border-radius: 16px 16px 0 0 !important;
-    overflow: hidden;
-}
-</style>
-

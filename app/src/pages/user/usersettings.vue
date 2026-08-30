@@ -28,57 +28,44 @@
               </div>
 
               <!-- Avatar Dialog -->
-              <v-dialog v-model="showAvatarDialog" persistent max-width="500">
-                <v-card>
-                  <v-toolbar flat dense dark color="primary">
-                    {{ $t("user.uploadAvatar") }}
-                    <v-spacer></v-spacer>
-                    <v-btn icon dark @click="closeAvatarDialog" :disabled="isUploading">
-                      <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                  </v-toolbar>
+              <AppDialog
+                v-model="showAvatarDialog"
+                type="action"
+                :title="$t('user.uploadAvatar')"
+                dismiss-icon
+                :dismiss-disabled="isUploading"
+                :confirm-text="$t('user.save')"
+                :confirm-disabled="!avatarUrl || isUploading"
+                @dismiss="closeAvatarDialog"
+                @confirm="uploadAvatar"
+              >
+                <p>{{ $t("user.uploadWarning") }}</p>
 
-                  <v-card-text class="mt-4">
-                    <p>{{ $t("user.uploadWarning") }}</p>
+                <v-file-input
+                  v-model="avatarImage"
+                  accept="image/png,image/jpeg"
+                  :label="$t('user.uploadImage')"
+                  prepend-icon="mdi-upload"
+                  @change="onAvatarChange"
+                  :disabled="isUploading"
+                ></v-file-input>
 
-                    <v-file-input
-                      v-model="avatarImage"
-                      accept="image/png,image/jpeg"
-                      :label="$t('user.uploadImage')"
-                      prepend-icon="mdi-upload"
-                      @change="onAvatarChange"
-                      :disabled="isUploading"
-                    ></v-file-input>
-
-                    <div v-if="avatarUrl" class="cropper-container mt-4">
-                      <!-- 关键修改：使用动态组件和延迟加载 -->
-                      <img
-                        :src="avatarUrl"
-                        ref="cropperImage"
-                        style="max-width: 100%"
-                      />
-                      <!-- 加载状态 -->
-                      <v-overlay v-if="isCropping" absolute>
-                        <v-progress-circular
-                          indeterminate
-                          size="64"
-                        ></v-progress-circular>
-                      </v-overlay>
-                    </div>
-                  </v-card-text>
-
-                  <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                      color="primary"
-                      @click="uploadAvatar"
-                      :disabled="!avatarUrl || isUploading"
-                    >
-                      {{ $t("user.save") }}
-                    </v-btn>
-                  </v-card-actions>
-                </v-card>
-              </v-dialog>
+                <div v-if="avatarUrl" class="cropper-container mt-4">
+                  <!-- 关键修改：使用动态组件和延迟加载 -->
+                  <img
+                    :src="avatarUrl"
+                    ref="cropperImage"
+                    style="max-width: 100%"
+                  />
+                  <!-- 加载状态 -->
+                  <v-overlay v-if="isCropping" absolute>
+                    <v-progress-circular
+                      indeterminate
+                      size="64"
+                    ></v-progress-circular>
+                  </v-overlay>
+                </div>
+              </AppDialog>
             </v-col>
 
             <!-- Username -->
@@ -253,7 +240,7 @@
             <!-- Save Button -->
             <v-col cols="12">
               <div class="text-center">
-                <v-btn dark large rounded color="orange" type="submit">{{
+                <v-btn dark large rounded color="deep-orange" type="submit">{{
                   $t("user.save")
                 }}</v-btn>
               </div>
@@ -436,7 +423,7 @@
                 dark
                 large
                 rounded
-                color="orange"
+                color="deep-orange"
                 @click="saveDevices"
                 :loading="savingDevices"
               >

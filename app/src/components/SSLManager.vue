@@ -3,28 +3,23 @@
         <v-btn dense @click="dialog = !dialog" >
             <v-icon>mdi-upload</v-icon> {{ $t('sslManager.updateCertificate') }}
         </v-btn>
-        <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="400">
-            <v-card>
-                <v-toolbar flat dense dark color="primary">
-                    {{ $t('sslManager.uploadCertificate') }}
-                    <v-spacer></v-spacer>
-                    <v-btn color="" text @click="dialog = false">{{ $t('sslManager.close') }}</v-btn>
-                </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p>{{ $t('sslManager.instructions') }}</p>
-                    <v-form ref="form" @submit="upload_ssl">
-                        <v-file-input v-model="ssl_crt" accept=".crt" :label="$t('sslManager.selectCertificateFile')"></v-file-input>
-                        <v-file-input v-model="ssl_key" accept=".key" :label="$t('sslManager.selectPrivateKeyFile')"></v-file-input>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions >
-                    <v-spacer> </v-spacer>
-                    <v-btn :loading="loading" color="primary" @click="upload_ssl">{{ $t('sslManager.uploadCertificate') }}</v-btn>
-                    <v-spacer> </v-spacer>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="dialog"
+            type="action"
+            :title="$t('sslManager.uploadCertificate')"
+            width="400"
+            transition="dialog-bottom-transition"
+            :dismiss-label="$t('sslManager.close')"
+            :confirm-text="$t('sslManager.uploadCertificate')"
+            :confirm-loading="loading"
+            @confirm="upload_ssl"
+        >
+            <p>{{ $t('sslManager.instructions') }}</p>
+            <v-form ref="form" @submit="upload_ssl">
+                <v-file-input v-model="ssl_crt" accept=".crt" :label="$t('sslManager.selectCertificateFile')"></v-file-input>
+                <v-file-input v-model="ssl_key" accept=".key" :label="$t('sslManager.selectPrivateKeyFile')"></v-file-input>
+            </v-form>
+        </AppDialog>
     </div>
 </template>
 

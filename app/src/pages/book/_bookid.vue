@@ -15,55 +15,50 @@
                 </v-card>
             </v-dialog>
 
-            <v-dialog v-model="dialog_epub2audio" persistent width="380">
-                <v-card class="dialog-border">
-                    <v-toolbar flat dense dark color="#003153" class="dialog-toolbar">
-                        {{ $t('book.convertToAudio') }}
-                        <v-spacer></v-spacer>
-                        <v-btn color="" text @click="dialog_epub2audio = false">{{ $t('common.cancel') }}</v-btn>
-                    </v-toolbar>
-                    <v-card-text v-if="audios.status === AUDIO_STATUS.FAILED">
-                        <p style="color: red; font-weight: bold;">{{ $t('book.conversionFailed') }} <br/>
-                            {{ audios.progress && audios.progress.error_message ? audios.progress.error_message : $t('book.defaultFailedReason') }}
-                        </p>
-                    </v-card-text>
-                    <v-card-text>
-                        <p style="margin: 16px 0 10px 0;">{{ $t('book.convertToAudioNote') }}</p>
-                        <v-select style="margin-top: 3px;"
-                            :items="voice_options"
-                            outlined
-                            dense
-                            v-model="voice_name"
-                            :label="$t('book.chooseVoice')"
-                            item-text="display_name"
-                            item-value="voice_name"
-                            required
-                        >
-                            <template v-slot:selection="{ item }">
-                                {{ item.display_name }}
-                            </template>
-                            <template v-slot:item="{ item }">
-                                <v-list-item-content>
-                                    <v-list-item-title style="font-size: 15px;">{{ item.display_name }}</v-list-item-title>
-                                </v-list-item-content>
-                                <v-list-item-action>
-                                    <v-btn
-                                        icon
-                                        small
-                                        @click.stop="playSampleVoice(item)"
-                                        :loading="playing_sample === item.voice_name"
-                                    >
-                                        <v-icon>play_arrow</v-icon>
-                                    </v-btn>
-                                </v-list-item-action>
-                            </template>
-                        </v-select>
-                    </v-card-text>
-                    <v-card-actions class="justify-center">
-                        <v-btn color="primary" large @click="generateAudio()">{{ $t('common.start') }}</v-btn>
-                    </v-card-actions>
-                </v-card>
-            </v-dialog>
+            <AppDialog
+                v-model="dialog_epub2audio"
+                type="action"
+                :title="$t('book.convertToAudio')"
+                color="blue darken-4"
+                confirm-dark
+                width="380"
+                :confirm-text="$t('common.start')"
+                @confirm="generateAudio()"
+            >
+                <p v-if="audios.status === AUDIO_STATUS.FAILED" style="color: red; font-weight: bold;">{{ $t('book.conversionFailed') }} <br/>
+                    {{ audios.progress && audios.progress.error_message ? audios.progress.error_message : $t('book.defaultFailedReason') }}
+                </p>
+                <p style="margin: 16px 0 10px 0;">{{ $t('book.convertToAudioNote') }}</p>
+                <v-select style="margin-top: 3px;"
+                    :items="voice_options"
+                    outlined
+                    dense
+                    v-model="voice_name"
+                    :label="$t('book.chooseVoice')"
+                    item-text="display_name"
+                    item-value="voice_name"
+                    required
+                >
+                    <template v-slot:selection="{ item }">
+                        {{ item.display_name }}
+                    </template>
+                    <template v-slot:item="{ item }">
+                        <v-list-item-content>
+                            <v-list-item-title style="font-size: 15px;">{{ item.display_name }}</v-list-item-title>
+                        </v-list-item-content>
+                        <v-list-item-action>
+                            <v-btn
+                                icon
+                                small
+                                @click.stop="playSampleVoice(item)"
+                                :loading="playing_sample === item.voice_name"
+                            >
+                                <v-icon>play_arrow</v-icon>
+                            </v-btn>
+                        </v-list-item-action>
+                    </template>
+                </v-select>
+            </AppDialog>
 
             <v-dialog v-model="dialog_audiolist" persistent width="480">
                 <v-card class="dialog-border">
@@ -137,38 +132,36 @@
                 </v-card>
             </v-dialog>
 
-            <v-dialog v-model="dialog_download" persistent width="300">
-                <v-card>
-                    <v-card-title color="primary" class="">{{ $t('book.downloadBook') }}</v-card-title>
-                    <v-card-text>
-                        <v-list v-if="book.files.length > 0">
-                            <v-list-item :key="'file-'+file.format" v-for="file in book.files"
-                                         @click="openDownloadLink(file.href)">
-                                <v-list-item-avatar color='primary'>
-                                    <v-icon dark>get_app</v-icon>
-                                </v-list-item-avatar>
-                                <v-list-item-content>
-                                    <v-list-item-title>{{ file.format }}</v-list-item-title>
-                                    <v-list-item-subtitle v-if="file.size>=1048576">{{
-                                            parseInt(file.size / 1048576)
-                                        }}MB
-                                    </v-list-item-subtitle>
-                                    <v-list-item-subtitle v-else>{{
-                                            parseInt(file.size / 1024)
-                                        }}KB
-                                    </v-list-item-subtitle>
-                                </v-list-item-content>
-                            </v-list-item>
-                        </v-list>
-                        <p v-else><br/>{{ $t('book.noDownloadableFiles') }}</p>
-                    </v-card-text>
-                    <v-card-actions>
-                        <v-spacer></v-spacer>
-                        <v-btn text @click="dialog_download = false">{{ $t('common.close') }}</v-btn>
-                        <v-spacer></v-spacer>
-                    </v-card-actions>
-                </v-card>
-            </v-dialog>
+            <AppDialog
+                v-model="dialog_download"
+                type="action"
+                :title="$t('book.downloadBook')"
+                icon="get_app"
+                width="300"
+                :dismiss-label="$t('common.close')"
+                hide-footer-button
+            >
+                <v-list v-if="book.files.length > 0">
+                    <v-list-item :key="'file-'+file.format" v-for="file in book.files"
+                                 @click="openDownloadLink(file.href)">
+                        <v-list-item-avatar color='primary'>
+                            <v-icon dark>get_app</v-icon>
+                        </v-list-item-avatar>
+                        <v-list-item-content>
+                            <v-list-item-title>{{ file.format }}</v-list-item-title>
+                            <v-list-item-subtitle v-if="file.size>=1048576">{{
+                                    parseInt(file.size / 1048576)
+                                }}MB
+                            </v-list-item-subtitle>
+                            <v-list-item-subtitle v-else>{{
+                                    parseInt(file.size / 1024)
+                                }}KB
+                            </v-list-item-subtitle>
+                        </v-list-item-content>
+                    </v-list-item>
+                </v-list>
+                <p v-else><br/>{{ $t('book.noDownloadableFiles') }}</p>
+            </AppDialog>
 
             <v-card v-if="dialog_refer">
                 <v-toolbar flat dense dark color="primary">
@@ -937,47 +930,46 @@
         </v-col>
     </v-row>
 
-    <v-dialog v-model="dialog_set_cover" persistent max-width="400">
-      <v-card>
-        <v-card-title class="headline">
-          <v-icon class="mr-2">mdi-image-outline</v-icon>
-          {{ $t('book.setCover') }}
-        </v-card-title>
-        <v-card-text>
-          <v-file-input
-            v-model="cover_file"
-            :label="$t('book.selectCover')"
-            outlined
-            dense
-            show-size
-            accept="image/png,image/jpeg"
-            prepend-icon="mdi-file-image"
-            :error-messages="cover_error"
-          ></v-file-input>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="dialog_set_cover = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn color="primary" @click="uploadCover">
-            {{ $t('common.ok') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <AppDialog
+      v-model="dialog_set_cover"
+      type="action"
+      :title="$t('book.setCover')"
+      icon="mdi-image-outline"
+      max-width="400"
+      :confirm-text="$t('common.ok')"
+      @confirm="uploadCover"
+    >
+      <v-file-input
+        v-model="cover_file"
+        :label="$t('book.selectCover')"
+        outlined
+        dense
+        show-size
+        accept="image/png,image/jpeg"
+        prepend-icon="mdi-file-image"
+        :error-messages="cover_error"
+      ></v-file-input>
+    </AppDialog>
 
     <!-- 添加实体书对话框 -->
-    <v-dialog v-if="$store.state.sys.allow.physical_books" v-model="isbn_dialog" persistent transition="dialog-bottom-transition" width="410">
-        <v-card>
-            <v-toolbar flat dense dark color="green">
-                <v-icon>mdi-book-plus</v-icon>
-                <v-toolbar-title class="ml-2">{{ $t('upload.addPhysicalBook') }}</v-toolbar-title>
-                <v-spacer></v-spacer>
-                <v-btn color="" text @click="cancelAddBook">{{ $t('upload.close') }}</v-btn>
-            </v-toolbar>
-            <v-card-title></v-card-title>
-            <v-card-text>
+    <AppDialog
+        v-if="$store.state.sys.allow.physical_books"
+        v-model="isbn_dialog"
+        type="action"
+        :title="$t('upload.addPhysicalBook')"
+        icon="mdi-book-plus"
+        color="green"
+        width="410"
+        transition="dialog-bottom-transition"
+        :dismiss-label="$t('upload.close')"
+        :confirm-text="$t('upload.confirmAdd')"
+        confirm-color="green"
+        confirm-dark
+        :confirm-loading="adding_book"
+        :confirm-disabled="!isValidIsbn"
+        @dismiss="cancelAddBook"
+        @confirm="confirmAddBook"
+    >
                 <p class="body-1">{{ $t('upload.addPhysicalBookDesc') }}</p>
                 <v-text-field
                     ref="isbnField"
@@ -1034,161 +1026,117 @@
                     color="green"
                     class="mt-4"
                 ></v-checkbox>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn
-                    :loading="adding_book"
-                    color="green"
-                    @click="confirmAddBook"
-                    :disabled="!isValidIsbn"
-                >
-                    {{ $t('upload.confirmAdd') }}
-                </v-btn>
-                <v-spacer></v-spacer>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 
     <!-- 拆分格式对话框 -->
-    <v-dialog v-model="dialog_separate" persistent max-width="500">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-content-copy</v-icon>
-                {{ $t('book.seperate') }}
-            </v-card-title>
-            <v-card-text>
-                <p class="mb-4">{{ $t('book.selectFormatToSeparate') }}</p>
-                <v-radio-group v-model="selectedSeparateFormat">
-                    <v-radio
-                        v-for="file in book.files"
-                        :key="'sep-' + file.format"
-                        :value="file.format.toLowerCase()"
-                        :label="`${file.format} - ${formatFileSize(file.size)}`"
-                    ></v-radio>
-                </v-radio-group>
-                <v-alert type="info" text dense class="mt-4">
-                    {{ $t('book.separateHint') }}
-                </v-alert>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="dialog_separate = false">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn
-                    color="primary"
-                    :loading="separating_book"
-                    @click="confirmSeparate"
-                    :disabled="!selectedSeparateFormat"
-                >
-                    {{ $t('common.ok') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_separate"
+        type="action"
+        :title="$t('book.seperate')"
+        icon="mdi-content-copy"
+        max-width="500"
+        :confirm-text="$t('common.ok')"
+        :confirm-loading="separating_book"
+        :confirm-disabled="!selectedSeparateFormat"
+        @confirm="confirmSeparate"
+    >
+        <p class="mb-4">{{ $t('book.selectFormatToSeparate') }}</p>
+        <v-radio-group v-model="selectedSeparateFormat">
+            <v-radio
+                v-for="file in book.files"
+                :key="'sep-' + file.format"
+                :value="file.format.toLowerCase()"
+                :label="`${file.format} - ${formatFileSize(file.size)}`"
+            ></v-radio>
+        </v-radio-group>
+        <v-alert type="info" text dense class="mt-4">
+            {{ $t('book.separateHint') }}
+        </v-alert>
+    </AppDialog>
 
     <!-- 删除书籍确认对话框 -->
-    <v-dialog v-model="dialog_delete_book" persistent transition="dialog-bottom-transition" width="500">
-        <v-card>
-            <v-toolbar flat dense dark color="error"> {{ $t('book.deleteBook') }} </v-toolbar>
-            <v-card-title></v-card-title>
-            <v-card-text>
-                <p>{{ $t('book.deleteBookConfirm') }}</p>
-            </v-card-text>
-            <v-card-actions>
-                <v-btn @click="dialog_delete_book = false">{{ $t('common.cancel') }}</v-btn>
-                <v-spacer></v-spacer>
-                <v-btn color="error" @click="confirmDeleteBook">{{ $t('book.confirmDeleteBook') }}</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_delete_book"
+        type="confirm"
+        :title="$t('book.deleteBook')"
+        color="deep-orange"
+        confirm-dark
+        width="500"
+        transition="dialog-bottom-transition"
+        :confirm-text="$t('book.confirmDeleteBook')"
+        @confirm="confirmDeleteBook"
+    >
+        <p>{{ $t('book.deleteBookConfirm') }}</p>
+    </AppDialog>
 
     <!-- 删除格式对话框 -->
-    <v-dialog v-model="dialog_delete_format" persistent max-width="500">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-content-copy</v-icon>
-                {{ $t('book.deleteFormat') }}
-            </v-card-title>
-            <v-card-text>
-                <p class="mb-4">{{ $t('book.selectFormatToDelete') }}</p>
-                <v-radio-group v-model="selectedDeletedFormat">
-                    <v-radio
-                        v-for="file in book.files"
-                        :key="'del-' + file.format"
-                        :value="file.format.toLowerCase()"
-                        :label="`${file.format} - ${formatFileSize(file.size)}`"
-                    ></v-radio>
-                </v-radio-group>
-                <v-alert type="info" text dense class="mt-4">
-                    {{ $t('book.deleteFormatHint') }}
-                </v-alert>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="dialog_delete_format = false">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn
-                    color="primary"
-                    :loading="deleting_format"
-                    @click="confirmDeleteFormat"
-                    :disabled="!selectedDeletedFormat"
-                >
-                    {{ $t('common.ok') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_delete_format"
+        type="action"
+        :title="$t('book.deleteFormat')"
+        icon="mdi-delete-outline"
+        color="deep-orange"
+        confirm-dark
+        max-width="500"
+        :confirm-text="$t('common.ok')"
+        :confirm-loading="deleting_format"
+        :confirm-disabled="!selectedDeletedFormat"
+        @confirm="confirmDeleteFormat"
+    >
+        <p class="mb-4">{{ $t('book.selectFormatToDelete') }}</p>
+        <v-radio-group v-model="selectedDeletedFormat">
+            <v-radio
+                v-for="file in book.files"
+                :key="'del-' + file.format"
+                :value="file.format.toLowerCase()"
+                :label="`${file.format} - ${formatFileSize(file.size)}`"
+            ></v-radio>
+        </v-radio-group>
+        <v-alert type="info" text dense class="mt-4">
+            {{ $t('book.deleteFormatHint') }}
+        </v-alert>
+    </AppDialog>
 
     <!-- 上传新格式对话框 -->
-    <v-dialog v-model="dialog_upload_format" persistent max-width="500">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-file-upload-outline</v-icon>
-                {{ $t('book.uploadNewFormat') }}
-            </v-card-title>
-            <v-card-text>
-                <p class="mb-4">{{ $t('book.uploadNewFormatDesc') }}</p>
-                <v-file-input
-                    v-model="upload_format_file"
-                    :label="$t('book.selectFile')"
-                    outlined
-                    dense
-                    show-size
-                    accept=".epub,.mobi,.azw,.azw3,.pdf,.txt"
-                    prepend-icon="mdi-file-document"
-                ></v-file-input>
-                <v-alert type="info" text dense class="mt-4">
-                    {{ $t('book.supportedFormatsUpload') }}
-                </v-alert>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="dialog_upload_format = false">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn
-                    color="primary"
-                    :loading="uploading_format"
-                    @click="confirmUploadFormat"
-                    :disabled="!upload_format_file"
-                >
-                    {{ $t('book.upload') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_upload_format"
+        type="action"
+        :title="$t('book.uploadNewFormat')"
+        icon="mdi-file-upload-outline"
+        max-width="500"
+        :confirm-text="$t('book.upload')"
+        :confirm-loading="uploading_format"
+        :confirm-disabled="!upload_format_file"
+        @confirm="confirmUploadFormat"
+    >
+        <p class="mb-4">{{ $t('book.uploadNewFormatDesc') }}</p>
+        <v-file-input
+            v-model="upload_format_file"
+            :label="$t('book.selectFile')"
+            outlined
+            dense
+            show-size
+            accept=".epub,.mobi,.azw,.azw3,.pdf,.txt"
+            prepend-icon="mdi-file-document"
+        ></v-file-input>
+        <v-alert type="info" text dense class="mt-4">
+            {{ $t('book.supportedFormatsUpload') }}
+        </v-alert>
+    </AppDialog>
 
     <!-- 发送到设备对话框 -->
-    <v-dialog v-model="dialog_send_to_device" persistent max-width="600">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">devices</v-icon>
-                {{ $t('book.sendToDevice') }}
-            </v-card-title>
-            <v-card-text>
+    <AppDialog
+        v-model="dialog_send_to_device"
+        type="action"
+        :title="$t('book.sendToDevice')"
+        icon="devices"
+        max-width="600"
+        :confirm-text="$t('common.send')"
+        :confirm-loading="sending_to_device"
+        :confirm-disabled="!canSendToDevice"
+        @dismiss="closeDeviceDialog"
+        @confirm="sendToDevice"
+    >
                 <p class="mb-4">
                     {{ $t('book.selectDevice') }}:
                     <span class="caption grey--text">
@@ -1298,158 +1246,115 @@
                         {{ $t('book.configDeviceDesc') }}
                     </p>
                 </div>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="closeDeviceDialog">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn
-                    color="primary"
-                    :loading="sending_to_device"
-                    @click="sendToDevice"
-                    :disabled="!canSendToDevice"
-                >
-                    {{ $t('common.send') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 
     <!-- 读书分享卡片对话框 -->
-    <v-dialog v-model="dialog_share_card" max-width="640">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-card-bulleted-outline</v-icon>
-                {{ $t('book.generateShareCard') }}
-            </v-card-title>
-            <v-card-text class="text-center" style="min-height: 200px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                <div v-if="share_card_generating" class="d-flex flex-column align-center">
-                    <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
-                    <p class="mt-4 grey--text">{{ $t('book.shareCardGenerating') }}</p>
-                </div>
-                <div v-else-if="share_card_image_url"
-                     style="background: #0f0f12; border-radius: 24px; display: inline-block; line-height: 0;">
-                    <img :src="share_card_image_url"
-                         style="max-width: 100%; display: block;"
-                         :alt="book.title" />
-                </div>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="dialog_share_card = false">{{ $t('common.close') }}</v-btn>
-                <v-btn v-if="share_card_image_url && !share_card_generating"
-                       color="primary" @click="downloadShareCard">
-                    <v-icon left>mdi-download</v-icon>
-                    {{ $t('book.downloadShareCard') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_share_card"
+        type="action"
+        :title="$t('book.generateShareCard')"
+        icon="mdi-card-bulleted-outline"
+        max-width="640"
+        :dismiss-label="$t('common.close')"
+        :confirm-text="$t('book.downloadShareCard')"
+        confirm-icon="mdi-download"
+        :hide-footer-button="!share_card_image_url || share_card_generating"
+        @confirm="downloadShareCard"
+    >
+        <div class="text-center" style="min-height: 200px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+            <div v-if="share_card_generating" class="d-flex flex-column align-center">
+                <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
+                <p class="mt-4 grey--text">{{ $t('book.shareCardGenerating') }}</p>
+            </div>
+            <div v-else-if="share_card_image_url"
+                 style="background: #0f0f12; border-radius: 24px; display: inline-block; line-height: 0;">
+                <img :src="share_card_image_url"
+                     style="max-width: 100%; display: block;"
+                     :alt="book.title" />
+            </div>
+        </div>
+    </AppDialog>
 
     <!-- 图章位置选择对话框 -->
-    <v-dialog v-model="dialog_stamp_position" persistent max-width="500">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-stamp</v-icon>
-                {{ $t('book.selectStampPosition') }}
-            </v-card-title>
-            <v-card-text>
-                <p class="mb-4">{{ $t('book.selectStampPositionDesc') }}</p>
-                <v-row justify="center">
-                    <v-col cols="auto">
-                        <div style="display: inline-grid; grid-template-columns: repeat(3, 60px); grid-gap: 8px;">
-                            <v-btn
-                                v-for="pos in stampPositions"
-                                :key="pos.value"
-                                :color="stamp_selected_position === pos.value ? 'primary' : ''"
-                                @click="stamp_selected_position = pos.value"
-                                small
-                                outlined
-                                style="min-width: 60px; height: 60px;"
-                            >
-                                <v-icon small>{{ pos.icon }}</v-icon>
-                            </v-btn>
-                        </div>
-                    </v-col>
-                </v-row>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="dialog_stamp_position = false">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn
-                    color="primary"
-                    @click="confirmAddStamp"
-                    :disabled="!stamp_selected_position"
-                >
-                    {{ $t('common.ok') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_stamp_position"
+        type="action"
+        :title="$t('book.selectStampPosition')"
+        icon="mdi-stamp"
+        max-width="500"
+        :confirm-text="$t('common.ok')"
+        :confirm-disabled="!stamp_selected_position"
+        @confirm="confirmAddStamp"
+    >
+        <p class="mb-4">{{ $t('book.selectStampPositionDesc') }}</p>
+        <v-row justify="center">
+            <v-col cols="auto">
+                <div style="display: inline-grid; grid-template-columns: repeat(3, 60px); grid-gap: 8px;">
+                    <v-btn
+                        v-for="pos in stampPositions"
+                        :key="pos.value"
+                        :color="stamp_selected_position === pos.value ? 'primary' : ''"
+                        @click="stamp_selected_position = pos.value"
+                        small
+                        outlined
+                        style="min-width: 60px; height: 60px;"
+                    >
+                        <v-icon small>{{ pos.icon }}</v-icon>
+                    </v-btn>
+                </div>
+            </v-col>
+        </v-row>
+    </AppDialog>
 
     <!-- 发送到邮箱对话框 -->
-    <v-dialog v-model="dialog_send_to_email" persistent max-width="500">
-        <v-card>
-            <v-card-title class="headline">
-                <v-icon class="mr-2">mdi-email-send</v-icon>
-                {{ $t('book.shareToEmail') }}
-            </v-card-title>
-            <v-card-text>
-                <p class="mb-4">
-                    <span v-if="!hasMultipleEmailFormats" class="caption grey--text">
-                        ({{ $t('book.willSendFormat', { format: selected_email_format.toUpperCase() }) }})
-                    </span>
-                </p>
-                <template v-if="hasMultipleEmailFormats">
-                    <p class="mb-2">{{ $t('book.selectFormatToSend') }}</p>
-                    <v-radio-group v-model="selected_email_format" class="mt-0">
-                        <v-radio
-                            v-for="file in compatibleEmailFormatFiles"
-                            :key="'email-' + file.format"
-                            :value="file.format.toLowerCase()"
-                            :label="`${file.format} - ${formatFileSize(file.size)}`"
-                        ></v-radio>
-                    </v-radio-group>
-                </template>
-                <p class="mb-4">{{ $t('book.shareToEmailDesc') }}</p>
-                <v-text-field
-                    v-model="email_address"
-                    :label="$t('book.emailAddress') + ' *'"
-                    outlined
-                    dense
-                    type="email"
-                    :rules="emailRules"
-                    :error-messages="email_error"
-                    placeholder="example@email.com"
-                    @input="email_error = ''"
-                >
-                    <template v-slot:prepend-inner>
-                        <v-icon>mdi-email</v-icon>
-                    </template>
-                </v-text-field>
-                <v-alert v-if="email_size_warning" type="warning" dense outlined class="mt-2">
-                    {{ email_size_warning }}
-                </v-alert>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn text @click="closeEmailDialog">
-                    {{ $t('common.cancel') }}
-                </v-btn>
-                <v-btn
-                    color="primary"
-                    :loading="sending_to_email"
-                    @click="sendToEmail"
-                    :disabled="!canSendToEmail"
-                >
-                    {{ $t('common.send') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <AppDialog
+        v-model="dialog_send_to_email"
+        type="action"
+        :title="$t('book.shareToEmail')"
+        icon="mdi-email-send"
+        max-width="500"
+        :confirm-text="$t('common.send')"
+        :confirm-loading="sending_to_email"
+        :confirm-disabled="!canSendToEmail"
+        @dismiss="closeEmailDialog"
+        @confirm="sendToEmail"
+    >
+        <p class="mb-4">
+            <span v-if="!hasMultipleEmailFormats" class="caption grey--text">
+                ({{ $t('book.willSendFormat', { format: selected_email_format.toUpperCase() }) }})
+            </span>
+        </p>
+        <template v-if="hasMultipleEmailFormats">
+            <p class="mb-2">{{ $t('book.selectFormatToSend') }}</p>
+            <v-radio-group v-model="selected_email_format" class="mt-0">
+                <v-radio
+                    v-for="file in compatibleEmailFormatFiles"
+                    :key="'email-' + file.format"
+                    :value="file.format.toLowerCase()"
+                    :label="`${file.format} - ${formatFileSize(file.size)}`"
+                ></v-radio>
+            </v-radio-group>
+        </template>
+        <p class="mb-4">{{ $t('book.shareToEmailDesc') }}</p>
+        <v-text-field
+            v-model="email_address"
+            :label="$t('book.emailAddress') + ' *'"
+            outlined
+            dense
+            type="email"
+            :rules="emailRules"
+            :error-messages="email_error"
+            placeholder="example@email.com"
+            @input="email_error = ''"
+        >
+            <template v-slot:prepend-inner>
+                <v-icon>mdi-email</v-icon>
+            </template>
+        </v-text-field>
+        <v-alert v-if="email_size_warning" type="warning" dense outlined class="mt-2">
+            {{ email_size_warning }}
+        </v-alert>
+    </AppDialog>
   </div>
 </template>
 
@@ -4003,7 +3908,7 @@ h1.book-detail-title {
 
 /* Dialog border styles */
 .dialog-border {
-    border: 2px solid;
+    border: 0px solid;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     border-radius: 8px !important;
 }

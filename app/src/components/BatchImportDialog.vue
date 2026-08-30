@@ -1,12 +1,21 @@
 <template>
-    <v-dialog v-model="show" persistent transition="dialog-bottom-transition" max-width="600">
-        <v-card class="upload-dialog-card">
-            <v-toolbar flat dense dark color="#003153" class="upload-dialog-toolbar">
-                {{ $t('upload.batchTitle') }}
-                <v-spacer></v-spacer>
-                <v-btn color="" text :disabled="importing" @click="close">{{ $t('upload.batchClose') }}</v-btn>
-            </v-toolbar>
-            <v-card-text class="pt-4">
+    <AppDialog
+        v-model="show"
+        type="action"
+        :title="$t('upload.batchTitle')"
+        color="blue darken-4"
+        max-width="600"
+        transition="dialog-bottom-transition"
+        card-class="upload-dialog-card"
+        toolbar-class="upload-dialog-toolbar"
+        :dismiss-label="$t('upload.batchClose')"
+        :dismiss-disabled="importing"
+        :confirm-text="importing ? $t('upload.batchCancel') : $t('upload.batchClose')"
+        :confirm-color="importing ? 'error' : 'primary'"
+        :confirm-loading="cancelling"
+        @dismiss="close"
+        @confirm="importing ? cancelImport() : close()"
+    >
                 <div class="mb-2">{{ $t('upload.batchFileCount', { count: items.length || fileCount }) }}</div>
                 <v-progress-linear
                     v-if="importing"
@@ -51,17 +60,7 @@
                         </tbody>
                     </template>
                 </v-simple-table>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn v-if="importing" :loading="cancelling" color="error" text @click="cancelImport">
-                    {{ $t('upload.batchCancel') }}
-                </v-btn>
-                <v-btn v-else color="primary" @click="close">{{ $t('upload.batchClose') }}</v-btn>
-                <v-spacer></v-spacer>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    </AppDialog>
 </template>
 
 <script>

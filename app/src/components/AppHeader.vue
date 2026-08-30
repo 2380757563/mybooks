@@ -349,79 +349,77 @@
             </template>
         </v-app-bar>
 
-        <v-dialog v-model="feedbackDialog" max-width="420">
-            <v-card>
-                <v-toolbar dark :color="appBarColor">
-                    <v-icon left color="white">mdi-comment-question-outline</v-icon>
-                    <v-toolbar-title>{{ $t('appHeader.feedbackDialogTitle') }}</v-toolbar-title>
-                    <v-spacer></v-spacer>
-                    <v-btn icon dark @click="feedbackDialog = false">
-                        <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                </v-toolbar>
-                <v-card-text class="text-center pt-6 pb-2">
-                    <v-img
-                        src="/logo/link_gongzhonghao.jpg"
-                        max-width="200"
-                        class="mx-auto rounded elevation-2 mb-5"
-                        contain
-                    ></v-img>
-                    <p class="body-1 font-weight-medium mb-1">{{ $t('appHeader.feedbackScanQrCode') }}</p>
-                    <p class="body-2 grey--text mt-3 mb-0">{{ $t('appHeader.feedbackOrGithub') }}</p>
-                </v-card-text>
-                <v-card-actions class="justify-center pb-5">
-                    <v-btn
-                        outlined
-                        color="primary"
-                        href="https://github.com/PoxenStudio/mybooks/issues"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <v-icon left small>mdi-github</v-icon>
-                        {{ $t('appHeader.feedbackGithubIssues') }}
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="feedbackDialog"
+            type="action"
+            :title="$t('appHeader.feedbackDialogTitle')"
+            icon="mdi-comment-question-outline"
+            :color="appBarColor"
+            max-width="420"
+            :persistent="false"
+            dismiss-icon
+        >
+            <div class="text-center pt-2 pb-2">
+                <v-img
+                    src="/logo/link_gongzhonghao.jpg"
+                    max-width="200"
+                    class="mx-auto rounded elevation-2 mb-5"
+                    contain
+                ></v-img>
+                <p class="body-1 font-weight-medium mb-1">{{ $t('appHeader.feedbackScanQrCode') }}</p>
+                <p class="body-2 grey--text mt-3 mb-0">{{ $t('appHeader.feedbackOrGithub') }}</p>
+            </div>
+            <template v-slot:actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                    outlined
+                    color="primary"
+                    href="https://github.com/PoxenStudio/mybooks/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <v-icon left small>mdi-github</v-icon>
+                    {{ $t('appHeader.feedbackGithubIssues') }}
+                </v-btn>
+                <v-spacer></v-spacer>
+            </template>
+        </AppDialog>
 
-        <v-dialog v-model="memoDialog" max-width="500">
-            <v-card>
-                <v-toolbar dark :color="appBarColor">
-                    <v-icon left color="white">mdi-message-draw</v-icon>
-                    <v-toolbar-title>{{ $t('appHeader.memoDialogTitle') }}</v-toolbar-title>
-                    <v-spacer></v-spacer>
-                    <v-btn icon dark @click="memoDialog = false">
-                        <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                </v-toolbar>
-                <v-card-text class="pt-6">
-                    <v-select
-                        v-model="memoType"
-                        :items="[
-                            { text: $t('appHeader.memoTypeSuggestion'), value: 0 },
-                            { text: $t('appHeader.memoTypeBookRequest'), value: 1 },
-                            { text: $t('appHeader.memoTypeHelp'), value: 2 }
-                        ]"
-                        :label="$t('appHeader.memoTypeLabel')"
-                        outlined
-                        dense
-                    ></v-select>
-                    <v-textarea
-                        v-model="memoContent"
-                        :label="$t('appHeader.memoContentLabel')"
-                        :placeholder="$t('appHeader.memoContentPlaceholder')"
-                        outlined
-                        rows="5"
-                        auto-grow
-                        hide-details
-                    ></v-textarea>
-                </v-card-text>
-                <v-card-actions class="px-6 pb-4">
-                    <v-spacer></v-spacer>
-                    <v-btn color="primary" @click="submitMemo" :loading="memoSubmitting">{{ $t('appHeader.memoSubmit') }}</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AppDialog
+            v-model="memoDialog"
+            type="action"
+            :title="$t('appHeader.memoDialogTitle')"
+            icon="mdi-message-draw"
+            :color="appBarColor"
+            max-width="500"
+            :persistent="false"
+            dismiss-icon
+            :confirm-text="$t('appHeader.memoSubmit')"
+            confirm-color="primary"
+            :confirm-loading="memoSubmitting"
+            @confirm="submitMemo"
+        >
+            <v-select
+                v-model="memoType"
+                :items="[
+                    { text: $t('appHeader.memoTypeSuggestion'), value: 0 },
+                    { text: $t('appHeader.memoTypeBookRequest'), value: 1 },
+                    { text: $t('appHeader.memoTypeHelp'), value: 2 }
+                ]"
+                :label="$t('appHeader.memoTypeLabel')"
+                outlined
+                dense
+            ></v-select>
+            <v-textarea
+                v-model="memoContent"
+                :label="$t('appHeader.memoContentLabel')"
+                :placeholder="$t('appHeader.memoContentPlaceholder')"
+                outlined
+                rows="5"
+                auto-grow
+                hide-details
+            ></v-textarea>
+        </AppDialog>
 
         <v-dialog v-model="ai_enabled" persistent max-width="700" scrollable>
             <v-card class="dialog-border d-flex flex-column" style="height: 600px;">
