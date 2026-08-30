@@ -1932,6 +1932,10 @@
     "orderDesc": "从新到旧",
     "orderAsc": "从旧到新",
     "removeConfirmText": "确定要将《{title}》移出书单吗？",
-    "removeConfirmTitle": "移出书单"
+    "removeConfirmTitle": "移出书单",
+    "generateShareCard": "生成书单卡片",
+    "downloadShareCard": "下载卡片",
+    "shareCardGenerating": "正在生成书单卡片，请稍候...",
+    "shareCardFailed": "生成书单卡片失败，请重试"
   }
 }

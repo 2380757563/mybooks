@@ -9,21 +9,19 @@
                 <app-footer v-if="$store.state.nav"></app-footer>
             </v-container>
 
-            <v-dialog v-model="$store.state.alert.show" persistent :width="$vuetify.breakpoint.smAndDown?'80%':'50%'">
+            <v-dialog v-model="$store.state.alert.show" persistent :width="$vuetify.breakpoint.smAndDown?'80%':'40%'">
                 <v-card>
-                    <v-toolbar dark color="#003153">
-                        <v-toolbar-title align-center></v-toolbar-title>
-                    </v-toolbar>
-                    <v-card-text class="pt-12">
+                    <div class="blue" style="height:36px"></div>
+                    <v-card-text class="pt-6">
                         <v-alert outlined v-model="$store.state.alert.show" :type="$store.state.alert.type"
                                  v-html="$store.state.alert.msg"></v-alert>
                     </v-card-text>
                     <v-card-actions v-if="$store.state.alert.type!=='success' || $store.state.alert.to">
                         <v-spacer></v-spacer>
                         <v-btn v-if='$store.state.alert.to' color="primary"
-                               @click="$router.push($store.state.alert.to);$store.commit('close_alert')">好的
+                               @click="$router.push($store.state.alert.to);$store.commit('close_alert')">{{ $t('common.ok') }}
                         </v-btn>
-                        <v-btn v-else color="primary" @click="$store.commit('close_alert')">关闭</v-btn>
+                        <v-btn v-else color="primary" @click="$store.commit('close_alert')">{{ $t('common.close') }}</v-btn>
                         <v-spacer></v-spacer>
                     </v-card-actions>
                 </v-card>

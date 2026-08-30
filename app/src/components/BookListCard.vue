@@ -127,7 +127,7 @@ export default {
             return this.dark ? c.dark : c.light;
         },
         covers() {
-            return (this.booklist.cover_books || []).slice(0, 12);
+            return (this.booklist.cover_books || []).slice(0, 15);
         },
     },
 };
@@ -177,7 +177,7 @@ export default {
     display: flex;
     gap: 4px;
     padding: 8px;
-    overflow-x: auto;
+    overflow-x: off;
 }
 .booklist-cover-item {
     flex: 0 0 auto;

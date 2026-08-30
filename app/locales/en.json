@@ -1931,6 +1931,10 @@
     "orderDesc": "Newest first",
     "orderAsc": "Oldest first",
     "removeConfirmText": "Remove \"{title}\" from this booklist?",
-    "removeConfirmTitle": "Remove from Booklist"
+    "removeConfirmTitle": "Remove from Booklist",
+    "generateShareCard": "Generate Booklist Card",
+    "downloadShareCard": "Download Card",
+    "shareCardGenerating": "Generating booklist card, please wait...",
+    "shareCardFailed": "Failed to generate booklist card, please try again"
   }
 }
