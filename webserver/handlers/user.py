@@ -52,6 +52,7 @@ class Done(BaseHandler):
         if not user.extra:
             logging.info("init new user %s, info=%s" % (user.username, si))
             user.init(si)
+            apply_default_read_range(user)
 
         user.check_and_update(si)
         return user

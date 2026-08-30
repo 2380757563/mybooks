@@ -332,7 +332,7 @@ export default {
         total: 0,
         loading: true,
         expandedUserId: null,
-        options: { sortBy: ["access_time"], sortDesc: [true] },
+        options: {},
         baseHeaders: [],
         permissions: [],
         enableDownloadQuota: false,

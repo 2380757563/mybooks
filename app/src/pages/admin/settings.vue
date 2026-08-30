@@ -1744,11 +1744,16 @@ export default {
       if (mode === 0) {
         return this.$t("settings.default_read_range_all");
       }
-      const names = [
-        ...(range.categories ? range.categories.split(",").filter(Boolean) : []),
-        ...(range.tags ? range.tags.split(",").filter(Boolean) : []),
-      ];
-      const list = names.length ? names.join("、") : this.$t("settings.default_read_range_unset");
+      const categories = range.categories ? range.categories.split(",").filter(Boolean) : [];
+      const tags = range.tags ? range.tags.split(",").filter(Boolean) : [];
+      const parts = [];
+      if (categories.length) {
+        parts.push(this.$t("settings.default_read_range_categories_part", { value: categories.join("、") }));
+      }
+      if (tags.length) {
+        parts.push(this.$t("settings.default_read_range_tags_part", { value: tags.join("、") }));
+      }
+      const list = parts.length ? parts.join("，") : this.$t("settings.default_read_range_unset");
       return mode === 1
         ? this.$t("settings.default_read_range_whitelist", { list })
         : this.$t("settings.default_read_range_blacklist", { list });
