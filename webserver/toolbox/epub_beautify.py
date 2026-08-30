@@ -271,7 +271,6 @@ class EpubBeautifyTool(BaseTool):
             task_id = self.create_task(
                 progress_data={"status": "starting", "book_ids": ids, "book_total": total})
             EpubBeautifyTool._last_task_id = task_id
-            progress_callback = self.make_progress_callback(task_id)
 
             # 参数校验一次（与具体书籍无关）：预设 / 目录形式 / 配色 / 字体开关
             try:
@@ -335,13 +334,11 @@ class EpubBeautifyTool(BaseTool):
                         "book_id": bid,
                     }
                     self.update_task_progress(task_id, _pct(10), dict(prog_common, stage="analyzing"))
-                    progress_callback(_pct(10))
 
                     work_dir = self.get_work_dir(str(bid))
                     out_path = os.path.join(work_dir, "beautified_%d.epub" % int(time.time()))
 
                     self.update_task_progress(task_id, _pct(30), dict(prog_common, stage="processing"))
-                    progress_callback(_pct(30))
 
                     stats = epub_beautify_lib.beautify(
                         epub_path, out_path, preset_css,
@@ -353,7 +350,6 @@ class EpubBeautifyTool(BaseTool):
                     )
 
                     self.update_task_progress(task_id, _pct(80), dict(prog_common, stage="saving"))
-                    progress_callback(_pct(80))
 
                     new_book_id = book_utils.import_as_new_book(
                         self, bid, out_path, suffix or _("（精排版）"), user_id,
@@ -403,7 +399,7 @@ class EpubBeautifyTool(BaseTool):
             logging.error(traceback.format_exc())
         finally:
             if task_id is not None:
-                self.complete_task(task_id, error_message=error_message)
+                # 完成前先更新最终进度（complete 会固化状态）
                 if error_message is None:
                     self.update_task_progress(
                         task_id, 100,
@@ -411,4 +407,6 @@ class EpubBeautifyTool(BaseTool):
                          "book_id": ids[0], "new_book_id": last_new_book_id,
                          "results": results},
                     )
-            EpubBeautifyTool._run_lock.release()
+                self.complete_task(task_id, error_message=error_message)
+            if EpubBeautifyTool._run_lock.locked():
+                EpubBeautifyTool._run_lock.release()
