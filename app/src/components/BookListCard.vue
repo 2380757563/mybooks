@@ -138,6 +138,7 @@ export default {
     position: relative;
     border-left-width: 4px;
     border-left-style: solid;
+    margin-right: 2px;
 }
 .booklist-recommend-badge {
     position: absolute;
@@ -177,7 +178,7 @@ export default {
     display: flex;
     gap: 4px;
     padding: 8px;
-    overflow-x: off;
+    overflow-x: auto;
 }
 .booklist-cover-item {
     flex: 0 0 auto;

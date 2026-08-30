@@ -649,7 +649,7 @@ export default {
                         { icon: "mdi-bookmark-plus", href: "/wants", text: "appHeader.wants", color: "orange" },
                         { icon: "mdi-book-open-page-variant", href: "/reading", text: "appHeader.reading", color: "blue" },
                         { icon: "mdi-check-circle", href: "/read-done", text: "appHeader.readDone", color: "green" },
-                        { icon: "mdi-history", href: "/user/history", text: "appHeader.reading_history", color: "blue" },
+                        { icon: "mdi-history", href: "/history", text: "appHeader.reading_history", color: "blue" },
                     ]
                 }
             ];
@@ -663,9 +663,9 @@ export default {
                     expand: this.isPathMatch("/booklists/"),
                     color: "teal",
                     groups: [
-                        { icon: "mdi-account-eye-outline", href: "/booklists", text: "appHeader.publicBooklists", color: "#005CAF" },
+                        { icon: "mdi-account-eye-outline", href: "/booklists/publics", text: "appHeader.publicBooklists", color: "#005CAF" },
                         { icon: "mdi-heart-multiple", href: "/booklists/liked", text: "appHeader.likedBooklists", color: "red" },
-                        { icon: "mdi-format-list-bulleted-square", href: "booklists", text: "appHeader.myBooklists", color: "orange"},
+                        { icon: "mdi-format-list-bulleted-square", href: "/booklists/mylists", text: "appHeader.myBooklists", color: "orange"},
                     ],
                 },
                 { icon: "mdi-account-group", href: "/author", text: "appHeader.authors", count: this.sys.authors, color: "blue darken-1"},
