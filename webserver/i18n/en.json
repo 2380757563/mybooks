@@ -517,5 +517,6 @@
   "未找到支持的书籍格式文件": "No supported ebook format files found",
   "已开始导入": "Import started",
   "无权限查看该导入任务": "No permission to view this import task",
-  "无权限操作该导入任务": "No permission to manage this import task"
+  "无权限操作该导入任务": "No permission to manage this import task",
+  "单次最多支持 100 本书籍批量处理": "Too many books to process"
 }

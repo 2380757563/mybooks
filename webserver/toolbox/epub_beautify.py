@@ -321,6 +321,7 @@ class EpubBeautifyTool(BaseTool):
                     return int(min(99, (base + book_pct / total)))
 
                 book_title = "Unknown"
+                work_dir = None
                 try:
                     books = self.api.calibre.get_data_as_dict([bid])
                     if not books:
@@ -384,6 +385,10 @@ class EpubBeautifyTool(BaseTool):
                     self.add_msg(user_id, "danger", _(u"书籍 [%s] 美化失败！") % book_title)
                     logging.error("[EpubBeautifyTool] Failed for book_id=%d: %s", bid, err)
                     logging.error(traceback.format_exc())
+                    if work_dir is not None:
+                        # 失败时清理本次已生成的中间文件，避免同一本书反复重试时
+                        # 在工作目录下堆积多份带时间戳的 beautified_*.epub 残留
+                        self.cleanup_work_dir(work_dir)
 
             if fail_count and not ok_count:
                 error_message = _("批量美化全部失败（共 %d 本）") % fail_count

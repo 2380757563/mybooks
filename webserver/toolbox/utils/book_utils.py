@@ -18,7 +18,6 @@ from calibre.ebooks.metadata.book.base import Metadata
 
 from webserver import utils
 from webserver.i18n import _
-from webserver.models import Item
 
 
 def get_book_file(tool, book_id: int, fmt: str) -> str:
@@ -106,10 +105,7 @@ def import_as_new_book(
         raise RuntimeError(_("导入新书失败：%s") % title)
 
     try:
-        item = Item()
-        item.book_id = new_book_id
-        item.collector_id = user_id
-        item.save()
+        tool.api.db.create_item(new_book_id, user_id)
     except Exception as err:
         logging.error(
             "[%s] Failed to create Item for book_id=%s: %s",

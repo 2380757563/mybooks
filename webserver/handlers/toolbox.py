@@ -1097,6 +1097,8 @@ class AdminEpubBeautifyRun(BaseHandler):
         book_ids = list(dict.fromkeys(book_ids))
         if not book_ids:
             return {"err": "params.missing", "msg": _("请提供书籍ID")}
+        if len(book_ids) > 100:
+            return {"err": "params.invalid", "msg": _("单次最多支持 100 本书籍批量处理")}
         preset = (data.get("preset") or "classic").strip()
         toc_style = (data.get("toc_style") or "elegant").strip()
         # 前置校验：非法 preset/toc_style 即时拒绝，不等后台任务失败
