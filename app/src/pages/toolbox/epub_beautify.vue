@@ -470,13 +470,13 @@
                     <div class="caption" :style="{fontFamily: kaiFont, color: '#666', lineHeight: 1.6}"><span :style="{color: currentPreset.muted}">{{ markGlyph }}</span> {{ $t('epubBeautify.notesPreviewLine') }}</div>
                   </div>
                   <!-- 引文样式演示（保留但标“演示”并置末，避免全书误为正文） -->
-                  <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px', marginTop: '16px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」<span class="caption grey--text ml-2" style="font-size:10px; vertical-align:middle;">（样式演示）</span></blockquote>
+                  <blockquote class="eb-quote" :style="{ background: currentPreset.quote_bg, borderLeftColor: currentPreset.accent, color: currentPreset.muted, fontFamily: kaiFont, borderRadius: currentPreset.id === 'children' ? '8px' : '3px', marginTop: '16px' }">「满纸荒唐言，一把辛酸泪。都云作者痴，谁解其中味。」<span class="caption grey--text ml-2" style="font-size:10px; vertical-align:middle;">{{ $t('epubBeautify.demoTag') }}</span></blockquote>
                 </div>
               </template>
               <template v-else-if="previewTab === 'toc'">
                 <!-- 目录预览：按目录形式渲染（tocIsMock 时标“示例”） -->
                 <div class="eb-tocbig" :class="{ 'eb-toc-cols': tocColumns && tocStyle !== 'seal' }">
-                  <div v-if="tocIsMock" class="caption grey--text text-center mb-2">（示例 — 未读取到真实目录）</div>
+                  <div v-if="tocIsMock" class="caption grey--text text-center mb-2">{{ $t('epubBeautify.tocMockHint') }}</div>
                   <div v-if="tocStyle === 'elegant'" class="eb-toc-frame" :style="{ borderColor: currentPreset.border }">
                     <div class="eb-th-elegant" :style="{ background: currentPreset.accent_light, borderTopColor: currentPreset.accent, color: currentPreset.accent }">目 录<div class="eb-th-sub" :style="{ color: currentPreset.muted }">CONTENTS</div></div>
                     <div v-for="(r, i) in tocSampleRowsDisplay" :key="i" class="eb-tr" :style="{ borderBottomColor: currentPreset.border }">
@@ -502,7 +502,7 @@
                       <span class="flex-grow-1 eb-rt">{{ r[1] }}</span>
                       <span style="color:#A2906A;font-size:11px">\ ✦</span>
                     </div>
-                    <div v-if="tocColumns" class="caption grey--text text-center mt-2">（朱印表格不支持分栏）</div>
+                    <div v-if="tocColumns" class="caption grey--text text-center mt-2">{{ $t('epubBeautify.sealNoColumns') }}</div>
                   </div>
                   <div v-else class="eb-min-frame">
                     <div class="eb-min-head" :style="{ color: currentPreset.accent }">目 录</div>
@@ -767,7 +767,7 @@ export default {
     splitSample() {
       const s = this.chapterSample.trim();
       // 卷级不拆（与后端 _is_volume_text 同口径）
-      if (/^\s*(?:【\[\s*)?(?:第\s*[\d零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]|0*\d{1,4}\s*卷|卷\s*[\d零〇一二三四五六七八九十百千万兩两]+|[上中下]\s*卷)/i.test(s)) return null;
+      if (/^\s*(?:[【\[]\s*)?(?:第\s*[\d零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]|0*\d{1,4}\s*卷|卷\s*[\d零〇一二三四五六七八九十百千万兩两]+|[上中下]\s*卷)/i.test(s)) return null;
       const m = s.match(
         /^\s*(第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[章节回篇卷部集季]|(?:chapter|chap\.?)\s*\d+)[\s、．.:：\-—·]*(.+)$/i);
       return m ? [m[1].replace(/\s+/g, ''), m[2]] : null;
