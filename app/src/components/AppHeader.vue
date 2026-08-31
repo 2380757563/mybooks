@@ -38,6 +38,7 @@
                             v-else-if="item.groups && item.groups.length > 0"
                             no-action
                             :value="isGroupExpanded(idx, item)"
+                            :append-icon="isGroupExpanded(idx, item) ? 'mdi-chevron-down' : 'mdi-chevron-right'"
                             @input="toggleGroup(idx, item)"
                             :key="'group-' + idx"
                         >
@@ -1277,6 +1278,14 @@ export default {
 
 .app-navigation-drawer .v-list-group__header > .v-list-item {
     position: relative !important;
+}
+
+.app-navigation-drawer .v-list-group__header__append-icon {
+    margin-left: 0px !important;
+}
+
+.app-navigation-drawer .v-list-group__header__append-icon .v-icon {
+    transform: none !important;
 }
 
 .app-navigation-drawer .v-list-group__items > .v-list-item {
