@@ -115,7 +115,7 @@ settings = {
     "READING_STATS_FLUSH_INTERVAL_SEC": 5,
     "ENABLE_HOMEPAGE_READING_STATS": True,
     "ENABLE_HOMEPAGE_READING_BOOKS": True,
-    "ENABLE_HOMEPAGE_BOOKLISTS": True,     # 首页"书单推荐"卡片区开关，见 document/BookList_Design.md 第六节
+    "ENABLE_HOMEPAGE_BOOKLISTS": False,
     "ALLOW_NEW_USER_MANAGE_BOOK": True,
     "ALLOW_NEW_USER_PUSH_BOOK": True,
     "ENABLE_AUTO_NEW_USER_APPROVAL": False,

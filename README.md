@@ -18,6 +18,7 @@ An enhanced personal books management webserver built on Calibre + Vue, beautifu
 MyBooks特性包括:
 * 支持阅读数据统计与展示
 * 支持用户书单创建与分享
+* 通过工具箱提供丰富的书籍管理工具
 * 支持WAP简版页面，供精简浏览器访问
 * 支持监听导入目录并自动导入新书
 * 支持提供Podcast服务，让书库变播客

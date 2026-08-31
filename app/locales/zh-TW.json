@@ -781,7 +781,7 @@
     "pdf_tile_with_file_name": "添加 PDF 檔案時書名直接使用檔案名 (如果匯入的 PDF 檔案詮釋資料中的書名不是真實書名時使用，例如掃描的 PDF 檔案)",
     "default_language": "預設語言",
     "enable_txt_to_txtz_plugin": "啟用 TXT 轉 TXTZ 外掛（將 TXT 格式的書籍轉換為 TXTZ 格式，TXTZ 為內部格式，啟用後匯入 TXT 耗時較長）",
-    "epub_viewer": "EPUB 閱讀器",
+    "epub_viewer": "閱讀器",
     "epubjs": "EPUB Reader（純本地，簡潔清爽）",
     "myreader": "MyReader (完整功能，多端數據同步，推荐)",
     "avatar_service": "可使用 www.gravatar.com 或 cravatar.cn 大頭貼服務",
@@ -902,8 +902,9 @@
     "reader": "瀏覽與閱讀",
     "enable_book_review": "允許用戶對書籍進行評論及評分",
     "review_requires_approval": "評論需要審核後才能展示（僅在允許評論時生效）",
-    "enable_book_recommend_to_others": "展示其他用戶評論過的書籍",
-    "enable_shared_notes": "閱讀時支援查看其他用戶的劃線與筆記"
+    "enable_book_recommend_to_others": "在首頁展示其他用戶評論過的書籍",
+    "enable_shared_notes": "閱讀時支援查看其他用戶的劃線與筆記",
+    "enable_homepage_booklists": "在首頁展示書單推薦"
   },
   "user": {
     "avatar": "大頭貼",
@@ -1061,7 +1062,11 @@
     "memoCancel": "取消",
     "memoSubmitSuccess": "留言已成功提交，我們將稍後查看處理。",
     "memoSubmitFailed": "留言提交失敗，請稍後重試",
-    "memoContentRequired": "請輸入留言內容"
+    "memoContentRequired": "請輸入留言內容",
+    "myBooklists": "我的書單",
+    "booklists": "閱讀書單",
+    "publicBooklists": "公共書單",
+    "likedBooklists": "收藏書單"
   },
   "language": {
     "zh": "简体中文",

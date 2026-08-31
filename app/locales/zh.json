@@ -787,8 +787,8 @@
     "pdf_tile_with_file_name": "添加PDF文件时书名直接使用文件名 (如果导入的PDF文件元数据中的书名不是真实书名时使用，例如扫描的PDF文件)",
     "default_language": "默认语言",
     "enable_txt_to_txtz_plugin": "启用TXT转TXTZ插件（将TXT格式的书籍转换为TXTZ格式，TXTZ为内部格式，启用后导入TXT耗时较长）",
-    "epub_viewer": "EPUB阅读器",
-    "epubjs": "EPUB Reader（纯本地, 简洁清爽）",
+    "epub_viewer": "阅读器",
+    "epubjs": "EPUB Reader（纯本地, 简洁清爽，仅支持EPUB）",
     "myreader": "MyReader (完整功能, 多端数据同步，推荐使用)",
     "avatar_service": "可使用www.gravatar.com或cravatar.cn头像服务",
     "max_upload_size": "文件上传字节数限制(例如100MB或100KB）",
@@ -908,9 +908,9 @@
     "reader": "浏览与阅读",
     "enable_book_review": "允许用户对书籍进行评论及评分",
     "review_requires_approval": "评论需要审核后才能展示（仅在允许评论时生效）",
-    "enable_book_recommend_to_others": "展示其他用户评论过的书籍",
+    "enable_book_recommend_to_others": "在首页展示其他用户评论过的书籍",
     "enable_shared_notes": "阅读时支持查看其他用户的划线与笔记",
-    "enable_homepage_booklists": "首页展示书单推荐"
+    "enable_homepage_booklists": "在首页展示书单推荐"
   },
   "user": {
     "avatar": "头像",
@@ -1071,7 +1071,7 @@
     "memoSubmitFailed": "留言提交失败，请稍后重试",
     "memoContentRequired": "请输入留言内容",
     "myBooklists": "我的书单",
-    "booklists": "书单",
+    "booklists": "阅读书单",
     "publicBooklists": "公共书单",
     "likedBooklists": "收藏书单"
   },
