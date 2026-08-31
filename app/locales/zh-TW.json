@@ -677,7 +677,9 @@
     "restore": "恢復生成",
     "ok": "確定",
     "delete": "刪除",
-    "backToHome": "返回首頁"
+    "backToHome": "返回首頁",
+    "collapse": "收起",
+    "expand": "展開"
   },
   "settings": {
     "hint": "系統使用",

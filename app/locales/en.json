@@ -909,7 +909,9 @@
     "backToHome": "Back to Home",
     "edit": "Edit",
     "save": "Save",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "collapse": "Collapse",
+    "expand": "Expand"
   },
   "user": {
     "avatar": "Avatar",

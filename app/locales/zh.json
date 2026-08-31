@@ -683,7 +683,9 @@
     "backToHome": "返回首页",
     "edit": "编辑",
     "save": "保存",
-    "loadMore": "加载更多"
+    "loadMore": "加载更多",
+    "collapse": "收起",
+    "expand": "展开"
   },
   "settings": {
     "hint": "系统使用手册",
