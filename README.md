@@ -15,9 +15,9 @@ An enhanced personal books management webserver built on Calibre + Vue, beautifu
 **友情提醒：中国境内网站，个人是不允许进行在线出版的，维护公开的书籍网站是违法违规的行为！建议仅作为个人使用！**
 
 ### 项目介绍
-从v3.45.0开始，此项目从PoxenStudio/Talebook改名为MyBooks, 避免与talebook/talebook混淆。
-
 MyBooks特性包括:
+* 支持阅读数据统计与展示
+* 支持用户书单创建与分享
 * 支持WAP简版页面，供精简浏览器访问
 * 支持监听导入目录并自动导入新书
 * 支持提供Podcast服务，让书库变播客
