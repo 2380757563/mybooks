@@ -200,6 +200,9 @@
                 @drag-start="onSectionDragStart('index.newRecommendation', $event)"
                 @drag-end="onSectionDragEnd"
             >
+                <template #header-extra>
+                    <v-icon color="primary" class="ml-1 refresh-icon" @click="refreshBooks('all')">mdi-refresh</v-icon>
+                </template>
                 <v-row>
                     <v-col cols="12">
                         <book-cards :books="get_recent_books"></book-cards>
