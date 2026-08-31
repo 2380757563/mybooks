@@ -1557,7 +1557,8 @@ class BookReadingState(BaseHandler):
 class BookFormatReadingStats(BaseHandler):
     """当前用户对某本书、分格式的阅读时长/进度统计。
 
-    GET 返回所有格式的统计（与 BookDetail 内嵌的 book["reading_stats"] 同源），
+    GET 返回所有格式的统计（与 BookDetail 内嵌的 book["reading_stats"] 同源），可选 query
+    参数 format 限定只查询某一个格式，
     POST 用于手动补记/纠正某个格式的时长、进度、开始/完成时间——例如导入历史阅读记录，
     或者网页阅读器等没有自动心跳/进度上报的场景。
     """
@@ -1581,7 +1582,8 @@ class BookFormatReadingStats(BaseHandler):
     @auth
     def get(self, id):
         book_id = int(id)
-        return {"err": "ok", "stats": ReadingStatsService.get_book_format_stats(self.user_id(), book_id)}
+        fmt = (self.get_query_argument("format", None) or "").strip().lower() or None
+        return {"err": "ok", "stats": ReadingStatsService.get_book_format_stats(self.user_id(), book_id, fmt=fmt)}
 
     @js
     @auth

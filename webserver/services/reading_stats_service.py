@@ -117,7 +117,6 @@ class ReadingWriteBuffer:
             session.last_seen = now_utc
             session.protocol = protocol
             if delta:
-                logging.debug(f"[Heartbeat] Update the time delta for user {reader_id} with {delta} seconds!")
                 self._reader_seconds_delta[reader_id] = self._reader_seconds_delta.get(reader_id, 0) + delta
 
     def on_event(self, reader_id: int, book_id: int, action: str, protocol: str, now_utc: datetime.datetime) -> None:
@@ -410,15 +409,15 @@ class ReadingStatsService:
         cls._buffer.on_event(reader_id, book_id, Reading.ACTION_PUSH, protocol, datetime.datetime.utcnow())
 
     @classmethod
-    def get_book_format_stats(cls, reader_id: int, book_id: int) -> List[dict]:
-        """所有格式的统计（供 BookDetail/独立接口/MCP get_book_reading_stats 复用）。"""
+    def get_book_format_stats(cls, reader_id: int, book_id: int, fmt: Optional[str] = None) -> List[dict]:
+        """所有格式（或 fmt 指定的单个格式）的统计（供 BookDetail/独立接口/MCP get_book_reading_stats 复用）。"""
         db = Reading._session()
-        rows = (
-            db.query(BookReadingStats)
-            .filter(BookReadingStats.reader_id == reader_id, BookReadingStats.book_id == book_id, BookReadingStats.total_seconds > 10)
-            .order_by(BookReadingStats.format)
-            .all()
+        query = db.query(BookReadingStats).filter(
+            BookReadingStats.reader_id == reader_id, BookReadingStats.book_id == book_id, BookReadingStats.total_seconds > 10
         )
+        if fmt:
+            query = query.filter(BookReadingStats.format == fmt.lower())
+        rows = query.order_by(BookReadingStats.format).all()
         return [row.format_dict() for row in rows]
 
     @classmethod
