@@ -111,11 +111,9 @@
                   />
                 </template>
               </v-select>
-              <template
-                v-else-if="f.type === 'meta_sources'"
-                :key="f.key + '-meta_sources'"
-              >
+              <template v-else-if="f.type === 'meta_sources'">
                 <v-select
+                  :key="f.key + '-meta_sources'"
                   small
                   ref="metaSourceSelect"
                   v-model="settings['META_SELECTED_SOURCES']"
@@ -155,7 +153,7 @@
                   </template>
                 </v-select>
               </template>
-              <template
+              <div
                 v-else-if="f.type === 'book_nav'"
                 :key="f.key + '-book_nav'"
               >
@@ -237,7 +235,7 @@
                     >
                   </v-col>
                 </v-row>
-              </template>
+              </div>
               <v-text-field
                 v-else-if="f.type === 'number'"
                 v-model.number="settings[f.key]"
@@ -283,7 +281,7 @@
               >
               </v-checkbox>
               <template v-if="settings[g.key]">
-                <div class="pl-6">
+                <div class="pl-6" :key="g.label + '-fields'">
                 <template v-for="f in g.fields">
                   <v-checkbox
                     small
@@ -1985,7 +1983,7 @@ export default {
             this.$alert("success", this.$t("settings.ai_mcp_token_generated"));
           }
         })
-        .catch((err) => {
+        .catch((_err) => {
           this.$alert(
             "error",
             this.$t("settings.ai_mcp_token_generate_failed")

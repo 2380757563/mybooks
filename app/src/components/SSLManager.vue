@@ -45,7 +45,7 @@ export default {
                 return false;
             }
 
-            var content = await this.ssl_key.text();
+            content = await this.ssl_key.text();
             if ( ! re.key.test(content) ) {
                 this.loading = false;
                 this.$alert("error", this.$t('sslManager.invalidPrivateKeyFile'));

@@ -547,7 +547,7 @@ export default {
             } else {
                 this.avatar_error = resp.msg || this.$t('listBook.avatarUploadFailed') || 'Failed to upload avatar';
             }
-        }).catch(err => {
+        }).catch(_err => {
             this.avatar_error = this.$t('listBook.avatarUploadFailed') || 'Failed to upload avatar';
         });
     },

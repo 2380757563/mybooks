@@ -680,9 +680,9 @@ export default {
             return Math.ceil(this.total / itemsPerPage) || 1;
         },
         auto_fill_mins: function() {
-            const selected_count = this.books_selected.length > 0 ? this.books_selected.length : this.total;
-            if (selected_count > 0) {
-                return Math.floor(selected_count / 60) + 1;
+            const selectedCount = this.books_selected.length > 0 ? this.books_selected.length : this.total;
+            if (selectedCount > 0) {
+                return Math.floor(selectedCount / 60) + 1;
             }
             return Math.floor(this.total/60) + 1;
         },
@@ -832,20 +832,20 @@ export default {
         },
 
         showDeleteSelectedBooksDialog() {
-            const books_ids = this.getSelectedBookIds();
-            if (!books_ids) return;
+            const bookIds = this.getSelectedBookIds();
+            if (!bookIds) return;
             this.delete_selected_books_dialog = true;
         },
 
         deleteSelectedBooks() {
-            const books_ids = this.getSelectedBookIds();
+            const bookIds = this.getSelectedBookIds();
             this.delete_selected_books_dialog = false;
-            if (!books_ids) return;
+            if (!bookIds) return;
 
             this.loading = true;
             this.$backend("/admin/books/delete", {
                 method: "POST",
-                body: JSON.stringify({"idlist": books_ids}),
+                body: JSON.stringify({"idlist": bookIds}),
             })
                 .then((rsp) => {
                     this.handleApiResponse(rsp);
@@ -1017,14 +1017,14 @@ export default {
         },
 
         exchangeBookType() {
-            const books_ids = this.getSelectedBookIds();
-            if (!books_ids) return;
+            const bookIds = this.getSelectedBookIds();
+            if (!bookIds) return;
 
             this.loading = true;
             this.exchange_type_dialog = false;
             this.$backend("/book/exchange_type", {
                 method: "POST",
-                body: JSON.stringify({"idlist": books_ids}),
+                body: JSON.stringify({"idlist": bookIds}),
             })
                 .then((rsp) => {
                     this.handleApiResponse(rsp);
@@ -1038,13 +1038,13 @@ export default {
         },
 
         saveMetaToFiles() {
-            const book_ids = this.getSelectedBookIds();
-            if (!book_ids) return;
+            const bookIds = this.getSelectedBookIds();
+            if (!bookIds) return;
 
             this.loading = true;
             this.$backend("/admin/books/save_meta", {
                 method: "POST",
-                body: JSON.stringify({"idlist": book_ids}),
+                body: JSON.stringify({"idlist": bookIds}),
             })
                 .then((rsp) => {
                     this.handleApiResponse(rsp, this.$t("admin.books.saveMetaSuccess"));

@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "nuxt",
-    "build": "nuxt build",
-    "build-spa": "nuxt build --spa",
+    "build": "eslint --ext .js,.vue src && nuxt build",
+    "build-spa": "eslint --ext .js,.vue src && nuxt build --spa",
     "start": "nuxt start",
-    "generate": "nuxt generate",
+    "generate": "eslint --ext .js,.vue src && nuxt generate",
     "lint": "eslint --ext .js,.vue src",
     "lint:fix": "eslint --ext .js,.vue src --fix"
   },

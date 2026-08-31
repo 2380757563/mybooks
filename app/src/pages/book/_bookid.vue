@@ -2306,13 +2306,13 @@ export default {
         setRefer(book, opt) {
             // 防止多次重复点击
             if(this.refer_books_setting_btn_loading) return;
-            const provider_key = book.provider_key
-            const provider_value = book.provider_value
+            const providerKey = book.provider_key
+            const providerValue = book.provider_value
             // 显示加载条提示
             this.refer_books_setting_btn_loading = true;
             var data = new URLSearchParams(opt);
-            data.append("provider_key", provider_key);
-            data.append("provider_value", provider_value);
+            data.append("provider_key", providerKey);
+            data.append("provider_value", providerValue);
             data.append("metadata", JSON.stringify(book));
             this.$backend("/book/" + this.book.id + "/refer", {
                 method: "POST",
@@ -2448,8 +2448,8 @@ export default {
             // 图书类型互转：电子书 <-> 实体书
             if (this.book.book_type != this.BOOK_TYPE.PHYSICAL) {
                 // 电子书转实体书：需先检查是否已有格式文件、是否有ISBN
-                const has_formats = this.book.files && this.book.files.length > 0;
-                if (has_formats) {
+                const hasFormats = this.book.files && this.book.files.length > 0;
+                if (hasFormats) {
                     this.$alert("error", this.$t('book.exchangeTypeHasFormats'));
                     return;
                 }
@@ -2502,7 +2502,7 @@ export default {
                 } else {
                     this.$alert("error", rsp.msg || this.$t('book.saveMetaFailed'));
                 }
-            }).catch((err) => {
+            }).catch((_err) => {
                 this.$alert("error", this.$t('book.saveMetaFailed'));
             });
         },
@@ -2535,7 +2535,7 @@ export default {
                 } else {
                     this.$alert("error", rsp.msg || this.$t('book.addStampFailed'));
                 }
-            }).catch((err) => {
+            }).catch((_err) => {
                 this.$alert("error", this.$t('book.addStampFailed'));
             });
         },
@@ -2578,7 +2578,7 @@ export default {
                 } else {
                     this.$alert("error", rsp.msg || this.$t('book.separateFailed'));
                 }
-            }).catch((err) => {
+            }).catch((_err) => {
                 this.separating_book = false;
                 this.$alert("error", this.$t('book.separateFailed'));
             });
@@ -2603,7 +2603,7 @@ export default {
                 } else {
                     this.$alert("error", rsp.msg || this.$t('book.deleteFormatFailed'));
                 }
-            }).catch((err) => {
+            }).catch((_err) => {
                 this.deleting_format = false;
                 this.$alert("error", this.$t('book.deleteFormatFailed'));
             });
@@ -2669,8 +2669,8 @@ export default {
                 }
             });
         },
-        playSampleVoice(voice_option) {
-            if (this.playing_sample === voice_option.voice_name) {
+        playSampleVoice(voiceOption) {
+            if (this.playing_sample === voiceOption.voice_name) {
                 // 如果正在播放相同的样本，则停止播放
                 this.stopCurrentAudio();
                 return;
@@ -2680,10 +2680,10 @@ export default {
             this.stopCurrentAudio();
 
             // 设置正在播放状态
-            this.playing_sample = voice_option.voice_name;
+            this.playing_sample = voiceOption.voice_name;
 
             // 创建音频对象并播放
-            const audioUrl = `/static/epub_to_audio/samples/${voice_option.sample_file}`;
+            const audioUrl = `/static/epub_to_audio/samples/${voiceOption.sample_file}`;
             this.currentAudio = new Audio(audioUrl);
 
             this.currentAudio.addEventListener('ended', () => {
@@ -2710,7 +2710,7 @@ export default {
             }
             this.playing_sample = null;
         },
-        playAudioFile(audio_item, index) {
+        playAudioFile(audioItem, index) {
             // If clicking on the same audio that's currently playing
             if (this.playing_audio_index === index && this.currentAudioFile) {
                 if (this.audio_paused) {
@@ -2736,7 +2736,7 @@ export default {
             this.playing_audio_index = index;
 
             // Create new audio object
-            this.currentAudioFile = new Audio(audio_item.url);
+            this.currentAudioFile = new Audio(audioItem.url);
 
             this.currentAudioFile.addEventListener('loadstart', () => {
                 this.audio_loading = true;
@@ -2890,7 +2890,7 @@ export default {
             try {
                 let endpoint;
                 let successMessage;
-                let is_delete = false;
+                let isDelete = false;
 
                 if (this.audios.status === this.AUDIO_STATUS.PROCESSING) {
                     // Cancel the conversion
@@ -2900,7 +2900,7 @@ export default {
                     // Delete the audio files
                     endpoint = `/audio/${this.book.id}/delete`;
                     successMessage = this.$t('book.audioFilesDeleted');
-                    is_delete = true;
+                    isDelete = true;
                 } else {
                     return; // No action needed for other statuses
                 }
@@ -2915,7 +2915,7 @@ export default {
                     this.stopAudioProgressPolling();
                     // Close the dialog
                     this.dialog_audiolist = false;
-                    if (is_delete) {
+                    if (isDelete) {
                         // Reset audio status
                         this.audios = {count: 0, files: [], status: "unavailable"};
                     } else {

@@ -363,7 +363,6 @@ export default {
     },
     created() {
         this.$store.commit('navbar', true);
-        const sys = this.$store.state.sys || {};
     },
     async asyncData({ app, res }) {
         if ( res !== undefined ) {

@@ -132,7 +132,7 @@ export default {
         onlineReadingBooks: [],
         clearingHistory: false,
     }),
-    async asyncData({ params, app, res }) {
+    async asyncData({ params: _params, app, res }) {
         if ( res !== undefined ) {
             res.setHeader('Cache-Control', 'no-cache');
         }
@@ -183,7 +183,7 @@ export default {
 
             if ( next ) next();
         },
-        clearHistory(item) {
+        clearHistory(_item) {
             this.clearingHistory = true;
             this.$backend('/user/history/clear', { method: 'POST' })
                 .then(rsp => {

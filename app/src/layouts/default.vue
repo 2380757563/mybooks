@@ -13,8 +13,9 @@
                 <v-card>
                     <div class="blue" style="height:36px"></div>
                     <v-card-text class="pt-6">
-                        <v-alert outlined v-model="$store.state.alert.show" :type="$store.state.alert.type"
-                                 v-html="$store.state.alert.msg"></v-alert>
+                        <v-alert outlined v-model="$store.state.alert.show" :type="$store.state.alert.type">
+                            <span v-html="$store.state.alert.msg"></span>
+                        </v-alert>
                     </v-card-text>
                     <v-card-actions v-if="$store.state.alert.type!=='success' || $store.state.alert.to">
                         <v-spacer></v-spacer>

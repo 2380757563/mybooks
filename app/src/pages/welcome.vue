@@ -50,8 +50,8 @@ export default {
     created() {
         this.$store.commit('navbar', false);
         if (process.client) {
-            const saved_theme = localStorage.getItem('site_theme');
-            if (saved_theme === 'dark') {
+            const savedTheme = localStorage.getItem('site_theme');
+            if (savedTheme === 'dark') {
                 this.$vuetify.theme.dark = true;
             } else {
                 this.$vuetify.theme.dark = false;

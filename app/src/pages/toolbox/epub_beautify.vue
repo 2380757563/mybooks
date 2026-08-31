@@ -767,7 +767,7 @@ export default {
     splitSample() {
       const s = this.chapterSample.trim();
       // 卷级不拆（与后端 _is_volume_text 同口径）
-      if (/^\s*(?:[【\[]\s*)?(?:第\s*[\d零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]|0*\d{1,4}\s*卷|卷\s*[\d零〇一二三四五六七八九十百千万兩两]+|[上中下]\s*卷)/i.test(s)) return null;
+      if (/^\s*(?:[【[]\s*)?(?:第\s*[\d零〇一二三四五六七八九十百千万兩两]+\s*[卷部篇]|0*\d{1,4}\s*卷|卷\s*[\d零〇一二三四五六七八九十百千万兩两]+|[上中下]\s*卷)/i.test(s)) return null;
       const m = s.match(
         /^\s*(第\s*[0-9零〇一二三四五六七八九十百千万兩两]+\s*[章节回篇卷部集季]|(?:chapter|chap\.?)\s*\d+)[\s、．.:：\-—·]*(.+)$/i);
       return m ? [m[1].replace(/\s+/g, ''), m[2]] : null;

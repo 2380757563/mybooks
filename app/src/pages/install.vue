@@ -29,7 +29,7 @@
                                 autocomplete="new-code" :rules="[rules.code]"></v-text-field>
                         </template>
                     </v-form>
-                    <v-alert type="info" v-if="tips" v-html="tips"></v-alert>
+                    <v-alert type="info" v-if="tips"><span v-html="tips"></span></v-alert>
                 </v-card-text>
 
                 <v-card-actions>
@@ -72,7 +72,7 @@ export default {
         this.rules.pass = (v) => (20 >= v.length && v.length >= 6) || this.$t('install.passwordRule');
         this.rules.code = (v) => (64 >= v.length && v.length >= 4) || this.$t('install.accessCodeRule');
         this.rules.email = (email) => {
-            var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
             return re.test(email) || this.$t('install.invalidEmail');
         };
         this.$store.commit("navbar", false);

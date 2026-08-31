@@ -86,7 +86,7 @@ export default {
         cancelled: false,
         processedCount: 0,
         totalCount: 0,
-        _pollTimer: null,
+        pollTimer: null,
     }),
     computed: {
         show: {
@@ -129,9 +129,9 @@ export default {
             this.poll();
         },
         stopPolling() {
-            if (this._pollTimer) {
-                clearTimeout(this._pollTimer);
-                this._pollTimer = null;
+            if (this.pollTimer) {
+                clearTimeout(this.pollTimer);
+                this.pollTimer = null;
             }
         },
         poll() {
@@ -147,12 +147,12 @@ export default {
                     this.processedCount = this.items.filter((i) => i.status !== 'ready' && i.status !== 'new').length;
                     this.importing = !!rsp.importing;
                     if (this.importing) {
-                        this._pollTimer = setTimeout(() => this.poll(), 1500);
+                        this.pollTimer = setTimeout(() => this.poll(), 1500);
                     }
                 })
                 .catch(() => {
                     // 网络错误时继续重试，避免误判为已完成
-                    this._pollTimer = setTimeout(() => this.poll(), 2000);
+                    this.pollTimer = setTimeout(() => this.poll(), 2000);
                 });
         },
         cancelImport() {

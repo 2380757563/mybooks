@@ -99,7 +99,6 @@
       <p v-if="action === 'clean'">{{ $t('authorClean.confirmClean', { author: authorName }) }}</p>
       <p v-else>{{ $t('authorClean.confirmReplace', { author: authorName, newAuthor: newAuthorName }) }}</p>
     </AppDialog>
-    </v-dialog>
   </v-container>
 </template>
 

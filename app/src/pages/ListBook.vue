@@ -120,9 +120,6 @@ export default {
     if (this.$route.query.start != undefined) {
       this.page = 1 + parseInt(this.$route.query.start / this.page_size)
     }
-    if (!this.inited) {
-
-    }
     this.page_cnt = Math.max(1, Math.ceil(this.total / this.page_size))
 
     this.checkIfAudioPage();

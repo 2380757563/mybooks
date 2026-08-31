@@ -73,7 +73,7 @@
                             </v-list-item>
                         </v-list-group>
 
-                        <template v-else-if="item.links" v-show="!miniVariant">
+                        <template v-else-if="item.links && !miniVariant">
                             <v-list-item dense v-for="(links, cidx) in chunk(item.links, 2)" :key="'chunk-' + idx + '-' + cidx">
                                 <v-row>
                                     <v-col class="pa-0" cols="6" v-for="link in links" :key="'btn-' + link.href">
@@ -599,11 +599,11 @@ export default {
             return false;
         },
         items: function () {
-            const login_link = { icon: "account_circle", href: "/login", text: "appHeader.please_login", color:"white" };
-            const home_links = [
+            const loginLink = { icon: "account_circle", href: "/login", text: "appHeader.please_login", color:"white" };
+            const homeLinks = [
                 { icon: "mdi-view-dashboard-outline", href: "/", text: "appHeader.home", color:"blue darken-1" },
             ];
-            const user_links = [
+            const userLinks = [
                 {
                     icon: "mdi-account-group",
                     text: "appHeader.user_center",
@@ -616,7 +616,7 @@ export default {
                     ],
                 }
             ];
-            const admin_links = [
+            const adminLinks = [
                 {
                     icon: "mdi-cog",
                     text: "appHeader.admin",
@@ -638,7 +638,7 @@ export default {
                     ],
                 },
             ];
-            const reading_links = [
+            const readingLinks = [
                 {
                     icon: "mdi-book-open-page-variant-outline",
                     text: "appHeader.readingInfo",
@@ -654,7 +654,7 @@ export default {
                 }
             ];
 
-            const nav_links = [
+            const navLinks = [
                 { icon: "mdi-headphones", href: "/audiobooks", text: "appHeader.audioBooks", count: this.sys.audiobooks, color: "purple"},
                 ...(this.sys.allow.physical_books ? [{ icon: "mdi-bookshelf", href: "/printbooks", text: "appHeader.physicalBooks", count: this.sys.physicals, color: "orange"}] : []),
                 {
@@ -678,7 +678,7 @@ export default {
                 { icon: "mdi-check-all", href: "/all", text: "appHeader.allBooks", color: "blue"},
             ];
 
-            const friend_links = [
+            const friendLinks = [
                 {
                     icon: "link",
                     text: "appHeader.friendLinks",
@@ -693,7 +693,7 @@ export default {
                 }
             ];
 
-            const memo_link = [
+            const memoLink = [
                 {
                     icon: "mdi-message-text-outline",
                     text: "appHeader.memo",
@@ -702,14 +702,14 @@ export default {
                 },
             ];
 
-            return [].concat(this.user.is_login ? [] : [login_link])
-                .concat(home_links)
-                .concat(this.user.is_login ? user_links : [])
-                .concat(this.user.is_admin ? admin_links : [])
-                .concat(this.user.is_login ? reading_links : [])
-                .concat(nav_links)
-                .concat(memo_link)
-                .concat(this.sys.friends.length > 0 ? friend_links : [])
+            return [].concat(this.user.is_login ? [] : [loginLink])
+                .concat(homeLinks)
+                .concat(this.user.is_login ? userLinks : [])
+                .concat(this.user.is_admin ? adminLinks : [])
+                .concat(this.user.is_login ? readingLinks : [])
+                .concat(navLinks)
+                .concat(memoLink)
+                .concat(this.sys.friends.length > 0 ? friendLinks : [])
         },
     },
     mounted() {
@@ -841,10 +841,10 @@ export default {
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
-            const ws_url = `${protocol}//${host}/api/assistant/ws`;
+            const wsUrl = `${protocol}//${host}/api/assistant/ws`;
 
-            console.log(`Connecting to AI WebSocket: ${ws_url}`);
-            this.ai_ws = new WebSocket(ws_url);
+            console.log(`Connecting to AI WebSocket: ${wsUrl}`);
+            this.ai_ws = new WebSocket(wsUrl);
 
             this.ai_ws.onopen = () => {
                 console.log('AI WebSocket connected successfully');
@@ -886,7 +886,7 @@ export default {
 
             this.ai_ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
-                console.error('Failed to connect to:', ws_url);
+                console.error('Failed to connect to:', wsUrl);
                 alert(this.$t('appHeader.aiConnectionError'));
                 this.ai_ws = null;
                 this.ai_enabled = false;
@@ -1041,7 +1041,7 @@ export default {
         toggleGroup(idx, item) {
             this.$set(this.expandedGroups, idx, !this.isGroupExpanded(idx, item));
         },
-        handleMiniVariantGroupClick(idx, item) {
+        handleMiniVariantGroupClick(idx, _item) {
             this.miniVariant = false;
             this.$set(this.expandedGroups, idx, true);
             if (process.client) {

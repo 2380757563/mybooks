@@ -1,7 +1,7 @@
 export default ({ app }, inject) => {
-    inject("alert", function (alert_type, alert_msg, alert_to) {
-        app.store.commit("alert", { type: alert_type, msg: alert_msg, to: alert_to });
-        if (alert_type === 'success') {
+    inject("alert", function (alertType, alertMsg, alertTo) {
+        app.store.commit("alert", { type: alertType, msg: alertMsg, to: alertTo });
+        if (alertType === 'success') {
             setTimeout(() => {
                 app.store.commit('close_alert')
             }, 1300)
@@ -37,16 +37,16 @@ export default ({ app }, inject) => {
             server = window.location.origin;
         }
 
-        var full_url = server + "/api" + url;
+        var fullUrl = server + "/api" + url;
 
         if (options !== undefined) {
             Object.assign(args, options);
         }
 
-        return fetch(full_url, args)
+        return fetch(fullUrl, args)
             .then(rsp => {
-                const should_ignore = url.endsWith("/tasks/running") && rsp.status !== 200;
-                if (should_ignore) {
+                const shouldIgnore = url.endsWith("/tasks/running") && rsp.status !== 200;
+                if (shouldIgnore) {
                     return { err: 'ok' };
                 }
                 var msg = "";

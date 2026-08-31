@@ -119,11 +119,11 @@ export default {
         });
     },
     restoreSelected() {
-      const book_ids = this.selected.map((item) => item.book_id);
-      if (book_ids.length === 0) return;
+      const bookIds = this.selected.map((item) => item.book_id);
+      if (bookIds.length === 0) return;
       this.$backend('/admin/trash/books/restore', {
         method: 'POST',
-        body: JSON.stringify({ book_ids }),
+        body: JSON.stringify({ book_ids: bookIds }),
       }).then((rsp) => {
         this.$alert(rsp.err === 'ok' ? 'success' : 'error', rsp.msg);
         this.fetchItems();
@@ -131,11 +131,11 @@ export default {
     },
     purgeSelected() {
       this.purgeConfirmDialog = false;
-      const book_ids = this.selected.map((item) => item.book_id);
-      if (book_ids.length === 0) return;
+      const bookIds = this.selected.map((item) => item.book_id);
+      if (bookIds.length === 0) return;
       this.$backend('/admin/trash/books/purge', {
         method: 'POST',
-        body: JSON.stringify({ book_ids }),
+        body: JSON.stringify({ book_ids: bookIds }),
       }).then((rsp) => {
         this.$alert(rsp.err === 'ok' ? 'success' : 'error', rsp.msg);
         this.fetchItems();

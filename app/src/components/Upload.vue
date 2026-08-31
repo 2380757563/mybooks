@@ -160,12 +160,12 @@ export default {
         continueAdding: false,
         // 条形码识别相关
         recognizing_barcode: false,
-        // 缓存ISBN验证结果以提高性能
-        _cachedIsbn: "",
-        _cachedIsValidResult: false,
         // 防抖相关变量
-        _shouldValidate: false,
-        _debouncedRules: null,
+        shouldValidate: false,
+        // 防抖验证规则（由 buildDebouncedIsbnRules() 构建，不放进 computed 是因为它本身
+        // 不是"从响应式状态派生"，而是"只构建一次的规则闭包数组"，构建过程里要给
+        // shouldValidate 赋值，放进 computed 会触发 vue/no-side-effects-in-computed-properties）
+        debouncedIsbnRules: [],
         // 控制是否显示验证错误（仅在点击添加按钮时显示）
         showValidationErrors: false,
     }),
@@ -181,24 +181,14 @@ export default {
             return !this.$route.path.startsWith('/audio/');
         },
         isValidIsbn() {
-            // 使用缓存避免重复计算
-            if (this.isbn === this._cachedIsbn) {
-                return this._cachedIsValidResult;
-            }
-
-            // 更新缓存
-            this._cachedIsbn = this.isbn;
-
+            // Vue 的 computed 本身已按 this.isbn 做依赖缓存，不需要手动缓存
             if (!this.isbn) {
-                this._cachedIsValidResult = false;
                 return false;
             }
-
             // 移除连字符和空格
             const cleanIsbn = this.isbn.replace(/[-\s]/g, '');
             // 检查是否为10位或13位数字（可能包含X）
-            this._cachedIsValidResult = /^[0-9]{9}[0-9X]$/.test(cleanIsbn) || /^[0-9]{13}$/.test(cleanIsbn);
-            return this._cachedIsValidResult;
+            return /^[0-9]{9}[0-9X]$/.test(cleanIsbn) || /^[0-9]{13}$/.test(cleanIsbn);
         },
 
         // 基础验证规则
@@ -209,75 +199,6 @@ export default {
                 v => (v && /^[0-9\-X]+$/.test(v)) || this.$t('upload.isbnInvalidFormat'),
             ];
         },
-
-        // 防抖验证规则，减少频繁验证
-        debouncedIsbnRules() {
-            if (!this._debouncedRules) {
-                const debounce = (func, wait) => {
-                    let timeout;
-                    return function executedFunction(...args) {
-                        const later = () => {
-                            clearTimeout(timeout);
-                            func.apply(this, args);
-                        };
-                        clearTimeout(timeout);
-                        timeout = setTimeout(later, wait);
-                    };
-                };
-
-                const validateWithDebounce = debounce(() => {
-                    this._shouldValidate = true;
-                    this.$nextTick(() => {
-                        this.$refs.isbnField && this.$refs.isbnField.validate();
-                    });
-                }, 300);
-
-                this._debouncedRules = [
-                    v => {
-                        // 如果没有输入内容且没有手动触发验证，不显示错误
-                        if (!v && !this.showValidationErrors) {
-                            return true;
-                        }
-                        if (!this._shouldValidate && v) {
-                            validateWithDebounce();
-                            return true; // 暂时通过验证，等待防抖完成
-                        }
-                        return !!v || this.$t('upload.isbnRequired');
-                    },
-                    v => {
-                        // 如果没有输入内容且没有手动触发验证，不显示错误
-                        if (!v && !this.showValidationErrors) {
-                            return true;
-                        }
-                        if (!this._shouldValidate && v) {
-                            return true; // 暂时通过验证，等待防抖完成
-                        }
-                        return (v && v.length >= 10) || this.$t('upload.isbnMinLength');
-                    },
-                    v => {
-                        // 如果没有输入内容且没有手动触发验证，不显示错误
-                        if (!v && !this.showValidationErrors) {
-                            return true;
-                        }
-                        if (!this._shouldValidate && v) {
-                            return true; // 暂时通过验证，等待防抖完成
-                        }
-                        return (v && /^[0-9\-X]+$/.test(v)) || this.$t('upload.isbnInvalidFormat');
-                    },
-                    v => {
-                        // 如果没有输入内容且没有手动触发验证，不显示错误
-                        if (!v && !this.showValidationErrors) {
-                            return true;
-                        }
-                        if (!this._shouldValidate && v) {
-                            return true; // 暂时通过验证，等待防抖完成
-                        }
-                        return this.isValidIsbn || this.$t('upload.invalidIsbn');
-                    }
-                ];
-            }
-            return this._debouncedRules;
-        }
     },
     watch: {
         dialog(val) {
@@ -287,7 +208,77 @@ export default {
             }
         },
     },
+    created() {
+        this.buildDebouncedIsbnRules();
+    },
     methods: {
+        // 构建防抖验证规则（原来放在 computed 里"只构建一次"，会在计算过程中
+        // 给 shouldValidate 赋值触发 vue/no-side-effects-in-computed-properties；
+        // 挪到普通方法里，在 created() 里建一次，需要重置时显式调用即可）。
+        buildDebouncedIsbnRules() {
+            const debounce = (func, wait) => {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func.apply(this, args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            };
+
+            const validateWithDebounce = debounce(() => {
+                this.shouldValidate = true;
+                this.$nextTick(() => {
+                    this.$refs.isbnField && this.$refs.isbnField.validate();
+                });
+            }, 300);
+
+            this.debouncedIsbnRules = [
+                v => {
+                    // 如果没有输入内容且没有手动触发验证，不显示错误
+                    if (!v && !this.showValidationErrors) {
+                        return true;
+                    }
+                    if (!this.shouldValidate && v) {
+                        validateWithDebounce();
+                        return true; // 暂时通过验证，等待防抖完成
+                    }
+                    return !!v || this.$t('upload.isbnRequired');
+                },
+                v => {
+                    // 如果没有输入内容且没有手动触发验证，不显示错误
+                    if (!v && !this.showValidationErrors) {
+                        return true;
+                    }
+                    if (!this.shouldValidate && v) {
+                        return true; // 暂时通过验证，等待防抖完成
+                    }
+                    return (v && v.length >= 10) || this.$t('upload.isbnMinLength');
+                },
+                v => {
+                    // 如果没有输入内容且没有手动触发验证，不显示错误
+                    if (!v && !this.showValidationErrors) {
+                        return true;
+                    }
+                    if (!this.shouldValidate && v) {
+                        return true; // 暂时通过验证，等待防抖完成
+                    }
+                    return (v && /^[0-9\-X]+$/.test(v)) || this.$t('upload.isbnInvalidFormat');
+                },
+                v => {
+                    // 如果没有输入内容且没有手动触发验证，不显示错误
+                    if (!v && !this.showValidationErrors) {
+                        return true;
+                    }
+                    if (!this.shouldValidate && v) {
+                        return true; // 暂时通过验证，等待防抖完成
+                    }
+                    return this.isValidIsbn || this.$t('upload.invalidIsbn');
+                },
+            ];
+        },
         async do_upload() {
             // 未选择文件
             if (!this.ebooks || this.ebooks.length === 0) {
@@ -461,19 +452,19 @@ export default {
             this.continueAdding = false; // 重置checkbox状态
             // 重置验证状态
             this.showValidationErrors = false;
-            this._shouldValidate = false;
-            this._debouncedRules = null;
+            this.shouldValidate = false;
+            this.buildDebouncedIsbnRules();
         },
 
         confirmAddBook() {
             // 触发验证显示
             this.showValidationErrors = true;
-            this._shouldValidate = true;
+            this.shouldValidate = true;
 
             // 等待下一个tick让验证生效，然后检查表单有效性
             this.$nextTick(() => {
                 // 重新计算验证规则
-                this._debouncedRules = null;
+                this.buildDebouncedIsbnRules();
 
                 // 手动验证字段
                 if (this.$refs.isbnField) {
@@ -532,13 +523,11 @@ export default {
 
         // 清除验证缓存，重置防抖状态
         clearValidationCache() {
-            this._shouldValidate = false;
-            this._cachedIsbn = null;
-            this._cachedIsValidResult = false;
+            this.shouldValidate = false;
             // 如果用户开始重新输入，重置验证错误显示状态
             if (this.isbn && this.showValidationErrors) {
                 this.showValidationErrors = false;
-                this._debouncedRules = null;
+                this.buildDebouncedIsbnRules();
             }
         },
 
@@ -581,7 +570,7 @@ export default {
                     this.isbn = response.isbn;
                     // 清除验证状态，触发重新验证
                     this.clearValidationCache();
-                    this._shouldValidate = true;
+                    this.shouldValidate = true;
                     this.$nextTick(() => {
                         this.$refs.isbnField && this.$refs.isbnField.validate();
                     });

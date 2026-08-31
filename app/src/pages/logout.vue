@@ -39,7 +39,7 @@ export default {
     methods: {
         logout: function() {
             this.$backend('/user/sign_out')
-            .then( rsp => {});
+            .then(() => {});
         }
     },
 }

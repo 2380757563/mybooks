@@ -103,10 +103,9 @@ export default {
       uploadFile: null,
       uploadBookType: 'ebook',
       uploadIsbn: '',
-      _cachedIsbn: '',
-      _cachedIsValidResult: false,
-      _shouldValidate: false,
-      _debouncedRules: null,
+      shouldValidate: false,
+      // 由 buildDebouncedIsbnRules() 构建，见该方法注释
+      debouncedIsbnRules: [],
       showValidationErrors: false,
     };
   },
@@ -128,17 +127,12 @@ export default {
       return this.items.filter(item => String(item.reader_id) === String(this.selectedUserId));
     },
     isValidIsbn() {
-      if (this.uploadIsbn === this._cachedIsbn) {
-        return this._cachedIsValidResult;
-      }
-      this._cachedIsbn = this.uploadIsbn;
+      // Vue 的 computed 本身已按 this.uploadIsbn 做依赖缓存，不需要手动缓存
       if (!this.uploadIsbn) {
-        this._cachedIsValidResult = false;
         return false;
       }
       const cleanIsbn = this.uploadIsbn.replace(/[-\s]/g, '');
-      this._cachedIsValidResult = /^[0-9]{9}[0-9X]$/.test(cleanIsbn) || /^[0-9]{13}$/.test(cleanIsbn);
-      return this._cachedIsValidResult;
+      return /^[0-9]{9}[0-9X]$/.test(cleanIsbn) || /^[0-9]{13}$/.test(cleanIsbn);
     },
     headers() {
       return [
@@ -150,79 +144,79 @@ export default {
         { text: this.$t('expected.colActions'), value: 'actions', sortable: false },
       ];
     },
-    // 防抖验证规则，减少频繁验证
-    debouncedIsbnRules() {
-        if (!this._debouncedRules) {
-            const debounce = (func, wait) => {
-                let timeout;
-                return function executedFunction(...args) {
-                    const later = () => {
-                        clearTimeout(timeout);
-                        func.apply(this, args);
-                    };
-                    clearTimeout(timeout);
-                    timeout = setTimeout(later, wait);
-                };
-            };
-
-            const validateWithDebounce = debounce(() => {
-                this._shouldValidate = true;
-                this.$nextTick(() => {
-                    this.$refs.isbnField && this.$refs.isbnField.validate();
-                });
-            }, 300);
-
-            this._debouncedRules = [
-                v => {
-                    // 如果没有输入内容且没有手动触发验证，不显示错误
-                    if (!v && !this.showValidationErrors) {
-                        return true;
-                    }
-                    if (!this._shouldValidate && v) {
-                        validateWithDebounce();
-                        return true; // 暂时通过验证，等待防抖完成
-                    }
-                    return !!v || this.$t('upload.isbnRequired');
-                },
-                v => {
-                    // 如果没有输入内容且没有手动触发验证，不显示错误
-                    if (!v && !this.showValidationErrors) {
-                        return true;
-                    }
-                    if (!this._shouldValidate && v) {
-                        return true; // 暂时通过验证，等待防抖完成
-                    }
-                    return (v && v.length >= 10) || this.$t('upload.isbnMinLength');
-                },
-                v => {
-                    // 如果没有输入内容且没有手动触发验证，不显示错误
-                    if (!v && !this.showValidationErrors) {
-                        return true;
-                    }
-                    if (!this._shouldValidate && v) {
-                        return true; // 暂时通过验证，等待防抖完成
-                    }
-                    return (v && /^[0-9\-X]+$/.test(v)) || this.$t('upload.isbnInvalidFormat');
-                },
-                v => {
-                    // 如果没有输入内容且没有手动触发验证，不显示错误
-                    if (!v && !this.showValidationErrors) {
-                        return true;
-                    }
-                    if (!this._shouldValidate && v) {
-                        return true; // 暂时通过验证，等待防抖完成
-                    }
-                    return this.isValidIsbn || this.$t('upload.invalidIsbn');
-                }
-            ];
-        }
-        return this._debouncedRules;
-    }
   },
   mounted() {
     this.fetchItems();
+    this.buildDebouncedIsbnRules();
   },
   methods: {
+    // 构建防抖验证规则（原来放在 computed 里"只构建一次"，构建过程里要给
+    // shouldValidate 赋值，会触发 vue/no-side-effects-in-computed-properties；
+    // 挪到普通方法里，需要重置时显式调用即可）。
+    buildDebouncedIsbnRules() {
+        const debounce = (func, wait) => {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func.apply(this, args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        };
+
+        const validateWithDebounce = debounce(() => {
+            this.shouldValidate = true;
+            this.$nextTick(() => {
+                this.$refs.isbnField && this.$refs.isbnField.validate();
+            });
+        }, 300);
+
+        this.debouncedIsbnRules = [
+            v => {
+                // 如果没有输入内容且没有手动触发验证，不显示错误
+                if (!v && !this.showValidationErrors) {
+                    return true;
+                }
+                if (!this.shouldValidate && v) {
+                    validateWithDebounce();
+                    return true; // 暂时通过验证，等待防抖完成
+                }
+                return !!v || this.$t('upload.isbnRequired');
+            },
+            v => {
+                // 如果没有输入内容且没有手动触发验证，不显示错误
+                if (!v && !this.showValidationErrors) {
+                    return true;
+                }
+                if (!this.shouldValidate && v) {
+                    return true; // 暂时通过验证，等待防抖完成
+                }
+                return (v && v.length >= 10) || this.$t('upload.isbnMinLength');
+            },
+            v => {
+                // 如果没有输入内容且没有手动触发验证，不显示错误
+                if (!v && !this.showValidationErrors) {
+                    return true;
+                }
+                if (!this.shouldValidate && v) {
+                    return true; // 暂时通过验证，等待防抖完成
+                }
+                return (v && /^[0-9\-X]+$/.test(v)) || this.$t('upload.isbnInvalidFormat');
+            },
+            v => {
+                // 如果没有输入内容且没有手动触发验证，不显示错误
+                if (!v && !this.showValidationErrors) {
+                    return true;
+                }
+                if (!this.shouldValidate && v) {
+                    return true; // 暂时通过验证，等待防抖完成
+                }
+                return this.isValidIsbn || this.$t('upload.invalidIsbn');
+            },
+        ];
+    },
     fetchItems() {
       this.loading = true;
       this.$backend('/user/expected?user=0')
@@ -272,8 +266,8 @@ export default {
       this.uploadIsbn = '';
       this.uploadBookType = 'ebook';
       this.showValidationErrors = false;
-      this._debouncedRules = null;
-      this._shouldValidate = false;
+      this.buildDebouncedIsbnRules();
+      this.shouldValidate = false;
       this.showUploadDialog = true;
     },
     closeUploadDialog() {
@@ -283,16 +277,14 @@ export default {
       this.uploadIsbn = '';
       this.uploadBookType = 'ebook';
       this.showValidationErrors = false;
-      this._debouncedRules = null;
-      this._shouldValidate = false;
+      this.buildDebouncedIsbnRules();
+      this.shouldValidate = false;
     },
     clearValidationCache() {
-      this._shouldValidate = false;
-      this._cachedIsbn = null;
-      this._cachedIsValidResult = false;
+      this.shouldValidate = false;
       if (this.uploadIsbn && this.showValidationErrors) {
         this.showValidationErrors = false;
-        this._debouncedRules = null;
+        this.buildDebouncedIsbnRules();
       }
     },
     parseSizeString(sizeStr) {

@@ -92,8 +92,8 @@ export default {
             document.body.classList.add('login-page');
 
             // set the theme according to the local storage value
-            const saved_theme = localStorage.getItem('site_theme');
-            if (saved_theme === 'dark') {
+            const savedTheme = localStorage.getItem('site_theme');
+            if (savedTheme === 'dark') {
                 this.$vuetify.theme.dark = true;
             } else {
                 this.$vuetify.theme.dark = false;
