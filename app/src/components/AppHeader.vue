@@ -661,7 +661,7 @@ export default {
                     expand: this.isPathMatch("/booklists/"),
                     color: "teal",
                     groups: [
-                        { icon: "mdi-account-eye-outline", href: "/booklists/publics", text: "appHeader.publicBooklists", color: "#005CAF" },
+                        { icon: "mdi-account-eye-outline", href: "/booklists/publics", text: "appHeader.publicBooklists", color: "blue darken-1" },
                         { icon: "mdi-heart-multiple", href: "/booklists/liked", text: "appHeader.likedBooklists", color: "red" },
                         { icon: "mdi-format-list-bulleted-square", href: "/booklists/mylists", text: "appHeader.myBooklists", color: "orange"}
                     ],
